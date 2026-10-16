@@ -1,0 +1,11 @@
+version: "1.0"
+namespace: app.env
+
+# Transitive core services resolve their environment knobs through the canonical
+# app.env:store id, even in this isolated CRM harness.
+entries:
+  - name: store
+    kind: env.storage.file
+    meta: { type: envstorage }
+    file_path: ./.wippy/test.env
+    auto_create: true

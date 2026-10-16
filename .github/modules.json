@@ -1,0 +1,34 @@
+{
+  "repository": "crm",
+  "checks": [],
+  "modules": {
+    ".": {
+      "path": ".",
+      "organization": "kickside",
+      "module": "crm",
+      "type": "plugin",
+      "visibility": "public",
+      "embed": [
+        "kickside.crm.surface:fs"
+      ],
+      "targets": [
+        "build",
+        "lint",
+        "test",
+        "check-deps",
+        "check-architecture",
+        "test-postgres",
+        "verify",
+        "dry-run",
+        "publish"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_crm",
+      "extra_tests": [],
+      "test_runner": "crm"
+    }
+  }
+}

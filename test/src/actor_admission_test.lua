@@ -1,0 +1,18 @@
+local test = require("test")
+local security = require("security")
+local funcs = require("funcs")
+local function define_tests()
+    test.describe("CRM HTTP actor guard", function()
+        test.it("accepts an actor without a namespace wildcard endpoint grant", function()
+            local scope, err = security.named_scope("app:member_probe")
+            test.is_nil(err)
+            local actor = security.new_actor("actor-only-member", {})
+            test.eq(scope:evaluate(actor, "access", "kickside.crm.api:*", nil), "undefined")
+            local status, body = funcs.new():with_actor(actor):with_scope(scope):call("app:member_actor_probe")
+            test.is_nil(status)
+            test.is_nil(body)
+        end)
+    end)
+end
+local run_cases = test.run_cases(define_tests)
+return {run = function(options) return run_cases(options) end}

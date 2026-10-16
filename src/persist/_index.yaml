@@ -1,0 +1,79 @@
+version: "1.0"
+namespace: kickside.crm.persist
+
+entries:
+  - name: config
+    kind: registry.entry
+    meta:
+      comment: Host-selected database id for CRM persistence.
+      db_id: app:db
+
+  - name: compiler
+    kind: library.lua
+    meta:
+      comment: Compiles and transactionally applies per-CRM typed physical schemas.
+    source: file://compiler.lua
+    modules: [hash, sql]
+
+  - name: repo
+    kind: library.lua
+    meta:
+      comment: Catalog-resolved typed CRM persistence.
+    source: file://repo.lua
+    modules: [json, sql]
+    imports:
+      compiler: kickside.crm.persist:compiler
+
+  - name: sink_receipts
+    kind: library.lua
+    meta:
+      comment: Writable sink bookkeeping - committed receipts and age-based receipt removal.
+    source: file://sink_receipts.lua
+    modules: [sql]
+
+  - name: materializer
+    kind: library.lua
+    meta:
+      comment: Folds CRM events into typed object tables and support read models.
+    source: file://materializer.lua
+    modules: [hash, json, sql]
+    imports:
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      aliases: kickside.crm.resolution:aliases
+
+  - name: read_model
+    kind: library.lua
+    meta:
+      comment: Internal queries over CRM-owned materialized state.
+    source: file://read_model.lua
+    modules: [json, sql]
+    imports:
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+
+  - name: projection
+    kind: function.lua
+    meta:
+      type: projection.worker
+      comment: Bounded CRM read-model projection worker.
+    source: file://projection.lua
+    method: run
+    modules: [sql]
+    imports:
+      materializer: kickside.crm.persist:materializer
+
+  - name: write_origin
+    kind: library.lua
+    meta:
+      comment: Lookup over materialized external-write completion facts.
+    source: file://write_origin.lua
+    modules: [registry, json, hash, sql]
+    imports:
+      types: kickside.crm:types
+
+  - name: write_origin_config
+    kind: registry.entry
+    meta:
+      comment: Retention for external-write echo-suppression facts.
+      retention_days: 30

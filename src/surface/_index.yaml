@@ -1,0 +1,174 @@
+version: "1.0"
+namespace: kickside.crm.surface
+
+entries:
+  - name: fs
+    kind: fs.directory
+    meta:
+      comment: Built CRM web-component assets.
+    directory: ./static
+    auto_init: true
+
+  - name: surface_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      title: CRM
+      description: CRM records, boards, activity, review, and schema-driven navigation.
+      tag_name: kickside-crm-surface
+      entry_point: surface.js
+      base_path: kickside-crm
+      announced: true
+      auto_register: false
+      icon: tabler:address-book
+    props:
+      type: object
+      properties:
+        route: { type: string, default: "", description: CRM object, record, review, or model route. }
+        component-id: { type: string, default: "", description: CRM component id. }
+        entry-id: { type: string, default: "", description: CRM component id supplied by the Workspace manage view. }
+    events:
+      navigate:
+        type: object
+        properties:
+          route: { type: string }
+        required: [route]
+
+  - name: create_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      title: Create CRM
+      description: Creates a schema-first CRM component.
+      tag_name: kickside-crm-create
+      entry_point: create.js
+      base_path: kickside-crm
+      announced: true
+      auto_register: false
+    props:
+      type: object
+      properties:
+        type: { type: string, description: Workspace kind; expected value is crm. }
+        parent-id: { type: string, description: Optional workspace parent component id. }
+        mode: { type: string, default: create }
+    events:
+      created:
+        type: object
+        properties:
+          id: { type: string }
+        required: [id]
+      close: { type: object }
+
+  - name: record_picker_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      title: CRM Record Picker
+      description: Searches one CRM object and emits a typed record selection.
+      tag_name: kickside-crm-record-picker
+      entry_point: picker.js
+      base_path: kickside-crm
+      announced: true
+      auto_register: false
+    props:
+      type: object
+      properties:
+        crm-id: { type: string, default: "" }
+        component-id: { type: string, default: "" }
+        object-type: { type: string, default: "" }
+        placeholder: { type: string, default: "Search records…" }
+        value: { type: string, default: "" }
+    events:
+      crm-record-selected:
+        type: object
+        properties:
+          record_id: { type: [string, "null"] }
+          object_type: { type: string }
+          values: { type: object }
+        required: [record_id]
+
+  - name: merge_review_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      title: CRM Merge Review
+      description: Presents a durable duplicate decision.
+      tag_name: kickside-crm-merge-review
+      entry_point: merge.js
+      base_path: kickside-crm
+      announced: true
+      auto_register: false
+    props:
+      type: object
+      properties:
+        item-id: { type: string, default: "" }
+        content: { type: string, default: "" }
+        data-meta: { type: string, default: "" }
+    events:
+      inbox-resolve:
+        type: object
+        properties:
+          id: { type: string }
+          action: { type: string, enum: [merged, do_not_merge, skipped] }
+          form: { type: object }
+        required: [id, action, form]
+
+  - name: item_type.crm_merge_review
+    kind: registry.entry
+    meta:
+      type: inbox.item_type
+      value: crm_merge_review
+      title: CRM Record Merge Review
+      icon: tabler:git-merge
+      color: teal
+      category: crm
+      severity: warning
+      component_tag: kickside-crm-merge-review
+      component_base_path: kickside-crm
+      action_owner: component
+      on_validate: kickside.crm.resolution:validate_merge_resolution
+      on_resolve: kickside.crm.resolution:merge_on_resolve
+      actions: [merged, do_not_merge, skipped]
+
+  - name: nav_item
+    kind: registry.entry
+    meta:
+      type: ui.nav_item
+      section: ""
+      path: /crm
+      route_name: crm
+      title: CRM
+      comment: Records, pipelines, and activity.
+      icon: tabler:address-book
+      order: 30
+      render: component
+      component_tag: kickside-crm-surface
+
+  - name: settings_view
+    kind: registry.entry
+    meta:
+      type: view.component
+      title: CRM Administration
+      description: Configures CRM objects, fields, layouts, collections, and review policy.
+      tag_name: kickside-crm-settings
+      entry_point: settings.js
+      base_path: kickside-crm
+      announced: true
+      auto_register: false
+    props:
+      type: object
+      properties:
+        component-id: { type: string, default: "" }
+
+  - name: settings_tab
+    kind: registry.entry
+    meta:
+      type: ui.settings_tab
+      comment: CRM schema, field layout, pipeline, and merge-review controls.
+    key: crm
+    label: CRM
+    icon: tabler:address-book
+    order: 30
+    render: component
+    component_tag: kickside-crm-settings
+    access: kickside.crm.api:schema.apply.endpoint

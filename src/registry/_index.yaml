@@ -1,0 +1,53 @@
+version: "1.0"
+namespace: kickside.crm.registry
+
+entries:
+  - name: record_panels
+    kind: library.lua
+    meta:
+      comment: Registry-discovered CRM record-panel declarations for embedded surfaces.
+    source: file://record_panels.lua
+    modules: [registry]
+
+  - name: default_config
+    kind: registry.entry
+    meta:
+      type: kickside.crm.config
+      comment: Empty object-neutral CRM declaration for application-owned schemas.
+      thread_event_retention_days: 365
+      config:
+        version: "5"
+        objects: []
+        attributes: []
+        pipelines: []
+        views: []
+        merge_config:
+          objects: {}
+
+  - name: setting_thread_event_retention_days
+    kind: registry.entry
+    meta:
+      type: kickside.settings:definition
+      comment: CRM thread event retention window in days.
+    namespace: kickside.crm
+    key: thread_event_retention_days
+    value_type: int
+    default: 365
+    description: Number of days to retain CRM aggregate thread events.
+    scope: global
+    editable: true
+    visible: false
+
+  - name: profile_list_views
+    kind: registry.entry
+    meta:
+      type: kickside.users.profile:definition
+      comment: Per-user CRM list columns, sorting, filtering, density, and saved views.
+    namespace: crm
+    key: list_views
+    value_type: json
+    default: {}
+    schema: { type: object }
+    description: Saved CRM list views scoped by CRM component and object type.
+    visibility: self
+    editable: true

@@ -1,0 +1,25 @@
+version: "1.0"
+namespace: kickside.crm.schema
+
+entries:
+  - name: schema
+    kind: library.lua
+    meta:
+      comment: Access-checked schema catalog and portable configuration codec.
+    source: file://schema.lua
+    modules: [hash, sql]
+    imports:
+      component: kickside.component:component
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+
+  - name: mutation
+    kind: library.lua
+    meta:
+      comment: Physical schema mutations; callers authorize before invoking.
+    source: file://mutation.lua
+    modules: [sql]
+    imports:
+      schema: kickside.crm.schema:schema
+      storage: kickside.crm.persist:repo
+      types: kickside.crm:types

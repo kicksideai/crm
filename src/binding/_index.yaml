@@ -1,0 +1,81 @@
+version: "1.0"
+namespace: kickside.crm.binding
+
+entries:
+  - name: delete_func
+    kind: function.lua
+    meta:
+      comment: Idempotently removes CRM-owned typed tables and support rows.
+    source: file://delete_func.lua
+    method: delete
+    modules: [ctx, sql]
+    imports:
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+
+  - name: crm
+    kind: contract.binding
+    meta:
+      class: [crm]
+      title: CRM
+      icon: tabler:address-book
+      thread_class: workspace.crm
+      component:
+        create: { view: kickside.crm.surface:create_view }
+        manage: { view: kickside.crm.surface:surface_view, deep_link: true }
+      read: kickside.crm:crm
+      retention:
+        event_days: 365
+        drain_aware: true
+      comment: One CRM aggregate per component; its thread is the durable command log and its projection owns the typed read model.
+      events:
+        input: []
+        output:
+          - { type: kickside.crm.events:record.created }
+          - { type: kickside.crm.events:record.updated }
+          - { type: kickside.crm.events:record.deleted }
+          - { type: kickside.crm.events:merge.suggested }
+          - { type: kickside.crm.events:merge.decided }
+          - { type: kickside.crm.events:relation.linked }
+          - { type: kickside.crm.events:relation.unlinked }
+          - { type: kickside.crm.events:reference.linked }
+          - { type: kickside.crm.events:reference.unlinked }
+          - { type: kickside.crm.events:membership.set }
+          - { type: kickside.crm.events:membership.removed }
+          - { type: kickside.crm.events:activity.logged }
+          - { type: kickside.crm.events:activity.deleted }
+          - { type: kickside.crm.events:ai_attribute.filled }
+          - { type: kickside.crm.events:external_write.requested }
+          - { type: kickside.crm.events:external_write.succeeded }
+          - { type: kickside.crm.events:external_write.failed }
+      projections:
+        - kind: kickside.crm:read_model
+          worker_ref: func://kickside.crm.persist:projection
+          input_mode: prefetch_events
+          events:
+            input:
+              - { type: kickside.crm.events:record.created }
+              - { type: kickside.crm.events:record.updated }
+              - { type: kickside.crm.events:record.deleted }
+              - { type: kickside.crm.events:merge.suggested }
+              - { type: kickside.crm.events:merge.decided }
+              - { type: kickside.crm.events:relation.linked }
+              - { type: kickside.crm.events:relation.unlinked }
+              - { type: kickside.crm.events:reference.linked }
+              - { type: kickside.crm.events:reference.unlinked }
+              - { type: kickside.crm.events:membership.set }
+              - { type: kickside.crm.events:membership.removed }
+              - { type: kickside.crm.events:activity.logged }
+              - { type: kickside.crm.events:activity.deleted }
+              - { type: kickside.crm.events:ai_attribute.filled }
+              - { type: kickside.crm.events:external_write.requested }
+              - { type: kickside.crm.events:external_write.succeeded }
+              - { type: kickside.crm.events:external_write.failed }
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.core.threads:thread_status
+      - contract: kickside.contract:deletable
+        context_required: [component_id]
+        methods:
+          delete: kickside.crm.binding:delete_func

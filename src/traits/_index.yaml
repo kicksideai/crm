@@ -1,0 +1,1171 @@
+version: "1.0"
+namespace: kickside.crm.traits
+
+# Object-neutral agent surface. Each registry tool is one exact CRM operation;
+# schema changes use the portable authority, with no action dispatcher, direct
+# merge, or visual-builder coupling.
+entries:
+  - name: crm_tool
+    kind: library.lua
+    meta: { comment: Shared exact-operation CRM agent tool implementation. }
+    source: file://crm_tool.lua
+    modules: [ctx, security, uuid]
+    imports: &crm_tool_imports
+      tool_result: kickside.contract:tool_result
+      reader: kickside.crm:crm
+      writer: kickside.crm.command:writer
+      resolver: kickside.crm.resolution:resolve_lib
+      schema: kickside.crm.schema:schema
+      mutation: kickside.crm.schema:mutation
+
+  - name: crm_trait
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      title: CRM
+      public: true
+      icon: tabler:address-book
+      comment: Read and change records, collection membership, activity, and typed references in a configured CRM.
+      tags: [crm, records, read, write]
+      context_schema:
+        type: object
+        properties:
+          crm_id:
+            type: string
+            description: CRM component/thread id used when a call does not provide crm_id.
+        additionalProperties: false
+    prompt: |
+      Use the exact CRM tool for the operation you need. Object types, fields,
+      collections, and views are application-owned declarations. SchemaGet exports
+      the canonical portable declaration and SchemaApply validates and applies
+      that artifact through the schema authority. ResolveRecord performs exact-alias
+      resolution through the canonical resolver. Record writes append typed CRM events. Merge candidates must
+      use the CRM merge-review Block; agents cannot merge records directly.
+    tools:
+      - kickside.crm.traits:list_records
+      - kickside.crm.traits:get_record
+      - kickside.crm.traits:get_board
+      - kickside.crm.traits:get_timeline
+      - kickside.crm.traits:schema.get
+      - kickside.crm.traits:schema.apply
+      - kickside.crm.traits:resolve_record
+      - kickside.crm.traits:create_record
+      - kickside.crm.traits:update_record
+      - kickside.crm.traits:set_membership
+      - kickside.crm.traits:log_activity
+      - kickside.crm.traits:delete_activity
+      - kickside.crm.traits:link_reference
+      - kickside.crm.traits:unlink_reference
+
+  - name: list_records
+    kind: function.lua
+    meta:
+      type: tool
+      title: List CRM Records
+      llm_alias: CRMListRecords
+      llm_description: "Page and search compact record summaries (id, type, dates and name/title/status/owner values). Pass fields to select other record values; CRMGetRecord returns all values and associations. Continue with offset + limit until total is reached."
+      mcp: { required_scopes: [state.read] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "object_type": { "type": "string" },
+            "filters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "attr": { "type": "string" },
+                  "op": { "type": "string", "enum": ["eq", "neq", "lt", "lte", "gt", "gte", "contains", "in_list", "is_null"] },
+                  "value": {}
+                },
+                "required": ["attr", "op"],
+                "additionalProperties": false
+              }
+            },
+            "sort": {
+              "type": "object",
+              "properties": {
+                "attr": { "type": "string" },
+                "dir": { "type": "string", "enum": ["asc", "desc"] }
+              },
+              "required": ["attr", "dir"],
+              "additionalProperties": false
+            },
+            "search": { "type": "string" },
+            "fields": { "type": "array", "items": { "type": "string" }, "description": "Record value names to return instead of name/title/status/owner." },
+            "limit": { "type": "integer", "minimum": 1 },
+            "offset": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["object_type"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "record_id": {
+                        "type": "string"
+                      },
+                      "object_type": {
+                        "type": "string"
+                      },
+                      "values": {
+                        "description": "Summary values, or the values named by fields. Full associations are available from CRMGetRecord.",
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "record_id"
+                    ]
+                  }
+                },
+                "total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "offset": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "success",
+                "rows",
+                "total",
+                "limit",
+                "offset"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: list_records
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: get_record
+    kind: function.lua
+    meta:
+      type: tool
+      title: Get CRM Record
+      llm_alias: CRMGetRecord
+      llm_description: Read one CRM record by stable record id.
+      mcp: { required_scopes: [state.read] }
+      input_schema: |
+        { "type": "object", "properties": { "crm_id": { "type": "string" }, "record_id": { "type": "string" } }, "required": ["record_id"], "additionalProperties": false }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "record": {
+                  "type": "object",
+                  "properties": {
+                    "record_id": {
+                      "type": "string"
+                    },
+                    "object_type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "record_id"
+                  ]
+                }
+              },
+              "required": [
+                "success",
+                "record"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: get_record
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: get_board
+    kind: function.lua
+    meta:
+      type: tool
+      title: Get CRM Collection Board
+      llm_alias: CRMGetBoard
+      llm_description: Read staged membership for one declared CRM collection.
+      mcp: { required_scopes: [state.read] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "collection_id": { "type": "string" },
+            "limit": { "type": "integer", "minimum": 1 },
+            "offset": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["collection_id"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "board": {
+                  "type": "object",
+                  "description": "Stage id to lane.",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "records": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "total": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "records",
+                      "total"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "success",
+                "board"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: get_board
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: get_timeline
+    kind: function.lua
+    meta:
+      type: tool
+      title: Get CRM Timeline
+      llm_alias: CRMGetTimeline
+      llm_description: "Read compact CRM activity summaries newest first, optionally restricted to one record. Pass fields to select other activity fields such as payload. Follow next_cursor for older activity."
+      mcp: { required_scopes: [state.read] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "record_id": { "type": "string" },
+            "fields": { "type": "array", "items": { "type": "string" }, "description": "Activity row fields to return instead of summary fields. Identifiers remain present; request payload for complete activity content." },
+            "limit": { "type": "integer", "minimum": 1, "description": "Page size, default 100, at most 500 rows per page; follow next_cursor for the rest." },
+            "cursor": { "type": "string", "description": "next_cursor of the previous page." }
+          },
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "activity_id": {
+                        "type": "string"
+                      },
+                      "record_id": {
+                        "type": "string"
+                      },
+                      "activity_type": {
+                        "type": "string"
+                      },
+                      "occurred_at": {
+                        "type": "string"
+                      },
+                      "title": { "type": "string", "description": "Activity title from the stored payload." },
+                      "payload": {
+                        "type": "object", "description": "Present when explicitly requested in fields."
+                      }
+                    },
+                    "required": [
+                      "activity_id"
+                    ]
+                  }
+                },
+                "next_cursor": {
+                  "type": "string",
+                  "description": "Pass as cursor for the following page; absent on the final page."
+                }
+              },
+              "required": [
+                "success",
+                "entries"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: get_timeline
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: schema.get
+    kind: function.lua
+    meta:
+      type: tool
+      title: Get CRM Schema
+      llm_alias: CRMSchemaGet
+      llm_description: Export the canonical CRM declaration as a deterministic portable artifact.
+      mcp: { required_scopes: [state.read] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "portable_key": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "CRMConfig"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    },
+                    "spec": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "metadata",
+                    "spec"
+                  ]
+                }
+              },
+              "required": [
+                "success",
+                "schema"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: get_schema
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: schema.apply
+    kind: function.lua
+    meta:
+      type: tool
+      title: Apply CRM Schema
+      llm_alias: CRMSchemaApply
+      llm_description: Validate and transactionally apply one canonical portable CRM declaration artifact.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "artifact": {
+              "type": "object",
+              "properties": {
+                "apiVersion": { "type": "string", "const": "kickside.crm/config.v1" },
+                "kind": { "type": "string", "const": "CRMConfig" },
+                "metadata": { "type": "object" },
+                "spec": { "type": "object" }
+              },
+              "required": ["apiVersion", "kind", "metadata", "spec"],
+              "additionalProperties": true
+            }
+          },
+          "required": ["artifact"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "changed": {
+                  "type": "boolean"
+                },
+                "revision": {},
+                "source_hash": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "revision"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: apply_schema
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: resolve_record
+    kind: function.lua
+    meta:
+      type: tool
+      title: Resolve CRM Record
+      llm_alias: CRMResolveRecord
+      llm_description: Resolve an exact alias in one declared object table and create the record when absent.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "object_type": { "type": "string" },
+            "match": {
+              "type": "object",
+              "properties": {
+                "alias_type": { "type": "string" },
+                "alias_value": { "oneOf": [{ "type": "string" }, { "type": "number" }] }
+              },
+              "required": ["alias_type", "alias_value"],
+              "additionalProperties": false
+            },
+            "values": { "type": "object" },
+            "record_id": { "type": "string" }
+          },
+          "required": ["object_type", "match"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "record": {
+                  "type": "object",
+                  "properties": {
+                    "record_id": {
+                      "type": "string"
+                    },
+                    "object_type": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "record_id"
+                  ]
+                },
+                "created": {
+                  "type": "boolean"
+                },
+                "outcomes": {
+                  "type": "array"
+                },
+                "receipt": {
+                  "type": "object"
+                },
+                "checkpoint": {
+                  "type": "object"
+                },
+                "suggestions": {
+                  "type": "array"
+                }
+              },
+              "required": [
+                "success",
+                "record",
+                "created"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: resolve_record
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: create_record
+    kind: function.lua
+    meta:
+      type: tool
+      title: Create CRM Record
+      llm_alias: CRMCreateRecord
+      llm_description: Append a typed record-created event for a declared CRM object table.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "object_type": { "type": "string" },
+            "record_id": { "type": "string" },
+            "values": { "type": "object" }
+          },
+          "required": ["object_type", "values"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "record_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "record_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: create_record
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: update_record
+    kind: function.lua
+    meta:
+      type: tool
+      title: Update CRM Record
+      llm_alias: CRMUpdateRecord
+      llm_description: Append a typed record-updated event for declared fields on one CRM record.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "object_type": { "type": "string" },
+            "record_id": { "type": "string" },
+            "set": { "type": "object" },
+            "unset": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["object_type", "record_id"],
+          "anyOf": [{ "required": ["set"] }, { "required": ["unset"] }],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "record_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "record_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: update_record
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: set_membership
+    kind: function.lua
+    meta:
+      type: tool
+      title: Set CRM Collection Membership
+      llm_alias: CRMSetMembership
+      llm_description: Place or move a CRM record in a declared staged collection.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "collection_id": { "type": "string" },
+            "record_id": { "type": "string" },
+            "stage_id": { "type": "string" },
+            "from_stage_id": { "type": "string" },
+            "position": { "type": "number" }
+          },
+          "required": ["collection_id", "record_id", "stage_id"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "collection_id": {
+                  "type": "string"
+                },
+                "record_id": {
+                  "type": "string"
+                },
+                "stage_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "collection_id",
+                "record_id",
+                "stage_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: set_membership
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: log_activity
+    kind: function.lua
+    meta:
+      type: tool
+      title: Log CRM Activity
+      llm_alias: CRMLogActivity
+      llm_description: Append one typed activity to the CRM timeline.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "activity": {
+              "type": "object",
+              "properties": {
+                "activity_id": { "type": "string" },
+                "record_id": { "type": "string" },
+                "activity_type": { "type": "string" },
+                "occurred_at": { "type": "string" },
+                "due_at": { "type": "string" },
+                "done": { "type": "boolean" },
+                "participant_record_id": { "type": "string" },
+                "payload": { "type": "object" }
+              },
+              "required": ["record_id", "activity_type"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["activity"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "activity_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "activity_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: log_activity
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: delete_activity
+    kind: function.lua
+    meta:
+      type: tool
+      title: Delete CRM Activity
+      llm_alias: CRMDeleteActivity
+      llm_description: Remove one activity from the CRM timeline by activity_id, external_id, or correlation_key; an identity the CRM never held is a settled no-op.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "activity_id": { "type": "string" },
+            "external_id": { "type": "string" },
+            "correlation_key": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "activity_id": {
+                  "type": "string"
+                },
+                "external_id": {
+                  "type": "string"
+                },
+                "correlation_key": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "activity_id",
+                "external_id",
+                "correlation_key"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: delete_activity
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: link_reference
+    kind: function.lua
+    meta:
+      type: tool
+      title: Link CRM Reference
+      llm_alias: CRMLinkReference
+      llm_description: Attach a typed record, principal, or component reference to a declared relation field.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: &reference_input |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "object_type": { "type": "string" },
+            "record_id": { "type": "string" },
+            "attr": { "type": "string" },
+            "reference": {
+              "type": "object",
+              "properties": {
+                "kind": { "type": "string", "enum": ["record", "principal", "component"] },
+                "type": { "type": "string" },
+                "id": { "type": "string" }
+              },
+              "required": ["kind", "type", "id"],
+              "additionalProperties": false
+            },
+            "relation": { "type": "string" }
+          },
+          "required": ["object_type", "record_id", "attr", "reference"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "record_id": {
+                  "type": "string"
+                },
+                "attr": {
+                  "type": "string"
+                },
+                "reference": {}
+              },
+              "required": [
+                "success",
+                "record_id",
+                "attr",
+                "reference"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: link_reference
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: unlink_reference
+    kind: function.lua
+    meta:
+      type: tool
+      title: Unlink CRM Reference
+      llm_alias: CRMUnlinkReference
+      llm_description: Remove a typed record, principal, or component reference from a declared relation field.
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: *reference_input
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "record_id": {
+                  "type": "string"
+                },
+                "attr": {
+                  "type": "string"
+                },
+                "reference": {}
+              },
+              "required": [
+                "success",
+                "record_id",
+                "attr",
+                "reference"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: unlink_reference
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports

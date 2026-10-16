@@ -1,0 +1,69 @@
+version: '1.0'
+registry:
+  dispatch_internal_kinds:
+  - registry.entry
+  - ns.requirement
+  - ns.dependency
+  - ns.definition
+  - security.scope
+  enable_history: true
+  history_type: memory
+workspace:
+  replacements:
+    kickside/crm: ./module-mirror
+    kickside/blocks: ../../kickside/platform/blocks
+    kickside/component: ../../kickside/core/component
+    kickside/contract: ../../kickside/core/contract
+    kickside/core: ../../kickside/core/core
+    kickside/execution: ../../kickside/core/execution
+    kickside/inbox: ../../kickside/platform/inbox
+    kickside/jobs: ../../kickside/core/jobs
+    kickside/settings: ../../kickside/platform/settings
+    kickside/users: ../../kickside/platform/users
+    kickside/widgets: ../../kickside/platform/widgets
+    kickside/security: ../../kickside/platform/security
+override:
+  app:db:file: ${sqlite_path}
+  app:shared_fixture_db:file: ${sqlite_path}
+  kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
+vars:
+  sqlite_path: ./.wippy/crm-test.sqlite
+  pg_host: localhost
+  pg_port: 5433
+  pg_database: kickside_test_crm
+  pg_receipt_schema_database: kickside_test_crm_receipt_schema
+  pg_username: kickside
+  pg_password: kickside
+profiles:
+  postgres:
+    override:
+      app:db:kind: db.sql.postgres
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
+      app:db:database: ${pg_database}
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
+      app:db:options.sslmode: disable
+      app:db:pool.max_open: 16
+      app:db:pool.max_idle: 8
+      app:receipt_schema_db:kind: db.sql.postgres
+      app:receipt_schema_db:host: ${pg_host}
+      app:receipt_schema_db:port: ${pg_port}
+      app:receipt_schema_db:database: ${pg_receipt_schema_database}
+      app:receipt_schema_db:username: ${pg_username}
+      app:receipt_schema_db:password: ${pg_password}
+      app:receipt_schema_db:options.sslmode: disable
+      app:shared_fixture_db:kind: db.sql.postgres
+      app:shared_fixture_db:host: ${pg_host}
+      app:shared_fixture_db:port: ${pg_port}
+      app:shared_fixture_db:database: ${pg_database}
+      app:shared_fixture_db:username: ${pg_username}
+      app:shared_fixture_db:password: ${pg_password}
+      app:shared_fixture_db:options.sslmode: disable
+      app:schema_fault_db:kind: db.sql.postgres
+      app:schema_fault_db:host: ${pg_host}
+      app:schema_fault_db:port: ${pg_port}
+      app:schema_fault_db:database: ${pg_receipt_schema_database}
+      app:schema_fault_db:username: ${pg_username}
+      app:schema_fault_db:password: ${pg_password}
+      app:schema_fault_db:options.sslmode: disable

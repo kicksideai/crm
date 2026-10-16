@@ -1,0 +1,56 @@
+version: "1.0"
+namespace: kickside.crm.migrations
+
+entries:
+  - name: 01_storage_catalog
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage, schema]
+      comment: Create the canonical CRM schema catalog; component schemas are applied explicitly through the storage facade.
+      target_db: app:db
+      timestamp: "2026-07-24T00:00:01Z"
+    source: file://01_storage_catalog.lua
+    imports:
+      migration: wippy.migration:migration
+      compiler: kickside.crm.persist:compiler
+    method: migrate
+
+  - name: 02_activity_reference
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage, schema]
+      comment: Add activity source-convergence columns, the activity alias index, and the generalized reference edge to the catalog created by 01.
+      target_db: app:db
+      timestamp: "2026-08-12T00:00:01Z"
+    source: file://02_activity_reference.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  - name: 06_conditional_outcome
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage, schema]
+      comment: Per-attribute outcomes of conditional record writes, keyed by the delivering event's external identity; the projection fold records them so replay and readers converge on one answer.
+      target_db: app:db
+      timestamp: "2026-08-25T00:00:00Z"
+    source: file://06_conditional_outcome.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  - name: 07_pending_relation
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage, schema]
+      comment: Park a relation edge whose source or target record is not yet materialized, and drain it once both endpoints hold, so seq-ordered associations that arrive before their records do not dead-letter the projection.
+      target_db: app:db
+      timestamp: "2026-08-30T00:00:00Z"
+    source: file://07_pending_relation.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

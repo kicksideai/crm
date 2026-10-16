@@ -1,0 +1,5 @@
+organization: kickside
+module: crm-test
+description: Standalone runnable harness that boots kickside/crm and runs its co-located *_test.lua suites.
+options:
+    unpack_modules: true

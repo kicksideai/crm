@@ -1,0 +1,78 @@
+version: '1.0'
+namespace: kickside.crm.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: CRM
+    surface: kickside.crm
+    intent: module_access
+    includes:
+    - kickside.crm.security:module_runtime
+    - kickside.crm.security:crm_endpoint_access
+    - kickside.crm.security:crm_config_read
+    - kickside.crm.security:crm_read_face_access
+    - kickside.crm.security:crm_surface_discovery
+  groups: []
+  policy:
+    resources: &id001
+    - kickside.crm:*
+    - kickside.crm.api:*
+    - kickside.crm.binding:*
+    - kickside.crm.blocks:*
+    - kickside.crm.command:*
+    - kickside.crm.domain:*
+    - kickside.crm.events:*
+    - kickside.crm.migrations:*
+    - kickside.crm.persist:*
+    - kickside.crm.ports:*
+    - kickside.crm.read:*
+    - kickside.crm.registry:*
+    - kickside.crm.resolution:*
+    - kickside.crm.schema:*
+    - kickside.crm.security:*
+    - kickside.crm.sink:*
+    - kickside.crm.surface:*
+    - kickside.crm.traits:*
+    - kickside.crm.ui:*
+    - kickside.crm.workspace:*
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: crm_endpoint_access
+  kind: security.policy
+  meta:
+    private: true
+    comment: Authenticated users may reach the CRM product endpoints.
+  groups: []
+  policy:
+    resources:
+    - kickside.crm.api:apply.endpoint
+    - kickside.crm.api:bootstrap.endpoint
+    - kickside.crm.api:export_config.endpoint
+    - kickside.crm.api:get.endpoint
+    - kickside.crm.api:panels.endpoint
+    - kickside.crm.api:query.endpoint
+    - kickside.crm.api:resolve.endpoint
+    - kickside.crm.api:schema.get.endpoint
+    actions: access
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources: *id001
+    actions:
+    - registry.get
+    - registry.find
+    - contract.get
+    - contract.open
+    - contract.call
+    - contract.implementations
+    - contract.security
+    - funcs.call
+    - funcs.security
+    effect: allow

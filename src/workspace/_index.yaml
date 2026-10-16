@@ -1,0 +1,15 @@
+version: "1.0"
+namespace: kickside.crm.workspace
+
+entries:
+  - name: create
+    kind: library.lua
+    meta:
+      comment: Schema-first, actor-scoped, idempotent CRM component creation.
+    source: file://create.lua
+    modules: [contract, hash, registry, security]
+    imports:
+      schema: kickside.crm.schema:schema
+      mutation: kickside.crm.schema:mutation
+      types: kickside.crm:types
+      component: kickside.component:component

@@ -1,0 +1,20 @@
+name: CLA
+
+'on':
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  check:
+    uses: kicksideai/.github/.github/workflows/cla.yml@5401fa65bed7d8648125957520e94206ed1ffd0b
+    secrets:
+      CLA_APP_PRIVATE_KEY: ${{ secrets.CLA_APP_PRIVATE_KEY }}

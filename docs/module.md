@@ -1,0 +1,124 @@
+# kickside CRM registry contract
+
+`kickside/crm` is a generic CRM substrate. It starts with no objects,
+attributes, collections, views, or object-specific merge rules. Applications
+and business modules own those declarations.
+
+## Host bindings
+
+- `kickside.crm:api_router` — authenticated CRM API router; default
+  `app:api`.
+- `kickside.crm:target_db` — SQL projection database; default `app:db`.
+- `kickside.crm:ui_server` — server for the bundled web-component assets;
+  default `app:gateway`.
+- `kickside.crm.security:user_security_scope` — endpoint access group
+  supplied by the host application.
+- `kickside.crm:thread_event_retention_days` — aggregate event retention;
+  default 365 days.
+
+Record authorization remains the CRM component ACL. The endpoint scope only
+controls access to the API surface.
+
+## Namespace layout
+
+The root namespace contains only the module definition, host requirements,
+shared types, and the public read facade. Each concern owns a child namespace:
+
+- `kickside.crm.api` — authenticated HTTP adapters;
+- `kickside.crm.binding` — the CRM component contract binding;
+- `kickside.crm.command` — event command validation and append;
+- `kickside.crm.domain` — policy, constraints, and value validation;
+- `kickside.crm.persist` — typed storage, projection, and read models;
+- `kickside.crm.resolution` — aliases, exact resolution, suggestions, and
+  merge decisions;
+- `kickside.crm.schema` — schema contracts and revisioned mutations;
+- `kickside.crm.blocks`, `.ports`, `.sink`, and `.traits` — independent
+  composition surfaces;
+- `kickside.crm.surface` — optional web components and navigation.
+
+Child namespaces depend on public contracts, not on UI implementation details.
+
+## Authority and persistence
+
+The CRM component thread is the authority for record, merge, reference,
+membership, activity, and external-write facts. A leased projector materializes
+those facts into owned `kickside_crm_*` SQL tables for reads and search.
+Readers never append events or synchronously drive the projector.
+
+The canonical schema arrives through `kickside.crm.registry:default_config`, an
+explicit schema apply, or a business module using the public schema contract.
+Schema edits compile directly and transactionally to owned tables. Agent schema
+changes use the same portable export/apply contract; record tools cannot invent
+fields. See [`field-config.md`](field-config.md) for the declaration and typed
+SQL rules.
+
+## Blocks
+
+CRM publishes two object-neutral `kickside.block/v1` entries:
+
+- `kickside.crm.blocks:resolve` resolves an exact alias in a declared object
+  table and returns the record, creation state, projection checkpoint, policy
+  outcomes, and merge suggestions.
+- `kickside.crm.blocks:merge_review` parks a Dataflow on the generic Blocks
+  Signal seam and returns exactly one decision: `merged`, `do_not_merge`, or
+  `skipped`.
+
+These Blocks are headless. They have no dependency on visual Workflows,
+Automation, or CRM UI components. CRM publishes no business-specific Flows.
+
+## Events and ports
+
+Every public record-domain event has one exact `kickside.automation.port` bound to
+`kickside.crm.binding:crm`. Important examples are record creation/update,
+collection membership set/removed, merge suggested/decided, typed reference
+link/unlink, activity logged, and external-write lifecycle facts. Schema edits
+are direct transactional configuration operations, not thread events. Ports are
+discovery data; CRM does not own trigger activation.
+
+## Writable sink and activity identity
+
+`kickside.crm.sink:crm_sink` implements `kickside.data:writable` with required
+`meta.delivery: at_least_once` and `meta.input_shape: record`. Every call
+requires `origin`, the writing automation ID or a stable explicit origin for
+a non-round producer. Receipts use `(crm_id, origin, sink_op, idempotency_key)`
+so writers do not share delivery history.
+
+Receipts are single-phase: the sink commits a completed receipt after the
+domain event and projection settle. The event stores the payload digest,
+outcome, and destination reference. Recovery checks the payload digest before
+replaying the durable effect or rebuilding a missing receipt; a different
+payload under the same identity returns a conflict. Receipt retention is
+30 days. Boot migrations establish the receipt schema before delivery. Fresh
+installs omit the retired writer lease table. Existing inert tables remain
+unread and unchanged; their removal is an operator maintenance action after
+old writers stop. Receipt schema lifecycle operations use stopped writers.
+
+Activity `correlation_key` names one real-world event across sources without a
+shared external ID. Colliding external IDs, correlation keys, or activity IDs
+fold into the surviving activity; absorbed identities remain lookup aliases.
+Use the same correlation key only for observations of the same event.
+
+Membership to a missing record returns retriable `dependency_missing` with a
+record `dependency_key`. A successful record delivery announces
+`dependencies_available` so waiting writes can retry.
+
+A round opens the sink with its work deadline. The projection catch-up wait is
+bounded by that deadline; a timeout returns retriable `provider_unavailable`
+and leaves the event available for recovery without creating a pending receipt.
+Deleting a sync retires its engine receipts and keeps CRM records.
+
+## Agent operations
+
+`kickside.crm.traits:crm_trait` exposes small exact tools for exporting and
+applying the canonical portable schema; listing and reading records, boards,
+and timelines; resolving, creating, and updating records; setting collection
+membership; logging activity; and linking or unlinking typed references. Each
+tool calls the same schema, reader, writer, or resolver facade used by the rest
+of CRM. There is no mixed action dispatcher or direct merge tool.
+
+## UI
+
+The embedded filesystem serves independent CRM workspace, create, record-picker,
+settings, and merge-review web-component entries from `/kickside-crm/`.
+The UI renders the application-owned declaration and uses only the authenticated
+CRM API. It is not required for Blocks, ports, sinks, or agent tools.

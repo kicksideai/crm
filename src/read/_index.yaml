@@ -1,0 +1,44 @@
+version: "1.0"
+namespace: kickside.crm.read
+
+# Read-only faces this CRM publishes for another module to call by id.
+#
+# They are not agent tools and are deliberately not declared as any: an alias
+# index that maps an address to a record is a machine seam between two modules,
+# not something a model should be handed as a capability. Each returns its
+# table directly or a typed error, so callers preserve the data and
+# error contracts across module boundaries.
+#
+# Why they are function entries at all: a module that consumes them must be able
+# to install where this CRM is absent. An `imports:` entry naming a registry id
+# is resolved when the entry is created -- an entry importing an id the install
+# does not carry cannot be created and the load fails outright -- so a consumer
+# that imported these libraries would be a consumer that refuses to install
+# without a CRM. Reached by id, absence is an answer instead.
+entries:
+  - name: alias_lookup
+    kind: function.lua
+    meta:
+      comment: >-
+        Read-only alias resolution -- { crm_id, object_type, alias_type?, value }
+        -> { record_id }, empty when no record carries the address.
+        Nothing is created; resolve_record is the resolver that may create.
+    source: file://read_faces.lua
+    method: alias_lookup
+    imports:
+      aliases: kickside.crm.resolution:aliases
+      reader: kickside.crm:crm
+
+  - name: references
+    kind: function.lua
+    meta:
+      comment: >-
+        Read-only reference-edge read -- { crm_id, from_ref, include_inactive?, limit?, offset? }
+        -> { rows }, inactive rows included by default so a caller
+        reconciles its edge set instead of only appending to it. Pages default to
+        100 rows with a maximum of 500; advance offset until a short page.
+    source: file://read_faces.lua
+    method: references
+    imports:
+      aliases: kickside.crm.resolution:aliases
+      reader: kickside.crm:crm

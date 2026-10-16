@@ -1,0 +1,32 @@
+organization: kickside
+module: crm
+type: plugin
+description: Object-neutral CRM infrastructure for KickSide. Business modules declare typed object and relation tables; CRM supplies transactional schema editing, native search, imports, events, Blocks, agent tools, APIs, and maintained web components.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/crm
+homepage: https://wippy.ai
+keywords:
+  - kickside
+  - crm
+  - records
+  - gtm
+  - event-sourced
+embed:
+  - kickside.crm.surface:fs
+exclude_meta:
+  type:
+    - test
+    - test_helper
+    - test_support
+exclude:
+  - "wippy.lock"
+  - "app:**"
+  - "app.env:**"
+  - "test/**"
+  - "test:**"
+  - ".wippy/**"
+  - ".wippy:**"
+  - "ui/**"
+  - "tests/**"
+  - "test-support/**"
+  - "app.**:**"

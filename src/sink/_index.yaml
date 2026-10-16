@@ -1,0 +1,282 @@
+version: "1.0"
+namespace: kickside.crm.sink
+
+entries:
+  - name: crm_sink_implementation
+    kind: library.lua
+    meta: { comment: Shared implementation behind individually owned function entries. }
+    source: file://crm_sink.lua
+    modules: [ctx, hash, json, sql]
+    imports:
+      component: kickside.component:component
+      storage: kickside.crm.persist:repo
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      sink_commands: kickside.crm.sink:sink_commands
+      sink_receipts: kickside.crm.persist:sink_receipts
+
+  - name: sink_commands
+    kind: library.lua
+    meta: { comment: The sink request vocabulary per kind and the CRM command one delivery appends. }
+    source: file://sink_commands.lua
+    imports:
+      types: kickside.crm:types
+
+  - name: receipt_retention
+    kind: function.lua
+    meta:
+      type: kickside.retention.owner
+      comment: Remove sink receipts older than the configured window on the core retention tick.
+    source: file://receipt_retention.lua
+    method: run
+    modules: [registry, sql]
+    security:
+      actor: { id: system:kickside.crm.sink.receipt_retention }
+      policies: [kickside.crm.sink:receipt_retention_db_access]
+    imports:
+      types: kickside.crm:types
+      sink_receipts: kickside.crm.persist:sink_receipts
+
+  - name: receipt_retention_db_access
+    kind: security.policy
+    meta:
+      comment: Let sink receipt retention open the CRM database.
+    policy:
+      resources: '*'
+      actions: [db.get]
+      effect: allow
+
+  - name: receipt_retention_config
+    kind: registry.entry
+    meta:
+      comment: Age bound of committed sink receipts.
+      retention_days: 30
+
+  - name: crm_write
+    kind: function.lua
+    meta:
+      comment: kickside.data:writable.write -- write generic records, activities, typed references, and memberships into a workspace CRM via crm.* events.
+    source: file://crm_sink.lua
+    method: write
+    modules: [ctx, hash, json, sql]
+    imports:
+      component: kickside.component:component
+      storage: kickside.crm.persist:repo
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      sink_commands: kickside.crm.sink:sink_commands
+      sink_receipts: kickside.crm.persist:sink_receipts
+
+  - name: crm_list_keys
+    kind: function.lua
+    meta:
+      comment: Data Sync reconcile key listing from canonical CRM sink receipts.
+    source: file://crm_sink.lua
+    method: list_keys
+    modules: [ctx, hash, json, sql]
+    imports:
+      component: kickside.component:component
+      storage: kickside.crm.persist:repo
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      sink_commands: kickside.crm.sink:sink_commands
+      sink_receipts: kickside.crm.persist:sink_receipts
+
+  - name: crm_sink
+    kind: contract.binding
+    meta:
+      title: kickside CRM
+      icon: tabler:address-book
+      comment: Write provider, automation, or module envelopes into a workspace CRM.
+      group: CRM
+      class: kickside.crm
+      # The appended CRM event carries the delivery's (origin, operation, key) as
+      # its unique external identity, so the event is the atomic effect and
+      # receipt; the receipt row, written after the projection settles, answers
+      # replays, and a delivery that stopped between the two recovers from the
+      # event. A redelivery re-applies nothing, but the sink cannot hand its
+      # effect back to the caller atomically, so delivery is at_least_once.
+      delivery: at_least_once
+      # Deliveries are the transform's record, the writable ABI in input_schema.
+      input_shape: record
+    contracts:
+      - contract: kickside.data:writable
+        methods:
+          write: kickside.crm.sink:crm_write
+
+  - name: crm_records
+    kind: registry.entry
+    meta:
+      type: kickside.automation.port
+      title: kickside CRM
+      icon: tabler:address-book
+      group: CRM
+      class: kickside.crm
+    binding: kickside.crm.sink:crm_sink
+    # The transform result IS this sink's writable ABI: the input_schema below
+    # is the whole contract, and the sink refuses any field outside it. Without
+    # this mode the sync wraps deliveries in the generic document envelope
+    # (content/content_type/metadata), which the shape validation rejects.
+    input_mode: transform_output
+    # What this destination implements, read by Data Sync's reconcile gate before
+    # it arms a pass. receipt_identity 2: a receipt is keyed by the writing origin
+    # and the delivered operation alongside the key, so one source item's upsert
+    # and the delete that follows it are separate effects. structured_failure 1:
+    # refusals carry the DataError classification. list_keys 2: each listed row
+    # states the destination reference the receipt recorded for it.
+    # conditional_writes 1: record updates may carry set_if_absent / append_unique
+    # maps; the destination's own event fold evaluates them against the record's
+    # prior state, so fill-if-empty and lossless append hold under concurrency
+    # and on replay.
+    capabilities:
+      receipt_identity: 2
+      structured_failure: 1
+      list_keys: 2
+      conditional_writes: 1
+    operations:
+      upsert: {}
+      update:
+        requires_dest_ref: false
+      # A delete names its target by input (kind and identity) or, with an empty
+      # input as Data Sync sends it, by the dest_ref this sink answered on write.
+      delete:
+        requires_dest_ref: false
+      list_keys:
+        function: kickside.crm.sink:crm_list_keys
+    input_schema: |
+      { "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "kind": { "type": "string", "enum": ["record", "activity", "relation", "reference", "membership"] },
+          "object_type": { "type": "string", "description": "CRM object type for record writes." },
+          "record_id": { "type": "string", "description": "CRM record id. For relation writes, this is the source record." },
+          "values": { "type": "object", "description": "Initial record values for record upsert/create." },
+          "set": { "type": "object", "description": "Typed values to assign during an update." },
+          "set_if_absent": { "type": "object", "description": "Typed values applied during an update only where the record's current value is empty, decided in the destination's own event order." },
+          "append_unique": { "type": "object", "description": "Typed multi values unioned into the record's current value during an update, without duplicates." },
+          "unset": { "type": "array", "items": { "type": "string" }, "description": "Typed fields to clear during an update." },
+          "activity_id": { "type": "string" },
+          "activity_type": { "type": "string", "description": "Business activity kind: email | call | meeting | note | task." },
+          "participant_record_id": { "type": "string" },
+          "occurred_at": { "type": "string" },
+          "due_at": { "type": "string" },
+          "done": { "type": "boolean" },
+          "source": { "type": "string", "description": "Origin system of the activity: hubspot | fireflies | kickside | manual." },
+          "external_id": { "type": "string", "description": "Source-native activity id, e.g. hubspot:meeting:123; converges duplicate deliveries onto one row." },
+          "correlation_key": { "type": "string", "description": "Cross-source one-row-per-real-event key when sources share no external id." },
+          "direction": { "type": "string", "description": "Communication direction: in | out." },
+          "duration_sec": { "type": "integer", "description": "Call/meeting duration in seconds." },
+          "outcome": { "type": "string", "description": "Meeting/call outcome." },
+          "recording_url": { "type": "string", "description": "Recording location for the activity." },
+          "has_transcript": { "type": "boolean", "description": "Whether a transcript exists for this activity." },
+          "payload": { "type": "object" },
+          "from_ref": { "type": "string", "description": "Reference-edge source: crm:<object_type>:<id> | activity:<id>." },
+          "edge_type": { "type": "string", "enum": ["deal_context", "participant", "company_context", "owner", "transcript", "recording", "knowledge", "document", "attachment", "related"], "description": "Role of the reference edge." },
+          "to_ref": { "type": "string", "description": "Reference-edge target: crm:<object_type>:<id> | activity:<id> | kb:<id> | kbdoc:<kb>:<doc> | component:<id> | file:<id> | url:<u> | external:<sys>:<type>:<id>." },
+          "attrs": { "type": "object", "description": "Optional metadata carried on the reference edge." },
+          "active": { "type": "boolean", "description": "Reference edge state; reference delete soft-clears it." },
+          "attr": { "type": "string", "description": "Source record attribute that owns the typed reference." },
+          "reference": {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string", "enum": ["record", "principal", "component"] },
+              "type": { "type": "string" },
+              "id": { "type": "string" }
+            },
+            "required": ["kind", "type", "id"],
+            "additionalProperties": false
+          },
+          "relation": { "type": "string", "description": "Optional stable semantic edge name." },
+          "collection_id": { "type": "string" },
+          "stage_id": { "type": "string" },
+          "from_stage_id": { "type": "string" },
+          "position": { "type": "number" }
+        },
+        "required": ["kind"],
+        "additionalProperties": false }
+    config_schema:
+      crm_id:
+        type: string
+        picker: wc-component-picker
+        class: crm
+        required: true
+        title: CRM
+        description: Workspace CRM component/thread id to write.
+      field_map:
+        type: object
+        additionalProperties:
+          type: string
+          minLength: 1
+        picker: wc-schema-form
+        required: false
+        title: Field map
+        description: "Optional provider-property to CRM-attribute map, for example firstname to first_name and email to email."
+    output_schema: |
+      { "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "success": { "type": "boolean" },
+          "result": { "type": "string", "enum": ["created", "updated", "deleted", "noop"] },
+          "dest_ref": {
+            "type": "object",
+            "description": "Destination reference to store in the engine id-map. Required when result=created; alias for dest_refs.default.dest_ref."
+          },
+          "dest_version": {
+            "type": "string",
+            "description": "Destination version/etag for future conditional writes; alias for dest_refs.default.dest_version."
+          },
+          "dest_refs": {
+            "type": "object",
+            "description": "Destination references to store in the engine id-map keyed by map_slot. One-to-many fan-out uses additional map_slots.",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dest_ref": { "type": "object" },
+                "dest_version": { "type": "string" }
+              },
+              "required": ["dest_ref"]
+            }
+          },
+          "retry_after_ms": { "type": "integer", "minimum": 0 },
+          "error": { "$ref": "#/$defs/DataError" }
+        },
+        "required": ["success"],
+        "allOf": [
+          {
+            "if": { "properties": { "success": { "const": true } }, "required": ["success"] },
+            "then": { "required": ["result"], "properties": { "error": false } }
+          },
+          {
+            "if": { "properties": { "success": { "const": true }, "result": { "const": "created" } }, "required": ["success", "result"] },
+            "then": { "required": ["dest_ref"] }
+          },
+          {
+            "if": { "properties": { "success": { "const": false } }, "required": ["success"] },
+            "then": {
+              "required": ["error"],
+              "properties": { "result": false, "dest_ref": false, "dest_version": false, "dest_refs": false }
+            }
+          }
+        ],
+        "$defs": {
+          "DataError": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["auth_expired", "rate_limited", "invalid_config", "invalid_request", "not_found", "conflict", "permission_denied", "provider_unavailable", "provider_error", "cursor_expired", "history_unavailable", "stalled", "unknown"]
+              },
+              "message": { "type": "string" },
+              "retriable": { "type": "boolean" },
+              "auth_expired": { "type": "boolean" },
+              "scope": { "type": "string", "enum": ["item", "flow", "connection", "provider"] },
+              "provider_code": { "type": "string" },
+              "details": { "type": "object" }
+            },
+            "required": ["code", "message", "retriable", "scope"]
+          }
+        }
+      }

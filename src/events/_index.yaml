@@ -1,0 +1,503 @@
+version: "1.0"
+namespace: kickside.crm.events
+
+# Event-type entries for the single CRM aggregate thread. Record facts identify the
+# affected record; merge and external-write facts carry their own domain identities.
+# The projection worker folds these into CRM-owned typed tables. Schemas here are the
+# exact published output faces consumed by automations, agents, and provider sinks.
+entries:
+  # ─── Record lifecycle ────────────────────────────────────────────────
+  - name: record.created
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        record_id: { type: string }
+        object_type: { type: string }
+        values: { type: object, description: Initial typed attribute values by attr key. }
+        actor: { type: string }
+        occurred_at: { type: string, description: RFC3339 UTC. }
+      required: [record_id, object_type, values]
+
+  - name: record.updated
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        record_id: { type: string }
+        object_type: { type: string }
+        set: { type: object, description: Typed values to assign by attribute key. }
+        set_if_absent: { type: object, description: Typed values applied only where the record's value is empty when this event folds. }
+        append_unique: { type: object, description: Typed multi values unioned into the record's value when this event folds, without duplicates. }
+        unset:
+          type: array
+          items: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [record_id, object_type]
+      anyOf:
+        - required: [set]
+        - required: [set_if_absent]
+        - required: [append_unique]
+        - required: [unset]
+
+  - name: record.deleted
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        record_id: { type: string }
+        object_type: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [record_id, object_type]
+
+  - name: merge.suggested
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        left_id: { type: string, description: Sorted merge-candidate record id. }
+        right_id: { type: string, description: Sorted merge-candidate record id. }
+        object_type: { type: string }
+        confidence: { type: number }
+        reason: { type: string }
+        evidence: { type: object }
+        evidence_hash: { type: string, description: Stable hash over the matched evidence attrs and values that produced this suggestion. }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [left_id, right_id, object_type, confidence]
+
+  - name: merge.decided
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        left_id: { type: string, description: Sorted or unsorted candidate record id; projection sorts the pair. }
+        right_id: { type: string, description: Sorted or unsorted candidate record id; projection sorts the pair. }
+        object_type: { type: string }
+        decision: { type: string, enum: [merged, do_not_merge, skipped] }
+        winner_id: { type: string }
+        loser_id: { type: string }
+        resolution_id: { type: string, description: Stable Inbox resolution identity. }
+        note: { type: string, description: Reviewer note committed with this resolution. }
+        confidence: { type: number }
+        reason: { type: string }
+        evidence_hash: { type: string, description: Stable hash over the reviewed suggestion evidence; omitted decision events preserve the current row hash. }
+        override: { type: boolean, description: Explicit do_not_merge override; only valid with decision=merged. }
+        reviewer_actor: { type: string, description: Reviewer actor authorizing an explicit override. }
+        prior_decision_ref: { type: string, description: Reference to the prior do_not_merge decision row being overridden. }
+        resolved_by: { type: string }
+        resolved_at: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [left_id, right_id, object_type, decision, resolution_id]
+
+  # ─── Typed references (record, principal, or component) ──────────────
+  - name: relation.linked
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        record_id: { type: string }
+        object_type: { type: string }
+        attr: { type: string }
+        reference:
+          type: object
+          additionalProperties: false
+          properties:
+            kind: { type: string, enum: [record, principal, component] }
+            type: { type: string }
+            id: { type: string }
+          required: [kind, type, id]
+        relation: { type: string, description: Stable semantic edge name. }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [record_id, object_type, attr, reference]
+
+  - name: relation.unlinked
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        record_id: { type: string }
+        object_type: { type: string }
+        attr: { type: string }
+        reference:
+          type: object
+          additionalProperties: false
+          properties:
+            kind: { type: string, enum: [record, principal, component] }
+            type: { type: string }
+            id: { type: string }
+          required: [kind, type, id]
+        relation: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [record_id, object_type, attr, reference]
+
+  # ─── Generalized reference edge (the loose cross-kind plane) ──────────
+  # One uniform edge from a record or activity to any resource: another record, an
+  # activity, a KB, a document, a component, a file, a URL, or an external system.
+  # from_ref/to_ref are `kind:id` strings over the closed ref vocabulary; edge_type is
+  # the closed role vocabulary. reference.unlinked is a soft delete (active=false).
+  - name: reference.linked
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        from_ref: { type: string, description: "Edge source: crm:<object_type>:<id> | activity:<id>." }
+        edge_type: { type: string, enum: [deal_context, participant, company_context, owner, transcript, recording, knowledge, document, attachment, related] }
+        to_ref: { type: string, description: "Edge target: crm:<object_type>:<id> | activity:<id> | kb:<id> | kbdoc:<kb>:<doc> | component:<id> | file:<id> | url:<u> | external:<sys>:<type>:<id>." }
+        attrs: { type: object, description: Optional metadata carried on the edge. }
+        active: { type: boolean, description: Edge state; defaults true on link. }
+        source: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [from_ref, edge_type, to_ref]
+
+  - name: reference.unlinked
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        from_ref: { type: string }
+        edge_type: { type: string, enum: [deal_context, participant, company_context, owner, transcript, recording, knowledge, document, attachment, related] }
+        to_ref: { type: string }
+        source: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [from_ref, edge_type, to_ref]
+
+  # ─── Pipeline membership ─────────────────────────────────────────────
+  # Emitted on every pipeline move. Carries both the target stage_id and the prior
+  # from_stage_id so an automation trigger can react to a specific transition or
+  # to any entry into a configured stage. from_stage_id is absent on first placement.
+  - name: membership.set
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        collection_id: { type: string }
+        record_id: { type: string }
+        stage_id: { type: string, description: Target stage. }
+        from_stage_id: { type: string, description: Prior stage; omitted on first placement so triggers can match a transition. }
+        position: { type: number }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [collection_id, record_id, stage_id]
+
+  - name: membership.removed
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        collection_id: { type: string }
+        record_id: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [collection_id, record_id]
+
+  # ─── Activity timeline ───────────────────────────────────────────────
+  - name: activity.logged
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        activity_id: { type: string }
+        record_id: { type: string }
+        activity_type: { type: string, description: "email | call | meeting | note | task." }
+        occurred_at: { type: string }
+        actor: { type: string }
+        participant_record_id: { type: string }
+        due_at: { type: string, description: Set for task-type activities that seed the follow-ups-due counter. }
+        done: { type: boolean }
+        source: { type: string, description: "Origin system: hubspot | fireflies | kickside | manual." }
+        external_id: { type: string, description: "Source-native activity id (hubspot:meeting:123, fireflies:abc); duplicate deliveries converge onto one row." }
+        correlation_key: { type: string, description: "One-row-per-real-event key across sources that share no external id." }
+        direction: { type: string, description: "in | out." }
+        duration_sec: { type: integer, description: Call or meeting duration in seconds. }
+        outcome: { type: string, description: Meeting or call outcome. }
+        recording_url: { type: string, description: Recording location. }
+        has_transcript: { type: boolean, description: Whether a transcript exists for this activity. }
+        payload: { type: object }
+      required: [activity_id, record_id, activity_type]
+
+  # The identity may be any the activity answers to: its own id, a source-native
+  # external id, or a correlation key — projection resolves through the same
+  # convergence index activity.logged maintains, so a delete addresses the
+  # surviving row no matter which absorbed identity named it.
+  - name: activity.deleted
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        delivery:
+          type: object
+          description: The writable sink delivery this event is the effect of - the payload digest it was applied for and the answer it gave. Set by the CRM sink only; binds a redelivery to its effect.
+          additionalProperties: false
+          properties:
+            payload_hash: { type: string }
+            outcome: { type: string }
+            dest_ref: { type: object }
+          required: [payload_hash, outcome, dest_ref]
+        activity_id: { type: string }
+        external_id: { type: string }
+        correlation_key: { type: string }
+        occurred_at: { type: string }
+        actor: { type: string }
+      anyOf:
+        - required: [activity_id]
+        - required: [external_id]
+        - required: [correlation_key]
+
+  # ─── AI / enrichment ─────────────────────────────────────────────────
+  - name: ai_attribute.filled
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        record_id: { type: string }
+        object_type: { type: string }
+        attr: { type: string }
+        value: { description: Filled value; type depends on the attribute. }
+        model: { type: string }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [record_id, object_type, attr, value]
+
+  # ─── External writes (the CRM thread is the write ledger) ────────────
+  # Requested / succeeded / failed are intentionally facts about one external
+  # write, not a second dispatcher protocol. The succeeded event is projected
+  # into the CRM-owned echo-suppression read model below.
+  - name: external_write.requested
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        provider: { type: string }
+        connection_id: { type: string }
+        target_ref: { type: string }
+        object_type: { type: string }
+        value_hashes: { type: object, description: "attr -> SHA-256(canonical JSON value)." }
+        write_ref: { type: string, description: "Write reference; also the delivery idempotency key." }
+        origin:
+          type: object
+          additionalProperties: false
+          properties:
+            run_id: { type: string }
+            flow_ref:
+              type: object
+              additionalProperties: false
+              required: [kind, id, version]
+              properties:
+                kind: { type: string, const: flow }
+                id: { type: string }
+                version: { type: integer, minimum: 1 }
+            approval_item_id: { type: string }
+        requested_at: { type: string, description: RFC3339 UTC. }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [provider, target_ref, object_type, value_hashes, write_ref]
+
+  - name: external_write.succeeded
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        provider: { type: string }
+        connection_id: { type: string }
+        target_ref: { type: string }
+        object_type: { type: string }
+        value_hashes: { type: object, description: "Per-field SHA-256 hashes of canonical JSON values; see CRM_WRITE_ORIGIN_CONTRACT.md." }
+        write_ref: { type: string, description: "Successful write reference and delivery idempotency key." }
+        origin:
+          type: object
+          additionalProperties: false
+          properties:
+            run_id: { type: string }
+            flow_ref:
+              type: object
+              additionalProperties: false
+              required: [kind, id, version]
+              properties:
+                kind: { type: string, const: flow }
+                id: { type: string }
+                version: { type: integer, minimum: 1 }
+            approval_item_id: { type: string }
+        completed_at: { type: string, description: RFC3339 UTC completion timestamp. }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [provider, connection_id, target_ref, object_type, value_hashes, write_ref, origin, completed_at]
+
+  - name: external_write.failed
+    kind: registry.entry
+    meta: { type: kickside.core.threads.event }
+    schema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      properties:
+        provider: { type: string }
+        connection_id: { type: string }
+        target_ref: { type: string }
+        object_type: { type: string }
+        value_hashes: { type: object, description: "attr -> SHA-256(canonical JSON value)." }
+        write_ref: { type: string, description: "Write reference and delivery idempotency key." }
+        origin:
+          type: object
+          additionalProperties: false
+          properties:
+            run_id: { type: string }
+            flow_ref:
+              type: object
+              additionalProperties: false
+              required: [kind, id, version]
+              properties:
+                kind: { type: string, const: flow }
+                id: { type: string }
+                version: { type: integer, minimum: 1 }
+            approval_item_id: { type: string }
+        failed_at: { type: string, description: RFC3339 UTC. }
+        error: { type: object }
+        actor: { type: string }
+        occurred_at: { type: string }
+      required: [provider, target_ref, object_type, write_ref, origin, failed_at]

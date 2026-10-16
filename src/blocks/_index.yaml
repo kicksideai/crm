@@ -1,0 +1,163 @@
+version: "1.0"
+namespace: kickside.crm.blocks
+
+# CRM contributes object-neutral capabilities to the headless Block catalog. The
+# declarations contain no Flow activation or visual-builder dependency.
+entries:
+  - name: resolve
+    kind: registry.entry
+    meta:
+      type: kickside.block
+      public: true
+      title: Resolve CRM record
+      description: Resolves an exact alias inside one declared object table and creates the record when no match exists.
+    data:
+      block:
+        api_version: kickside.block/v1
+        input:
+          type: object
+          additionalProperties: false
+          required: [object_type, match]
+          properties:
+            object_type: { type: string, title: Object type }
+            match:
+              type: object
+              title: Match
+              additionalProperties: false
+              required: [alias_type, alias_value]
+              properties:
+                alias_type: { type: string, title: Alias type }
+                alias_value:
+                  title: Alias value
+                  oneOf:
+                    - type: string
+                    - type: number
+            values: { type: object, title: Values, additionalProperties: true }
+            record_id: { type: string, title: Proposed record id }
+        config:
+          type: object
+          additionalProperties: false
+          required: [crm_id]
+          properties:
+            crm_id:
+              type: string
+              minLength: 1
+              title: CRM
+              picker: wc-component-picker
+              class: crm
+              value_field: id
+        output:
+          type: object
+          additionalProperties: false
+          required: [record, created, checkpoint, outcomes, merge_suggestions]
+          properties:
+            record: { type: object, additionalProperties: true }
+            created: { type: boolean }
+            checkpoint:
+              type: object
+              additionalProperties: false
+              required: [crm_id, appended_seq, projected_seq, last_seq, target_seq]
+              properties:
+                crm_id: { type: string }
+                appended_seq: { type: integer }
+                projected_seq: { type: integer }
+                last_seq: { type: integer }
+                target_seq: { type: integer }
+            outcomes:
+              type: array
+              items: { type: object, additionalProperties: true }
+            merge_suggestions:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+                required: [left_id, right_id, object_type, confidence]
+                properties:
+                  left_id: { type: string }
+                  right_id: { type: string }
+                  object_type: { type: string }
+                  confidence: { type: number, minimum: 0, maximum: 1 }
+                  reason: { type: string }
+                  evidence: { type: object, additionalProperties: true }
+                  evidence_hash: { type: string }
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+        ports:
+          - { id: result, label: Record, direction: out }
+          - { id: failed, label: Failed, direction: out }
+        presentation:
+          category: CRM
+          icon: tabler:database-search
+          hue: teal
+          blurb: Resolve an exact alias and return the projected record plus its checkpoint.
+        execution:
+          kind: function
+          function_id: kickside.crm.resolution:block_resolve
+
+  - name: merge_review
+    kind: registry.entry
+    meta:
+      type: kickside.block
+      public: true
+      title: Review CRM record merge
+      description: Creates a durable review for two records of the same object type and routes the final merge decision.
+    data:
+      block:
+        api_version: kickside.block/v1
+        input:
+          type: object
+          additionalProperties: false
+          required: [crm_id, object_type, left_id, right_id]
+          properties:
+            crm_id: { type: string, title: CRM id }
+            object_type: { type: string, title: Object type }
+            left_id: { type: string, title: Left record id }
+            right_id: { type: string, title: Right record id }
+            confidence: { type: number, title: Confidence, minimum: 0, maximum: 1 }
+            reason: { type: string, title: Reason }
+            evidence: { type: object, title: Evidence }
+            evidence_hash: { type: string, title: Evidence hash }
+            context: { type: object, title: Context }
+        config:
+          type: object
+          additionalProperties: false
+          properties:
+            priority: { type: string, title: Priority, enum: [low, normal, high, urgent], default: normal }
+            timeout:
+              type: string
+              title: Timeout
+              description: Optional Dataflow duration such as 30m or 2h.
+        output:
+          type: object
+          additionalProperties: false
+          required: [decision]
+          properties:
+            decision: { type: string, enum: [merged, do_not_merge, skipped] }
+            winner_id: { type: string }
+            loser_id: { type: string }
+            note: { type: string }
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+        ports:
+          - { id: merged, label: Merged, direction: out, condition: "output.decision == 'merged'" }
+          - { id: do_not_merge, label: Do not merge, direction: out, condition: "output.decision == 'do_not_merge'" }
+          - { id: skipped, label: Skipped, direction: out, condition: "output.decision == 'skipped'" }
+          - { id: failed, label: Failed, direction: out }
+        presentation:
+          category: CRM
+          icon: tabler:git-merge
+          hue: teal
+          blurb: Review a possible duplicate between records of one declared object type.
+        execution:
+          kind: wait
+          arm_id: kickside.crm.resolution:merge_arm

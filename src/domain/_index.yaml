@@ -1,0 +1,32 @@
+version: "1.0"
+namespace: kickside.crm.domain
+
+entries:
+  - name: constraints
+    kind: library.lua
+    meta:
+      comment: Required identity and known-type checks at the command boundary.
+    source: file://constraints.lua
+    imports:
+      types: kickside.crm:types
+
+  - name: validation
+    kind: library.lua
+    meta:
+      comment: Field validation against the applied typed schema and current records.
+    source: file://validation.lua
+    modules: [sql, contract, security, json]
+    imports:
+      types: kickside.crm:types
+      component: kickside.component:component
+      storage: kickside.crm.persist:repo
+
+  - name: policy
+    kind: library.lua
+    meta:
+      comment: Write-policy enforcement at the CRM command boundary.
+    source: file://policy.lua
+    modules: [sql]
+    imports:
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo

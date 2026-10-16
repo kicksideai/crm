@@ -1,0 +1,117 @@
+version: "1.0"
+namespace: kickside.crm.security
+
+# Module-owned access policy for the CRM product endpoints. Record-level access
+# is the component ACL, enforced behind the endpoints; this policy only gates who
+# may reach the endpoints at all. The application injects its authenticated-user
+# group; wildcard/admin policies also pass through security.can without needing a
+# literal group entry here.
+entries:
+  - name: crm_config_read
+    kind: security.policy
+    meta:
+      private: true
+      comment: The CRM runtime may read the registry entry that names its database while serving a user.
+    groups: []
+    policy:
+      resources:
+        - kickside.crm.persist:config
+      actions: registry.get
+      effect: allow
+
+  # An announced surface is discovered, not configured: the shell's navigation and
+  # its by-tag component lookup are registry reads made under the CALLER, and the
+  # engine filters every result of a find through registry.get on that entry. A
+  # host grants a user those reads over the engine's own namespaces, so without
+  # this the CRM has no entry in a plain user's navigation and a direct route to
+  # it renders "surface not available" -- while the endpoints behind it would
+  # have served that same person.
+  #
+  # The user-facing surfaces only. Administration is an administrator's surface,
+  # and discovering it would render a settings tab whose every endpoint then
+  # refuses the caller; the create surface is gated the same way by
+  # schema_mutation_access. Both stay out, and an administrator discovers them
+  # through the host's own grants.
+  - name: crm_surface_discovery
+    kind: security.policy
+    meta:
+      private: true
+      comment: Authenticated users may discover the CRM surfaces this module announces to the shell.
+    groups: []
+    policy:
+      resources:
+        - kickside.crm.surface:nav_item
+        - kickside.crm.surface:surface_view
+        - kickside.crm.surface:record_picker_view
+        - kickside.crm.surface:merge_review_view
+      actions: registry.get
+      effect: allow
+
+  # The two read-only faces another module reaches this CRM by, and the grant
+  # that lets an ordinary person's work reach them. A host grants an
+  # authenticated user calls over the engine's namespaces and nothing under a
+  # product one, so without this a deferred run carrying a plain owner's frozen
+  # identity is refused at the alias lookup -- and refused at the PROBE before
+  # that, which is worse: a consumer must tell "this CRM is not installed" from
+  # "you may not look", and only the first is absence. So the read and the call
+  # are granted together, over exactly these two entries.
+  #
+  # Nothing else in the namespace opens. Both faces are read-only and both decide
+  # under the caller's own component access, so what this grant permits is asking
+  # -- never seeing anything the asker could not already see.
+  - name: crm_read_face_access
+    kind: security.policy
+    meta:
+      private: true
+      comment: Authenticated users may probe and call the CRM's read-only alias and reference faces.
+    groups: []
+    policy:
+      resources:
+        - kickside.crm.read:alias_lookup
+        - kickside.crm.read:references
+      actions: [registry.get, funcs.call]
+      effect: allow
+
+  - name: user_security_scope
+    kind: ns.requirement
+    default: kickside.security.groups:members
+    meta:
+      value_kind: security.scope
+      comment: Application security group that may reach the CRM endpoints, the read faces other modules call, and the configuration
+        its runtime reads while serving them.
+      description: Application security group that may reach the CRM endpoints, the read faces other modules call, and the configuration
+        its runtime reads while serving them.
+    targets:
+    - entry: kickside.crm.security:module_access
+      path: .groups +=
+    - entry: kickside.crm.security:module_runtime
+      path: .groups +=
+    - entry: kickside.crm.security:crm_endpoint_access
+      path: .groups +=
+    - entry: kickside.crm.security:crm_config_read
+      path: .groups +=
+    - entry: kickside.crm.security:crm_surface_discovery
+      path: .groups +=
+    - entry: kickside.crm.security:crm_read_face_access
+      path: .groups +=
+
+  - name: schema_mutation_access
+    kind: security.policy
+    meta:
+      comment: Only application administrators may create CRM components or change their physical schema.
+    groups: []
+    policy:
+      resources:
+        - kickside.crm.security:schema_mutation_access
+      actions: access
+      effect: allow
+
+  - name: admin_security_scope
+    kind: ns.requirement
+    meta:
+      comment: Application administrator group permitted to create CRM components and alter CRM schema.
+      description: Application administrator group permitted to create CRM components and alter CRM schema.
+    default: app.security:admin
+    targets:
+      - entry: kickside.crm.security:schema_mutation_access
+        path: ".groups +="

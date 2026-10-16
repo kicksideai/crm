@@ -1,0 +1,3 @@
+/docs/REPOSITORIES.md export-ignore
+/RELEASED_MODULES.json export-ignore
+*.js.map export-ignore

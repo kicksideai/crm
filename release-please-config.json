@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-component-in-tag": true,
+  "separate-pull-requests": false,
+  "bump-minor-pre-major": true,
+  "last-release-sha": "8a7f9b710b2c9e0c1bb536bb234083eed5a0e1da",
+  "packages": {
+    ".": {
+      "component": "crm",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

@@ -1,0 +1,128 @@
+version: "1.0"
+namespace: kickside.crm
+
+entries:
+  - name: definition
+    kind: ns.definition
+    meta:
+      title: kickside CRM
+      comment: Object-neutral CRM infrastructure with typed SQL storage, native search, durable events, declarative ports, agent tools, and maintained web components.
+
+  - name: dep.kickside.component
+    version: '*'
+    kind: ns.dependency
+    component: kickside/component
+
+  - name: dep.kickside.contract
+    version: '*'
+    kind: ns.dependency
+    component: kickside/contract
+
+  - name: dep.kickside.inbox
+    version: '*'
+    kind: ns.dependency
+    component: kickside/inbox
+
+  - name: dep.kickside.blocks
+    version: '*'
+    kind: ns.dependency
+    component: kickside/blocks
+
+  - name: dep.kickside.core
+    version: '*'
+    kind: ns.dependency
+    component: kickside/core
+
+  - name: dep.kickside.widgets
+    version: '*'
+    kind: ns.dependency
+    component: kickside/widgets
+
+  - name: dep.wippy.migration
+    version: '*'
+    kind: ns.dependency
+    component: wippy/migration
+
+  - name: api_router
+    kind: ns.requirement
+    meta:
+      comment: Authenticated HTTP router for CRM endpoints.
+    default: app:api
+    targets:
+      - { entry: kickside.crm.api:bootstrap.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:create.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:get.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:panels.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:apply.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:schema.get.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:schema.apply.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:import_config.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:export_config.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:query.endpoint, path: .meta.router }
+      - { entry: kickside.crm.api:resolve.endpoint, path: .meta.router }
+
+  - name: ui_server
+    kind: ns.requirement
+    meta:
+      comment: HTTP server for CRM web-component assets.
+    default: app:gateway
+    targets:
+      - { entry: kickside.crm.ui:ui_static, path: .meta.server }
+
+  - name: target_db
+    kind: ns.requirement
+    meta:
+      comment: Database for CRM schema catalog, typed records, and projections.
+    default: app:db
+    targets:
+      - { entry: kickside.crm.migrations:01_storage_catalog, path: .meta.target_db }
+      - { entry: kickside.crm.persist:config, path: .meta.db_id }
+
+  - name: thread_event_retention_days
+    kind: ns.requirement
+    meta:
+      comment: CRM aggregate event retention window in days.
+    default: 365
+    targets:
+      - { entry: kickside.crm.binding:crm, path: .meta.retention.event_days }
+      - { entry: kickside.crm.registry:default_config, path: .meta.thread_event_retention_days }
+
+  - name: write_origin_retention_days
+    kind: ns.requirement
+    meta:
+      comment: Maximum age of completed external-write facts used for echo suppression.
+    default: 30
+    targets:
+      - { entry: kickside.crm.persist:write_origin_config, path: .meta.retention_days }
+
+  - name: sink_receipt_retention_days
+    kind: ns.requirement
+    meta:
+      comment: Maximum age of committed CRM sink receipts.
+    default: 30
+    targets:
+      - { entry: kickside.crm.sink:receipt_retention_config, path: .meta.retention_days }
+
+  - name: consts
+    kind: library.lua
+    meta:
+      comment: Stable CRM identifiers and closed domain vocabularies.
+    source: file://consts.lua
+
+  - name: types
+    kind: library.lua
+    meta:
+      comment: CRM type predicates and runtime value accessors.
+    source: file://types.lua
+    modules: [registry]
+    imports:
+      consts: kickside.crm:consts
+
+  - name: crm
+    kind: library.lua
+    meta:
+      comment: Public access-checked CRM read surface.
+    source: file://crm.lua
+    imports:
+      component: kickside.component:component
+      reader_internal: kickside.crm.persist:read_model

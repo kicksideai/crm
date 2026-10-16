@@ -1,0 +1,142 @@
+version: "1.0"
+namespace: kickside.crm.resolution
+
+entries:
+  - name: normalize
+    kind: library.lua
+    meta:
+      comment: Alias normalization and keyed HMAC hashing for CRM identity keys.
+    source: file://normalize.lua
+    modules: [crypto, base64, env, sql]
+    imports:
+      types: kickside.crm:types
+
+  - name: aliases
+    kind: library.lua
+    meta:
+      comment: Alias lookup and command-path reservation helpers for CRM identity resolution.
+    source: file://aliases.lua
+    modules: [sql]
+    imports:
+      component: kickside.component:component
+      normalize: kickside.crm.resolution:normalize
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+
+  - name: resolve_lib
+    kind: library.lua
+    meta:
+      comment: Read-your-write exact-tier CRM resolve composition.
+    source: file://resolve.lua
+    modules: [uuid]
+    imports:
+      aliases: kickside.crm.resolution:aliases
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      suggest: kickside.crm.resolution:suggest
+
+  - name: resolve
+    kind: function.lua
+    meta:
+      comment: Resolve an exact alias to a CRM record, creating/updating through the CRM command path and returning a projection checkpoint.
+    source: file://resolve.lua
+    method: resolve_entry
+    modules: [uuid]
+    imports:
+      aliases: kickside.crm.resolution:aliases
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      suggest: kickside.crm.resolution:suggest
+
+  - name: block_resolve
+    kind: function.lua
+    meta:
+      comment: Canonical function Block implementation for CRM identity resolution.
+    source: file://resolve.lua
+    method: resolve_block
+    modules: [uuid]
+    imports:
+      aliases: kickside.crm.resolution:aliases
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      suggest: kickside.crm.resolution:suggest
+
+  - name: suggest
+    kind: library.lua
+    meta:
+      comment: S3 merge suggestion scoring and candidate generation over CRM identity evidence.
+    source: file://suggest.lua
+    modules: [sql, hash]
+    imports:
+      component: kickside.component:component
+      normalize: kickside.crm.resolution:normalize
+      storage: kickside.crm.persist:repo
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+
+  - name: merge_arm_lib
+    kind: library.lua
+    meta:
+      comment: Merge-review item builder, durable Block arm, and resolution callback helpers.
+    source: file://merge_arm.lua
+    modules: [funcs, security]
+    imports:
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      suggest: kickside.crm.resolution:suggest
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      inbox_writer: kickside.inbox.persist:inbox_writer
+
+  - name: merge_arm
+    kind: function.lua
+    meta:
+      comment: Durable Block arm for CRM merge review; creates a correlated crm_merge_review inbox item.
+    source: file://merge_arm.lua
+    method: arm_block
+    modules: [funcs, security]
+    imports:
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      suggest: kickside.crm.resolution:suggest
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      inbox_writer: kickside.inbox.persist:inbox_writer
+
+  - name: merge_on_resolve
+    kind: function.lua
+    meta:
+      private: true
+      comment: Inbox resolution callback for CRM merge reviews; appends the single merge.decided event and resumes the parked Block after its projection receipt commits.
+    source: file://merge_arm.lua
+    method: merge_on_resolve
+    modules: [funcs, security]
+    imports:
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      suggest: kickside.crm.resolution:suggest
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      inbox_writer: kickside.inbox.persist:inbox_writer
+
+  - name: validate_merge_resolution
+    kind: function.lua
+    meta:
+      private: true
+      comment: Side-effect-free pre-commit validation and CRM WRITE authorization for merge-review decisions.
+    source: file://merge_arm.lua
+    method: validate_merge_resolution
+    modules: [funcs, security]
+    imports:
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      suggest: kickside.crm.resolution:suggest
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+      inbox_writer: kickside.inbox.persist:inbox_writer

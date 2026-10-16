@@ -1,0 +1,20 @@
+version: "1.0"
+namespace: kickside.crm.ui
+
+# The static mount keeps its original ids (ui_fs/ui_static): a module upgrade
+# on a live instance applies entry-by-entry, and a renamed mount would try to
+# register /kickside-crm before the old registration is removed.
+entries:
+  - name: ui_static
+    kind: http.static
+    meta:
+      server: app:gateway
+    fs: kickside.crm.surface:fs
+    path: /kickside-crm
+    prefix: /
+    options:
+      cache: no-cache
+      mime_types:
+        .js: application/javascript
+        .css: text/css
+        .map: application/json

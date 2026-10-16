@@ -1,0 +1,14 @@
+.wippy/
+/wippy.lock
+node_modules/
+coverage/
+*.log
+*.tmp
+.DS_Store
+.local/
+
+/test/module-mirror/
+/ui/dist/
+
+/test/src/query_handler_source.lua
+/test/src/resolve_handler_source.lua

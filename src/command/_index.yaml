@@ -1,0 +1,17 @@
+version: "1.0"
+namespace: kickside.crm.command
+
+entries:
+  - name: writer
+    kind: library.lua
+    meta:
+      comment: Single CRM command path; appends typed events to the CRM component thread.
+    source: file://writer.lua
+    modules: [contract, json, security, sql, ctx]
+    imports:
+      types: kickside.crm:types
+      constraints: kickside.crm.domain:constraints
+      validation: kickside.crm.domain:validation
+      policy: kickside.crm.domain:policy
+      aliases: kickside.crm.resolution:aliases
+      component: kickside.component:component

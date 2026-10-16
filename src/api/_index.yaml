@@ -1,0 +1,238 @@
+version: "1.0"
+namespace: kickside.crm.api
+
+entries:
+  - name: access
+    kind: library.lua
+    meta:
+      comment: Shared CRM API authorization and component ACL status mapping.
+    source: file://access.lua
+    modules: [http, contract, security]
+    imports:
+      component: kickside.component:component
+      reader: kickside.crm:crm
+      writer: kickside.crm.command:writer
+      types: kickside.crm:types
+
+  - name: bootstrap
+    kind: function.lua
+    meta:
+      comment: "GET /workspace/crm -- resolve the caller's accessible CRM component and return bootstrap."
+    source: file://bootstrap.lua
+    method: get
+    modules: [http, registry]
+    imports:
+      api_access: kickside.crm.api:access
+      reader: kickside.crm:crm
+
+  - name: bootstrap.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: bootstrap
+    path: /workspace/crm
+
+  - name: create
+    kind: function.lua
+    meta:
+      comment: "POST /workspace/crm -- idempotent schema-first CRM component creation."
+    source: file://create.lua
+    method: create
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      create_service: kickside.crm.workspace:create
+
+  - name: create.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: create
+    path: /workspace/crm
+
+  - name: get
+    kind: function.lua
+    meta:
+      comment: "GET /workspace/crm/{id} -- object schema + saved views bootstrap."
+    source: file://get.lua
+    method: get
+    modules: [http, registry]
+    imports:
+      api_access: kickside.crm.api:access
+      reader: kickside.crm:crm
+
+  - name: get.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: get
+    path: /workspace/crm/{id}
+
+  - name: panels
+    kind: function.lua
+    meta:
+      comment: "GET /workspace/crm/{id}/panels/{object_type} -- declared record-panel contributions for one object type."
+    source: file://panels.lua
+    method: get
+    modules: [http]
+    imports:
+      api_access: kickside.crm.api:access
+      record_panels: kickside.crm.registry:record_panels
+
+  - name: panels.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: panels
+    path: /workspace/crm/{id}/panels/{object_type}
+
+  - name: apply
+    kind: function.lua
+    meta:
+      comment: "POST /workspace/crm/{id}/apply -- append typed crm.* command-events."
+    source: file://apply.lua
+    method: apply
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      writer: kickside.crm.command:writer
+
+  - name: apply.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: apply
+    path: /workspace/crm/{id}/apply
+
+  - name: schema_implementation
+    kind: library.lua
+    meta: { comment: Shared implementation behind individually owned function entries. }
+    source: file://schema.lua
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      schema: kickside.crm.schema:schema
+      mutation: kickside.crm.schema:mutation
+      writer: kickside.crm.command:writer
+
+  - name: schema.get
+    kind: function.lua
+    meta:
+      comment: "GET /workspace/crm/{id}/schema -- current applied typed schema declaration."
+    source: file://schema.lua
+    method: get
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      schema: kickside.crm.schema:schema
+      mutation: kickside.crm.schema:mutation
+      writer: kickside.crm.command:writer
+
+  - name: schema.get.endpoint
+    kind: http.endpoint
+    meta: { router: app:api }
+    method: GET
+    func: schema.get
+    path: /workspace/crm/{id}/schema
+
+  - name: schema.apply
+    kind: function.lua
+    meta:
+      comment: "POST /workspace/crm/{id}/schema -- optimistic transactional schema apply."
+    source: file://schema.lua
+    method: apply
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      schema: kickside.crm.schema:schema
+      mutation: kickside.crm.schema:mutation
+      writer: kickside.crm.command:writer
+
+  - name: schema.apply.endpoint
+    kind: http.endpoint
+    meta: { router: app:api }
+    method: POST
+    func: schema.apply
+    path: /workspace/crm/{id}/schema
+
+  - name: import_config
+    kind: function.lua
+    meta:
+      comment: "POST /workspace/crm/{id}/config/import -- validates and transactionally applies a portable CRM schema artifact."
+    source: file://import_config.lua
+    method: apply
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      mutation: kickside.crm.schema:mutation
+      writer: kickside.crm.command:writer
+
+  - name: import_config.endpoint
+    kind: http.endpoint
+    meta: { router: app:api }
+    method: POST
+    func: import_config
+    path: /workspace/crm/{id}/config/import
+
+  - name: export_config
+    kind: function.lua
+    meta:
+      comment: "GET /workspace/crm/{id}/config/export -- returns the deterministic portable CRM schema artifact."
+    source: file://export_config.lua
+    method: export
+    modules: [http]
+    imports:
+      api_access: kickside.crm.api:access
+      schema: kickside.crm.schema:schema
+
+  - name: export_config.endpoint
+    kind: http.endpoint
+    meta: { router: app:api }
+    method: GET
+    func: export_config
+    path: /workspace/crm/{id}/config/export
+
+  - name: query
+    kind: function.lua
+    meta:
+      comment: "POST /workspace/crm/{id}/query -- records | record | board | timeline over the read model."
+    source: file://query.lua
+    method: query
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      reader: kickside.crm:crm
+      http_errors: kickside.contract:http_errors
+
+  - name: query.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: query
+    path: /workspace/crm/{id}/query
+
+  - name: resolve
+    kind: function.lua
+    meta:
+      comment: "POST /workspace/crm/{id}/resolve -- exact alias find-or-create with checkpoint."
+    source: file://resolve.lua
+    method: resolve
+    modules: [http, json]
+    imports:
+      api_access: kickside.crm.api:access
+      resolver: kickside.crm.resolution:resolve_lib
+      http_errors: kickside.contract:http_errors
+
+  - name: resolve.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: resolve
+    path: /workspace/crm/{id}/resolve

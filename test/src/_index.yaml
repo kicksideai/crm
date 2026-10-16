@@ -1,0 +1,1026 @@
+version: "1.0"
+namespace: app
+
+# SQLite harness for the typed CRM lifecycle and public composition contracts.
+
+entries:
+  - name: crm_callable_owner_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_callable_owner_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+
+  - name: crm_schema_error_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_schema_error_test.lua
+    method: run
+    modules: [sql, uuid]
+    imports:
+      test: wippy.test:test
+      storage: kickside.crm.persist:repo
+      types: kickside.crm:types
+
+  - name: module_access_policy_test
+    kind: function.lua
+    meta: { type: test, suite: module_access_policy }
+    source: file://module_access_policy_test.lua
+    method: run
+    modules: [registry, security]
+    imports:
+      test: wippy.test:test
+
+  - name: wait_for_boot
+    kind: function.lua
+    meta:
+      type: test
+      suite: "00_setup"
+      comment: Applies the isolated SQLite harness schema before suites run.
+    source: file://wait_for_boot.lua
+    method: run
+    modules: [json, sql]
+    imports:
+      runner: wippy.migration:runner
+      write_counter: app:write_counter
+
+  - name: write_counter
+    kind: library.lua
+    meta:
+      type: test_helper
+      comment: Per-CRM row-write counter on the sink receipt table, installed at harness setup.
+    source: file://write_counter.lua
+    modules: [sql]
+
+  - name: db
+    kind: db.sql.sqlite
+    foreign_keys: true
+    meta:
+      comment: In-memory database for CRM tests.
+    file: ":memory:"
+
+  - name: env_storage
+    kind: env.storage.file
+    meta:
+      type: envstorage
+    file_path: ./.wippy/test.env
+    auto_create: true
+
+  - name: processes
+    kind: process.host
+    lifecycle:
+      auto_start: true
+
+  - name: gateway
+    kind: http.service
+    meta:
+      comment: Test HTTP server.
+    addr: :19131
+    lifecycle:
+      auto_start: false
+
+  - name: api
+    kind: http.router
+    meta:
+      comment: Test API router.
+      server: gateway
+    prefix: /api
+
+  - name: user
+    kind: security.policy
+    meta:
+      comment: Permissive scope for CRM tests. The group is qualified because a policy's bare group name is registered under the policy's own namespace, so security.named_scope -- which parses its argument as a registry id -- only recovers this policy when a frozen CRM identity names the group the same way.
+    groups:
+      - app.security:crm_test
+    policy:
+      resources: '*'
+      actions: '*'
+      effect: allow
+
+  - name: admin.all_access
+    kind: security.policy
+    meta:
+      comment: Root administrator wildcard scope for CRM endpoint-access tests.
+    groups:
+      - app.security:admin
+    policy:
+      resources: '*'
+      actions: '*'
+      effect: allow
+
+  # The application's authenticated-user surface, modelled. The wildcard policy
+  # above proves nothing about a person: it grants permissions no deployed user
+  # holds, so a read path that only works because the caller could do anything
+  # passes the suite and fails on a host.
+  - name: plain_user.registry
+    kind: security.policy
+    meta:
+      comment: Registry discovery a host grants a user -- engine namespaces only, nothing under a product one.
+    groups:
+      - app.security:user
+    policy:
+      resources: [ 'kickside.component*', 'kickside.core*', 'kickside.contract*', 'kickside.data*', 'kickside.users*', 'kickside.settings*', 'kickside.execution*', 'kickside.inbox*', 'kickside.blocks*', 'kickside.widgets*', 'wippy.*' ]
+      actions: [ registry.get, registry.find ]
+      effect: allow
+
+  - name: plain_user.data
+    kind: security.policy
+    meta:
+      comment: Runtime data primitives behind user-scoped endpoints.
+    groups:
+      - app.security:user
+    policy:
+      resources: [ 'app:db' ]
+      actions: [ db.get ]
+      effect: allow
+
+  - name: no_crm_access
+    kind: security.policy
+    meta:
+      comment: Nonmatching allow policy for CRM endpoint fail-closed tests.
+    groups:
+      - crm_test_no_access
+    policy:
+      resources: app.unrelated:*
+      actions: access
+      effect: allow
+
+  # kickside/users supplies the default kickside.contract:scope_resolver binding
+  # now that it is wired in below; a harness-local stub would collide on the
+  # single allowed default binding per contract.
+
+  - name: dep.kickside.users
+    kind: ns.dependency
+    version: "*"
+    meta:
+      comment: Users -- owns app_users, the table wippy/session's migrations declare a foreign key against. Postgres refuses that DDL when the table is absent, which halts the whole migration set. Users also supplies the canonical kickside.contract:scope_resolver binding a frozen CRM identity is recovered through.
+    component: kickside/users
+    parameters:
+      - { name: kickside.users:target_db, value: app:db }
+      - { name: kickside.users:env_storage, value: app:env_storage }
+      - { name: kickside.users:api_router, value: app:api }
+      - { name: kickside.users:public_router, value: app:api }
+      - { name: kickside.users:ui_server, value: app:gateway }
+      # The two scopes are group ids, not policy entry ids: the resolver derives
+      # a subject's scope name from its groups and falls back to the default
+      # group, and named_scope has to find a policy group under whichever it
+      # returns.
+      - { name: kickside.users:user_security_scope, value: app.security:crm_test }
+      - { name: kickside.users:admin_security_scope, value: app.security:admin }
+      - { name: kickside.users:login_role_resource, value: app.security:* }
+
+  - name: dep.kickside.settings
+    kind: ns.dependency
+    version: "*"
+    meta:
+      comment: Settings -- users reads and writes application settings through it, and it names no host of its own, so the harness supplies the three it requires.
+    component: kickside/settings
+    parameters:
+      - { name: kickside.settings:target_db, value: app:db }
+      - { name: kickside.settings:api_router, value: app:api }
+      - { name: kickside.settings:ui_server, value: app:gateway }
+
+  # The standalone harness is the deployment root, so it supplies the host
+  # bindings required by CRM's dependency closure explicitly.
+  - name: dep.kickside.crm
+    kind: ns.dependency
+    version: "*"
+    component: kickside/crm
+    parameters:
+      - { name: kickside.crm:api_router, value: app:api }
+      - { name: kickside.crm:ui_server, value: app:gateway }
+      - { name: kickside.crm:target_db, value: app:db }
+      - { name: kickside.crm:process_host, value: app:processes }
+      - { name: kickside.crm.security:user_security_scope, value: app:user }
+      - { name: kickside.crm.security:admin_security_scope, value: app:user }
+      - { name: wippy.session:api_router, value: app:api }
+      - { name: wippy.session:env_storage, value: app:env_storage }
+      - { name: wippy.session:delegation_func_id, value: userspace.dataflow.session:delegate }
+      - { name: wippy.views:api_router, value: app:api }
+      - { name: wippy.views:env_storage, value: app:env_storage }
+      - { name: wippy.bootloader:application_host, value: app:processes }
+      - { name: wippy.bootloader:env_storage, value: app:env_storage }
+
+  - name: dep.kickside.component
+    kind: ns.dependency
+    version: '*'
+    component: kickside/component
+    parameters:
+    - name: kickside.component:target_db
+      value: app:db
+    - name: kickside.component:api_router
+      value: app:api
+    - name: kickside.component:lifecycle_impl
+      value: kickside.core.lifecycle:component_lifecycle_impl
+
+  - name: dep.kickside.jobs
+    kind: ns.dependency
+    version: '*'
+    component: kickside/jobs
+    parameters:
+    - name: kickside.core.jobs:target_db
+      value: app:db
+    - name: kickside.core.jobs:process_host
+      value: app:processes
+
+  - name: dep.kickside.core
+    kind: ns.dependency
+    version: '*'
+    component: kickside/core
+    parameters:
+    - name: kickside.core:target_db
+      value: app:db
+    - name: kickside.core.lifecycle:process_host
+      value: app:processes
+    - name: kickside.core.lifecycle:user_lifecycle_grant
+      value:
+        subject_id: app:user
+        subject_type: group
+        access_mask: 2
+    - name: kickside.core.lifecycle:admin_lifecycle_grant
+      value:
+        subject_id: app:user
+        subject_type: group
+        access_mask: 3
+    - name: kickside.core.retention:process_host
+      value: app:processes
+    - name: kickside.core.threads:process_host
+      value: app:processes
+    - name: kickside.core.projections:process_host
+      value: app:processes
+    - name: kickside.core.retention:api_router
+      value: app:api
+    - name: kickside.core.threads:api_router
+      value: app:api
+    - name: kickside.core.projections:api_router
+      value: app:api
+    - name: kickside.core.retention:env_storage
+      value: app:env_storage
+    - name: kickside.core.projections:env_storage
+      value: app:env_storage
+    - name: kickside.core.retention:user_security_scope
+      value: app:user
+    - name: kickside.core.threads:user_security_scope
+      value: app:user
+
+  - name: dep.kickside.inbox
+    kind: ns.dependency
+    version: '*'
+    component: kickside/inbox
+    parameters:
+    - name: kickside.inbox:api_router
+      value: app:api
+    - name: kickside.inbox:ui_server
+      value: app:gateway
+
+  - name: dep.kickside.blocks
+    kind: ns.dependency
+    version: "*"
+    component: kickside/blocks
+    parameters:
+      - { name: kickside.blocks:process_host, value: app:processes }
+
+  - name: dep.kickside.widgets
+    kind: ns.dependency
+    version: "*"
+    component: kickside/widgets
+    parameters:
+      - { name: kickside.widgets:api_router, value: app:api }
+      - { name: kickside.widgets:ui_server, value: app:gateway }
+
+  - name: dep.wippy.migration
+    kind: ns.dependency
+    version: "*"
+    meta: { comment: Binds CRM migrations to the in-memory test database. }
+    component: "wippy/migration"
+    parameters:
+      - name: wippy.migration:app_db
+        value: app:db
+
+  - name: crm_policy_contract_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Typed field policy and authenticated write-context contract.
+    source: file://crm_policy_test.lua
+    method: run
+    modules: [sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      policy: kickside.crm.domain:policy
+      storage: kickside.crm.persist:repo
+      constraints: kickside.crm.domain:constraints
+      validation: kickside.crm.domain:validation
+
+  - name: crm_record_panels_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Registry-backed record-panel filtering, ordering, and empty-catalog contract.
+    source: file://crm_record_panels_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      record_panels: kickside.crm.registry:record_panels
+
+  - name: writer_probe
+    kind: function.lua
+    meta:
+      comment: Test-only actor-scoped adapter over the canonical CRM writer.
+    source: file://writer_probe.lua
+    method: run
+    imports:
+      writer: kickside.crm.command:writer
+      component: kickside.component:component
+
+  - name: crm_privacy_probe
+    kind: function.lua
+    meta:
+      comment: Test-only actor-scoped adapter over the public CRM reader and typed writer.
+    source: file://crm_privacy_probe.lua
+    method: run
+    imports:
+      crm: kickside.crm:crm
+      writer: kickside.crm.command:writer
+
+  - name: crm_privacy_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: A foreign principal cannot read, list, or update another principal's CRM records.
+    source: file://crm_privacy_test.lua
+    method: run
+    modules: [funcs, security, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
+      types: kickside.crm:types
+
+  - name: crm_writer_preflight_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Sequential batch state and projector-safe pre-append writer validation.
+    source: file://crm_writer_preflight_test.lua
+    method: run
+    modules: [contract, funcs, security, sql, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+
+  - name: crm_writer_catchup_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: The writer surfaces a dead-lettered drain cursor's real cause, not only max_attempts.
+    source: file://crm_writer_catchup_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      writer: kickside.crm.command:writer
+
+  - name: crm_typed_lifecycle_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: SQLite typed schema, record, search, relation, merge, and alias lifecycle.
+    source: file://crm_typed_lifecycle_test.lua
+    method: run
+    modules: [sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      materializer: kickside.crm.persist:materializer
+      aliases: kickside.crm.resolution:aliases
+      write_origin: kickside.crm.persist:write_origin
+
+  - name: crm_activity_reference_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Activity source convergence and the generalized reference edge fold and read model.
+    source: file://crm_activity_reference_test.lua
+    method: run
+    modules: [json, sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      materializer: kickside.crm.persist:materializer
+      read_model: kickside.crm.persist:read_model
+
+  - name: crm_pending_relation_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Relation ordering deferral -- a link naming a not-yet-materialized record parks and drains on materialization; real relation errors still fail.
+    source: file://crm_pending_relation_test.lua
+    method: run
+    modules: [sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      materializer: kickside.crm.persist:materializer
+
+  - name: crm_timeline_rollup_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: One relation hop of activity roll-up on a record's chronology.
+    source: file://crm_timeline_rollup_test.lua
+    method: run
+    modules: [sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      materializer: kickside.crm.persist:materializer
+      read_model: kickside.crm.persist:read_model
+
+  - name: crm_resolution_contract_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Exact normalization and declared merge-scoring contract.
+    source: file://crm_resolution_contract_test.lua
+    method: run
+    modules: [hash]
+    imports:
+      test: wippy.test:test
+      normalize: kickside.crm.resolution:normalize
+      suggest: kickside.crm.resolution:suggest
+
+  - name: crm_create_contract_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Actor-scoped CRM create idempotency and normalized replay contract.
+    source: file://crm_create_contract_test.lua
+    method: run
+    modules: [contract, funcs, security, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
+      types: kickside.crm:types
+
+  - name: crm_schema_import_remove_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Portable artifact expresses type changes as spec.remove plus a replacement declaration.
+    source: file://crm_schema_import_remove_test.lua
+    method: run
+    modules: [security, uuid, funcs]
+    imports:
+      actors: app:actors
+      schema: kickside.crm.schema:schema
+      mutation: kickside.crm.schema:mutation
+      test: wippy.test:test
+
+  - name: crm_schema_mutation_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Physical-schema mutations are revisioned and refuse a stale expected revision.
+    source: file://crm_schema_mutation_test.lua
+    method: run
+    modules: [funcs, security, uuid]
+    imports:
+      actors: app:actors
+      mutation: kickside.crm.schema:mutation
+      test: wippy.test:test
+
+  - name: schema_probe
+    kind: function.lua
+    meta:
+      comment: Test-only actor-scoped adapter over schema contribution.
+    source: file://schema_probe.lua
+    method: run
+    imports:
+      mutation: kickside.crm.schema:mutation
+      schema: kickside.crm.schema:schema
+      types: kickside.crm:types
+    modules: [contract, security]
+
+  - name: create_probe
+    kind: function.lua
+    meta:
+      comment: Test-only actor-scoped adapter over the CRM create service.
+    source: file://create_probe.lua
+    method: run
+    imports:
+      create_service: kickside.crm.workspace:create
+      api_access: kickside.crm.api:access
+
+  - name: block_probe
+    kind: function.lua
+    meta:
+      comment: Test-only actor-scoped proof of the canonical headless Block arm envelope.
+    source: file://block_probe.lua
+    method: run
+    imports:
+      merge_arm: kickside.crm.resolution:merge_arm_lib
+      schema: kickside.crm.schema:schema
+      mutation: kickside.crm.schema:mutation
+      writer: kickside.crm.command:writer
+
+  - name: ported_kickside_crm_block_contract_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM publishes exact canonical Blocks without a visual Workflows dependency.
+    source: file://crm_block_contract_test.lua
+    method: run
+    modules:
+    - funcs
+    - process
+    - registry
+    - security
+    - uuid
+    imports:
+      actors: app:actors
+      block_contract: kickside.blocks:contract
+      block_lower: kickside.blocks:lower
+      test: wippy.test:test
+
+  - name: crm_sink_receipts_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM writable sink round-trip, source identity dedupe, and reconcile key
+        listing.
+    source: file://crm_sink_crm_sink_test.lua
+    method: run_receipts
+    modules: [json, registry, sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      fixture: app:crm_sink_fixture
+
+  - name: crm_sink_references_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM writable sink round-trip, source identity dedupe, and reconcile key
+        listing.
+    source: file://crm_sink_crm_sink_test.lua
+    method: run_references
+    modules: [json, registry, sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      fixture: app:crm_sink_fixture
+
+  - name: crm_sink_reconciliation_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM writable sink round-trip, source identity dedupe, and reconcile key
+        listing.
+    source: file://crm_sink_contract_test.lua
+    method: run_reconciliation
+    modules: [json, registry, sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      fixture: app:crm_sink_fixture
+
+  - name: crm_sink_conditional_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM writable sink round-trip, source identity dedupe, and reconcile key
+        listing.
+    source: file://crm_sink_contract_test.lua
+    method: run_conditional
+    modules: [json, registry, sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      fixture: app:crm_sink_fixture
+
+  - name: crm_sink_fixture
+    kind: library.lua
+    meta:
+      type: test_helper
+      comment: Shared CRM writable sink harness - provisioned CRM, machine executor, typed answers and receipt rows.
+    source: file://crm_sink_fixture.lua
+    modules: [contract, funcs, security, sql, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
+      types: kickside.crm:types
+      receipt_schema: app:receipt_schema
+      write_counter: app:write_counter
+      storage: kickside.crm.persist:repo
+
+  - name: crm_sink_receipt_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM sink bookkeeping - single-phase receipts, required origin, receipt mutation budgets and retention.
+    source: file://crm_sink_receipt_test.lua
+    method: run
+    modules: [channel, funcs, json, sql, time]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      fixture: app:crm_sink_fixture
+      write_counter: app:write_counter
+
+  - name: db_id_probe
+    kind: function.lua
+    meta:
+      comment: Resolves the CRM database under a chosen actor and scope; a test body carries none.
+    source: file://db_id_probe.lua
+    method: run
+    modules: [registry]
+    imports:
+      types: kickside.crm:types
+
+  - name: surface_probe
+    kind: function.lua
+    meta:
+      comment: Runs the shell's registry discovery under a chosen actor and scope.
+    source: file://surface_probe.lua
+    method: run
+    modules: [registry]
+
+  - name: crm_read_faces_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: The read-only alias and reference faces another module reaches this CRM by id -- read-only, caller-scoped, and returning values or typed errors.
+    source: file://crm_read_faces_test.lua
+    method: run
+    modules: [funcs, registry, security, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
+      types: kickside.crm:types
+
+  - name: crm_tool_shapes_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Registered CRM tools return complete records, the stage-keyed board, the timeline array and a CRMConfig artifact that schema.apply accepts back.
+    source: file://crm_tool_shapes_test.lua
+    method: run
+    modules: [funcs, json, security, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
+      types: kickside.crm:types
+
+  - name: crm_config_access_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Which caller may resolve the CRM database and discover its announced surfaces, a refused read that names the refusal rather than a missing configuration, and a missing entry that names the configuration rather than the read.
+    source: file://crm_config_access_test.lua
+    method: run
+    modules: [funcs, security]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+
+  - name: actors
+    kind: library.lua
+    meta:
+      type: test_helper
+      comment: Persists canonical Users identities for deferred CRM projection tests.
+    source: file://actors.lua
+    modules: [sql, security]
+
+  - name: crm_read_after_write_probe
+    kind: function.lua
+    source: file://crm_read_after_write_probe.lua
+    method: run
+    modules: [sql]
+    imports:
+      writer: kickside.crm.command:writer
+      storage: kickside.crm.persist:repo
+      types: kickside.crm:types
+
+  - name: crm_read_after_write_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      timeout: 120s
+      comment: Durable create/apply visibility with a parked projector and concurrent writers on both engines.
+    source: file://crm_read_after_write_test.lua
+    method: run
+    modules: [contract, funcs, security, sql, uuid, channel, time]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+
+  - name: query_fixture
+    kind: library.lua
+    source: file://query_fixture.lua
+    modules: [json]
+
+  - name: query_handler
+    kind: library.lua
+    source: file://query_handler_source.lua
+    modules: [json]
+    imports:
+      http: app:query_http
+      api_access: app:query_access
+      reader: app:query_reader
+      http_errors: kickside.contract:http_errors
+
+  - name: crm_query_api_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+    source: file://crm_query_api_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:query_fixture
+      handler: app:query_handler
+
+  - name: query_http
+    kind: library.lua
+    source: |
+      type Response = any
+      type Request = any
+      return require("fixture")
+    imports:
+      fixture: app:query_fixture
+
+  - name: query_access
+    kind: library.lua
+    source: return require("fixture")
+    imports:
+      fixture: app:query_fixture
+
+  - name: query_reader
+    kind: library.lua
+    source: return require("fixture")
+    imports:
+      fixture: app:query_fixture
+
+  - name: resolve_fixture
+    kind: library.lua
+    source: file://resolve_fixture.lua
+    modules: [json]
+
+  - name: resolve_handler
+    kind: library.lua
+    source: file://resolve_handler_source.lua
+    modules: [json]
+    imports:
+      http: app:resolve_http
+      api_access: app:resolve_access
+      resolver: app:resolve_resolver
+      http_errors: kickside.contract:http_errors
+
+  - name: crm_resolve_api_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+    source: file://crm_resolve_api_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      fixture: app:resolve_fixture
+      handler: app:resolve_handler
+
+  - name: resolve_http
+    kind: library.lua
+    source: |
+      type Response = any
+      type Request = any
+      return require("fixture")
+    imports:
+      fixture: app:resolve_fixture
+
+  - name: resolve_access
+    kind: library.lua
+    source: return require("fixture")
+    imports:
+      fixture: app:resolve_fixture
+
+  - name: resolve_resolver
+    kind: library.lua
+    source: return require("fixture")
+    imports:
+      fixture: app:resolve_fixture
+
+  - name: receipt_schema
+    kind: library.lua
+    source: file://receipt_schema.lua
+    modules: [sql]
+    imports:
+      test: wippy.test:test
+
+  - name: shared_fixture_db
+    kind: db.sql.sqlite
+    foreign_keys: true
+    file: "${sqlite_path}"
+
+  - name: receipt_schema_db
+    kind: db.sql.sqlite
+    file: ":memory:"
+
+  - name: crm_receipt_schema_lifecycle_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: "01_receipt_schema_lifecycle"
+    source: file://crm_receipt_schema_lifecycle_test.lua
+    method: run
+    modules: [funcs, sql, registry, json]
+    imports:
+      test: wippy.test:test
+      fixture: app:crm_sink_fixture
+      receipt_schema: app:receipt_schema
+      types: kickside.crm:types
+      runner: wippy.migration:runner
+      write_counter: app:write_counter
+      isolated: app:isolated_database
+
+  - name: isolated_database
+    kind: library.lua
+    source: file://isolated_database.lua
+    modules: [funcs, registry, sql, channel, ctx, uuid, time]
+
+  - name: isolated_database_owner
+    kind: process.lua
+    source: file://isolated_database.lua
+    method: supervise
+    modules: [funcs, registry, sql, channel, ctx, uuid, time]
+
+  - name: schema_fault_db
+    kind: db.sql.sqlite
+    foreign_keys: true
+    file: ":memory:"
+
+  - name: crm_receipt_schema_lifecycle_cases
+    kind: function.lua
+    source: file://crm_receipt_schema_lifecycle_test.lua
+    method: cases
+    modules: [funcs, sql, registry, json]
+    imports:
+      test: wippy.test:test
+      fixture: app:crm_sink_fixture
+      receipt_schema: app:receipt_schema
+      types: kickside.crm:types
+      runner: wippy.migration:runner
+      write_counter: app:write_counter
+      isolated: app:isolated_database
+  - name: user_endpoint_policy_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: member_endpoint_policy
+    source: file://user_endpoint_policy_test.lua
+    method: run
+    modules: [registry, security]
+    imports:
+      test: wippy.test:test
+
+  - name: member_actor_probe
+    kind: function.lua
+    source: return {run = function() return require("api_access").require_actor() end}
+    method: run
+    imports:
+      api_access: kickside.crm.api:access
+  - name: member_probe_call
+    kind: security.policy
+    groups: [app:member_probe]
+    policy:
+      resources: app:member_actor_probe
+      actions: funcs.call
+      effect: allow
+  - name: actor_admission_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: member_endpoint_policy
+    source: file://actor_admission_test.lua
+    method: run
+    modules: [security, funcs]
+    imports:
+      test: wippy.test:test
+
+  - name: dep.member_endpoint_contract
+    kind: ns.dependency
+    component: kickside/contract
+    version: '*'
+    parameters:
+    - name: kickside.contract.http:user_security_scope
+      value: app:user
+
+  - name: dep.kickside.security
+    kind: ns.dependency
+    component: kickside/security
+    version: '*'
+    parameters:
+    - {name: api_router, value: app:api}
+    - {name: ui_server, value: app:gateway}
+    - {name: target_db, value: app:db}
+    - {name: process_host, value: app:processes}
+
+  - name: isolated_database_test
+    kind: function.lua
+    meta: { type: test, suite: "02_isolated_database" }
+    source: file://isolated_database_test.lua
+    method: run
+    modules: [channel, registry, sql, time, uuid, ctx]
+    imports:
+      test: wippy.test:test
+      isolated: app:isolated_database
+      plan_fixture: app:isolated_database_plan_fixture
+      plan_registry: app:isolated_database_registry
+
+  - name: isolated_database_registry
+    kind: library.lua
+    source: file://isolated_database_registry.lua
+
+  - name: isolated_database_plan_fixture
+    kind: library.lua
+    source: file://isolated_database.lua
+    modules: [funcs, sql, channel, ctx, uuid, time]
+    imports:
+      registry: app:isolated_database_registry
+
+  - name: isolated_database_blocked
+    kind: function.lua
+    source: file://isolated_database_test.lua
+    method: blocked
+    modules: [channel, registry, sql, time, uuid, ctx]
+    imports:
+      test: wippy.test:test
+      isolated: app:isolated_database
+
+  - name: isolated_database_cancellation_owner
+    kind: process.lua
+    source: file://isolated_database.lua
+    method: run
+    modules: [funcs, registry, sql, channel, ctx, uuid, time]

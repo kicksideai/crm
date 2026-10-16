@@ -1,0 +1,122 @@
+version: "1.0"
+namespace: kickside.crm.ports
+
+entries:
+  - name: membership_set
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM collection membership set, icon: tabler:layout-kanban }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:membership.set
+    config_schema: &crm_source
+      thread_id:
+        type: string
+        picker: wc-component-picker
+        class: crm
+        required: true
+        role: primary
+        title: CRM
+
+  - name: record_created
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM record created, icon: tabler:database-plus }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:record.created
+    config_schema: *crm_source
+
+  - name: record_updated
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM record updated, icon: tabler:database-edit }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:record.updated
+    config_schema: *crm_source
+
+  - name: record_deleted
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM record deleted, icon: tabler:database-minus }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:record.deleted
+    config_schema: *crm_source
+
+  - name: merge_suggested
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM merge suggested, icon: tabler:git-merge }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:merge.suggested
+    config_schema: *crm_source
+
+  - name: merge_decided
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM merge decided, icon: tabler:git-merge }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:merge.decided
+    config_schema: *crm_source
+
+  - name: relation_linked
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM relation linked, icon: tabler:link }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:relation.linked
+    config_schema: *crm_source
+
+  - name: relation_unlinked
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM relation unlinked, icon: tabler:unlink }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:relation.unlinked
+    config_schema: *crm_source
+
+  - name: activity_logged
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM activity logged, icon: tabler:activity }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:activity.logged
+    config_schema: *crm_source
+
+  - name: reference_linked
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM reference linked, icon: tabler:link }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:reference.linked
+    config_schema: *crm_source
+
+  - name: reference_unlinked
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM reference unlinked, icon: tabler:unlink }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:reference.unlinked
+    config_schema: *crm_source
+
+  - name: membership_removed
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM collection membership removed, icon: tabler:layout-kanban }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:membership.removed
+    config_schema: *crm_source
+
+  - name: ai_attribute_filled
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM AI attribute filled, icon: tabler:sparkles }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:ai_attribute.filled
+    config_schema: *crm_source
+
+  - name: external_write_requested
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM external write requested, icon: tabler:cloud-upload }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:external_write.requested
+    config_schema: *crm_source
+
+  - name: external_write_succeeded
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM external write succeeded, icon: tabler:cloud-check }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:external_write.succeeded
+    config_schema: *crm_source
+
+  - name: external_write_failed
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: CRM external write failed, icon: tabler:cloud-x }
+    binding: kickside.crm.binding:crm
+    event: kickside.crm.events:external_write.failed
+    config_schema: *crm_source
