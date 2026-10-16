@@ -11,7 +11,7 @@ A new CRM starts with an empty schema. A consuming module or a user defines the 
 
 Install `kickside/crm` through **System → Modules**, create a CRM workspace entry, and configure its schema. See the [CRM guide](https://github.com/kicksideai/docs/blob/main/using/crm.md), [module contracts](docs/module.md), and [field configuration](docs/field-config.md).
 
-![CRM displays a schema and records created for a fictional demonstration workspace](https://raw.githubusercontent.com/kicksideai/docs/main/using/assets/crm/records.png)
+![CRM with fictional demonstration data: a deals table, the sales pipeline board, and a company record with its activity](https://raw.githubusercontent.com/kicksideai/docs/main/assets/readme/crm-overview.webp)
 
 The repository includes the backend, migrations, Vue web component, and Lua tests for SQLite and PostgreSQL.
 
