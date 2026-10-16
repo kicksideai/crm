@@ -1018,6 +1018,8 @@ entries:
     imports:
       test: wippy.test:test
       isolated: app:isolated_database
+      plan_fixture: app:isolated_database_plan_fixture
+      plan_registry: app:isolated_database_registry
 
   - name: isolated_database_cancellation_owner
     kind: process.lua
