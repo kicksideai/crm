@@ -90,8 +90,9 @@ replaying the durable effect or rebuilding a missing receipt; a different
 payload under the same identity returns a conflict. Receipt retention is
 30 days. Boot migrations establish the receipt schema before delivery. Fresh
 installs omit the retired writer lease table. Existing inert tables remain
-unread and unchanged; their removal is an operator maintenance action after
-old writers stop. Receipt schema lifecycle operations use stopped writers.
+unread and unchanged. Hub Update all and restart applies module updates;
+retiring a stored shape requires a forward-only, idempotent, resumable migration
+in its owning module, tested with the previous published version’s data.
 
 Activity `correlation_key` names one real-world event across sources without a
 shared external ID. Colliding external IDs, correlation keys, or activity IDs
@@ -115,6 +116,23 @@ and timelines; resolving, creating, and updating records; setting collection
 membership; logging activity; and linking or unlinking typed references. Each
 tool calls the same schema, reader, writer, or resolver facade used by the rest
 of CRM. There is no mixed action dispatcher or direct merge tool.
+
+### Structured reads
+
+Tools return structured result objects directly. `CRMListRecords` accepts
+`limit`, `offset`, and `fields`, returning `success` with the reader page’s
+`rows`, `total`, `limit`, and `offset`. Each row keeps its identity and selected
+`values`; the default fields are `name`, `title`, `status`, and `owner`.
+List rows omit associations. `CRMGetRecord` returns `{success, record}` with
+the complete record and associations.
+
+`CRMGetTimeline` accepts `limit`, `cursor`, and `fields` and returns
+`{success, entries, next_cursor}`. Its rows keep activity/record identifiers and
+selected display fields rather than full payloads. `CRMGetBoard` returns
+`{success, board}`. `CRMSchemaGet` returns `{success, schema}` and
+`CRMSchemaApply` uses the same revisioned import path as the API. Typed failures
+return `nil, err`; domain refusals retain `{success = false, error, ...}`.
+The [tool declarations](../src/traits/_index.yaml) own the exact schemas.
 
 ## UI
 

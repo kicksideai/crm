@@ -15,6 +15,50 @@ Install `kickside/crm` through **System → Modules**, create a CRM workspace en
 
 The repository includes the backend, migrations, Vue web component, and Lua tests for SQLite and PostgreSQL.
 
+## Reference
+
+The [module contract](docs/module.md) describes structured results, Blocks,
+ports, and persistence. [Field configuration](docs/field-config.md) describes
+the object-neutral schema.
+
+### Agent tools
+
+Tool names link to their input/output schemas. Capabilities and the caller’s
+resource access determine which tools are available.
+
+| Tool | Selection and paging inputs |
+| --- | --- |
+| [`CRMListRecords`](src/traits/_index.yaml) | `fields`, `limit`, `offset` |
+| [`CRMGetRecord`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMGetBoard`](src/traits/_index.yaml) | `limit`, `offset` |
+| [`CRMGetTimeline`](src/traits/_index.yaml) | `fields`, `limit`, `cursor` |
+| [`CRMSchemaGet`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMSchemaApply`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMResolveRecord`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMCreateRecord`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMUpdateRecord`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMSetMembership`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMLogActivity`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMDeleteActivity`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMLinkReference`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMUnlinkReference`](src/traits/_index.yaml) | See the operation schema |
+
+### Host requirements
+
+Bind these exact requirement IDs through the module’s dependency declaration
+or Hub plan. Existing explicit bindings take precedence over defaults.
+
+| Requirement | Declared default |
+| --- | --- |
+| [`kickside.crm:api_router`](src/_index.yaml) | `app:api` |
+| [`kickside.crm:ui_server`](src/_index.yaml) | `app:gateway` |
+| [`kickside.crm:target_db`](src/_index.yaml) | `app:db` |
+| [`kickside.crm:thread_event_retention_days`](src/_index.yaml) | `365` |
+| [`kickside.crm:write_origin_retention_days`](src/_index.yaml) | `30` |
+| [`kickside.crm:sink_receipt_retention_days`](src/_index.yaml) | `30` |
+| [`kickside.crm.security:user_security_scope`](src/security/_index.yaml) | `kickside.security.groups:members` |
+| [`kickside.crm.security:admin_security_scope`](src/security/_index.yaml) | `app.security:admin` |
+
 License: [KickSide Community License 1.0](LICENSE.md) · [Third-party notices](THIRD_PARTY_NOTICES.md).
 
 [Documentation](https://github.com/kicksideai/docs) · [KickSide](https://kickside.ai)
