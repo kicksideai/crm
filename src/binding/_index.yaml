@@ -26,7 +26,6 @@ entries:
       read: kickside.crm:crm
       retention:
         event_days: 365
-        drain_aware: true
       comment: One CRM aggregate per component; its thread is the durable command log and its projection owns the typed read model.
       events:
         input: []

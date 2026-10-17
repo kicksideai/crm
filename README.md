@@ -48,16 +48,16 @@ resource access determine which tools are available.
 Bind these exact requirement IDs through the module’s dependency declaration
 or Hub plan. Existing explicit bindings take precedence over defaults.
 
-| Requirement | Declared default |
+| Requirement | Host binding or default |
 | --- | --- |
-| [`kickside.crm:api_router`](src/_index.yaml) | `app:api` |
-| [`kickside.crm:ui_server`](src/_index.yaml) | `app:gateway` |
-| [`kickside.crm:target_db`](src/_index.yaml) | `app:db` |
+| [`kickside.crm:api_router`](src/_index.yaml) | Host-supplied `http.router` |
+| [`kickside.crm:ui_server`](src/_index.yaml) | Host-supplied `http.service` |
+| [`kickside.crm:target_db`](src/_index.yaml) | Host-supplied `db.sql` |
 | [`kickside.crm:thread_event_retention_days`](src/_index.yaml) | `365` |
 | [`kickside.crm:write_origin_retention_days`](src/_index.yaml) | `30` |
 | [`kickside.crm:sink_receipt_retention_days`](src/_index.yaml) | `30` |
 | [`kickside.crm.security:user_security_scope`](src/security/_index.yaml) | `kickside.security.groups:members` |
-| [`kickside.crm.security:admin_security_scope`](src/security/_index.yaml) | `app.security:admin` |
+| [`kickside.crm.security:admin_security_scope`](src/security/_index.yaml) | Host-supplied `security.scope` |
 
 License: [KickSide Community License 1.0](LICENSE.md) · [Third-party notices](THIRD_PARTY_NOTICES.md).
 

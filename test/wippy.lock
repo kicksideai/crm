@@ -27,8 +27,8 @@ modules:
       version: 0.1.51
       hash: 361b3158b8af518e7000e683e232fc0b8f325593822b364c021be9a7b8f2936b
     - name: kickside/realtime-dispatch
-      version: 0.1.0
-      hash: 9c7998909c32ff6171fe0a1ce48be825ade90f7a65e62c50facf29a4ed900d38
+      version: 0.1.1
+      hash: 6f0fa3625683510a1565afff3b40b6726ea5604b940b1627b787f6615683264d
     - name: kickside/security
       version: 0.2.5
       hash: b87e52de59105f2140d4227592732bfe5f87cd9e332823224885876782c60011

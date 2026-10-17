@@ -46,8 +46,8 @@ entries:
   - name: api_router
     kind: ns.requirement
     meta:
+      value_kind: http.router
       comment: Authenticated HTTP router for CRM endpoints.
-    default: app:api
     targets:
       - { entry: kickside.crm.api:bootstrap.endpoint, path: .meta.router }
       - { entry: kickside.crm.api:create.endpoint, path: .meta.router }
@@ -64,16 +64,16 @@ entries:
   - name: ui_server
     kind: ns.requirement
     meta:
+      value_kind: http.service
       comment: HTTP server for CRM web-component assets.
-    default: app:gateway
     targets:
       - { entry: kickside.crm.ui:ui_static, path: .meta.server }
 
   - name: target_db
     kind: ns.requirement
     meta:
+      value_kind: db.sql
       comment: Database for CRM schema catalog, typed records, and projections.
-    default: app:db
     targets:
       - { entry: kickside.crm.migrations:01_storage_catalog, path: .meta.target_db }
       - { entry: kickside.crm.persist:config, path: .meta.db_id }

@@ -109,9 +109,9 @@ entries:
   - name: admin_security_scope
     kind: ns.requirement
     meta:
+      value_kind: security.scope
       comment: Application administrator group permitted to create CRM components and alter CRM schema.
       description: Application administrator group permitted to create CRM components and alter CRM schema.
-    default: app.security:admin
     targets:
       - entry: kickside.crm.security:schema_mutation_access
         path: ".groups +="
