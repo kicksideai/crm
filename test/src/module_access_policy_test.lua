@@ -51,6 +51,27 @@ local function define_tests()
             test.eq(requirement.meta.value_kind, "security.scope")
             test.eq(requirement.data.default, "kickside.security.groups:members")
         end)
+        test.it("declares typed host requirements without host defaults", function()
+            local expected = {
+                ["kickside.crm:api_router"] = "http.router",
+                ["kickside.crm:ui_server"] = "http.service",
+                ["kickside.crm:target_db"] = "db.sql",
+                ["kickside.crm.security:admin_security_scope"] = "security.scope",
+            }
+            for id, value_kind in pairs(expected) do
+                local requirement, err = registry.get(id)
+                test.is_nil(err, id)
+                test.not_nil(requirement, id)
+                test.eq(requirement.meta.value_kind, value_kind, id)
+                test.is_nil(requirement.data.default, id)
+            end
+        end)
+        test.it("does not declare an unused retention option", function()
+            local binding, err = registry.get("kickside.crm.binding:crm")
+            test.is_nil(err)
+            test.not_nil(binding)
+            test.is_nil(binding.meta.retention.drain_aware)
+        end)
         test.it("composes endpoints, discovery and tools without another module", function()
             local selected = "kickside.crm.security:module_access"
             local entry, entry_err = registry.get(selected)

@@ -4,37 +4,55 @@
 attributes, collections, views, or object-specific merge rules. Applications
 and business modules own those declarations.
 
-## Host bindings
+## Requirements
 
-- `kickside.crm:api_router` — authenticated CRM API router; default
-  `app:api`.
-- `kickside.crm:target_db` — SQL projection database; default `app:db`.
-- `kickside.crm:ui_server` — server for the bundled web-component assets;
-  default `app:gateway`.
-- `kickside.crm.security:user_security_scope` — endpoint access group
-  supplied by the host application.
-- `kickside.crm:thread_event_retention_days` — aggregate event retention;
-  default 365 days.
+The host supplies these resource bindings through its dependency declaration.
 
-Record authorization remains the CRM component ACL. The endpoint scope only
-controls access to the API surface.
+| Requirement | Value kind | Purpose |
+| --- | --- | --- |
+| `kickside.crm:api_router` | `http.router` | Authenticated CRM API router. |
+| `kickside.crm:ui_server` | `http.service` | Server for bundled web-component assets. |
+| `kickside.crm:target_db` | `db.sql` | Schema catalog, typed records, and projections database. |
+| `kickside.crm.security:admin_security_scope` | `security.scope` | Group permitted to create CRM components and alter schema. |
+
+`kickside.crm.security:user_security_scope` is a `security.scope` requirement
+that defaults to `kickside.security.groups:members`. It grants access to the
+CRM module surface; record authorization remains the CRM component ACL.
+
+CRM also declares configuration requirements with numeric defaults:
+
+| Requirement | Default | Purpose |
+| --- | --- | --- |
+| `kickside.crm:thread_event_retention_days` | `365` | Aggregate event retention window in days. |
+| `kickside.crm:write_origin_retention_days` | `30` | Maximum age of completed external-write facts used for echo suppression. |
+| `kickside.crm:sink_receipt_retention_days` | `30` | Maximum age of committed CRM sink receipts. |
 
 ## Namespace layout
 
-The root namespace contains only the module definition, host requirements,
-shared types, and the public read facade. Each concern owns a child namespace:
+`kickside.crm` contains the module definition, requirements, shared types, and
+the public read facade. Its child namespaces are:
 
-- `kickside.crm.api` — authenticated HTTP adapters;
-- `kickside.crm.binding` — the CRM component contract binding;
-- `kickside.crm.command` — event command validation and append;
-- `kickside.crm.domain` — policy, constraints, and value validation;
-- `kickside.crm.persist` — typed storage, projection, and read models;
-- `kickside.crm.resolution` — aliases, exact resolution, suggestions, and
-  merge decisions;
-- `kickside.crm.schema` — schema contracts and revisioned mutations;
-- `kickside.crm.blocks`, `.ports`, `.sink`, and `.traits` — independent
-  composition surfaces;
-- `kickside.crm.surface` — optional web components and navigation.
+| Namespace | Contents |
+| --- | --- |
+| `kickside.crm.api` | Authenticated HTTP adapters. |
+| `kickside.crm.binding` | CRM component contract binding. |
+| `kickside.crm.blocks` | Object-neutral Blocks. |
+| `kickside.crm.command` | Event command validation and append. |
+| `kickside.crm.domain` | Policy, constraints, and value validation. |
+| `kickside.crm.events` | Public record-domain event types. |
+| `kickside.crm.migrations` | Owned storage migrations. |
+| `kickside.crm.persist` | Typed storage, projection, and read models. |
+| `kickside.crm.ports` | Automation port declarations. |
+| `kickside.crm.read` | Public read faces. |
+| `kickside.crm.registry` | Module configuration entries. |
+| `kickside.crm.resolution` | Aliases, exact resolution, suggestions, and merge decisions. |
+| `kickside.crm.schema` | Schema contracts and revisioned mutations. |
+| `kickside.crm.security` | Module access policies and scope requirements. |
+| `kickside.crm.sink` | Writable CRM sink. |
+| `kickside.crm.surface` | Optional web components and navigation. |
+| `kickside.crm.traits` | Agent tool declarations. |
+| `kickside.crm.ui` | Static UI asset serving. |
+| `kickside.crm.workspace` | CRM component creation and workspace operations. |
 
 Child namespaces depend on public contracts, not on UI implementation details.
 
