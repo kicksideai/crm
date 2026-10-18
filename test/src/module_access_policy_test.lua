@@ -51,19 +51,19 @@ local function define_tests()
             test.eq(requirement.meta.value_kind, "security.scope")
             test.eq(requirement.data.default, "kickside.security.groups:members")
         end)
-        test.it("declares typed host requirements without host defaults", function()
+        test.it("declares typed host requirements with default bindings", function()
             local expected = {
-                ["kickside.crm:api_router"] = "http.router",
-                ["kickside.crm:ui_server"] = "http.service",
-                ["kickside.crm:target_db"] = "db.sql",
-                ["kickside.crm.security:admin_security_scope"] = "security.scope",
+                ["kickside.crm:api_router"] = { kind = "http.router", default = "app:api" },
+                ["kickside.crm:ui_server"] = { kind = "http.service", default = "app:gateway" },
+                ["kickside.crm:target_db"] = { kind = "db.sql", default = "app:db" },
+                ["kickside.crm.security:admin_security_scope"] = { kind = "security.scope", default = "app.security:admin" },
             }
-            for id, value_kind in pairs(expected) do
+            for id, requirement_contract in pairs(expected) do
                 local requirement, err = registry.get(id)
                 test.is_nil(err, id)
                 test.not_nil(requirement, id)
-                test.eq(requirement.meta.value_kind, value_kind, id)
-                test.is_nil(requirement.data.default, id)
+                test.eq(requirement.meta.value_kind, requirement_contract.kind, id)
+                test.eq(requirement.data.default, requirement_contract.default, id)
             end
         end)
         test.it("does not declare an unused retention option", function()

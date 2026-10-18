@@ -45,6 +45,7 @@ entries:
 
   - name: api_router
     kind: ns.requirement
+    default: app:api
     meta:
       value_kind: http.router
       comment: Authenticated HTTP router for CRM endpoints.
@@ -63,6 +64,7 @@ entries:
 
   - name: ui_server
     kind: ns.requirement
+    default: app:gateway
     meta:
       value_kind: http.service
       comment: HTTP server for CRM web-component assets.
@@ -71,6 +73,7 @@ entries:
 
   - name: target_db
     kind: ns.requirement
+    default: app:db
     meta:
       value_kind: db.sql
       comment: Database for CRM schema catalog, typed records, and projections.
