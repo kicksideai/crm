@@ -108,6 +108,7 @@ entries:
 
   - name: admin_security_scope
     kind: ns.requirement
+    default: app.security:admin
     meta:
       value_kind: security.scope
       comment: Application administrator group permitted to create CRM components and alter CRM schema.
