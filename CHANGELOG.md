@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 (2026-10-19)
+
+- Document the object label and icon contract in CRMSchemaApply: label is the collection name the CRM shows, icon an Iconify id.
+
 ## 0.6.0 (2026-10-19)
 
 - Relation fields are record values: create values and update set/unset carry typed references, so a required relation is satisfiable at creation.
