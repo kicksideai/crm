@@ -28,7 +28,6 @@ entries:
     meta:
       comment: Read-your-write exact-tier CRM resolve composition.
     source: file://resolve.lua
-    modules: [uuid]
     imports:
       aliases: kickside.crm.resolution:aliases
       component: kickside.component:component

@@ -13,6 +13,7 @@ entries:
       reader: kickside.crm:crm
       writer: kickside.crm.command:writer
       types: kickside.crm:types
+      locate: kickside.crm.workspace:locate
 
   - name: bootstrap
     kind: function.lua

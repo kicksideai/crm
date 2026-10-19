@@ -1,6 +1,7 @@
 -- CRM type predicates and runtime value accessors.
 local M = require("consts")
 local registry = require("registry")
+local uuid = require("uuid")
 
 M._registry = registry
 
@@ -14,6 +15,16 @@ end
 -- Canonical RFC3339 UTC timestamp used by CRM-owned records and events.
 function M.now(): string
     return os.date("!%Y-%m-%dT%H:%M:%SZ") :: string
+end
+
+-- A new CRM record id: the object type, a colon, and a UUID v7.
+function M.new_record_id(object_type: string): (string?, error?)
+    local id, err = uuid.v7()
+    if err then return nil, errors.wrap(err, "failed to generate CRM record id") end
+    if type(id) ~= "string" or id == "" then
+        return nil, errors.new({ kind = errors.INTERNAL, message = "failed to generate CRM record id" })
+    end
+    return object_type .. ":" .. id, nil
 end
 
 -- Canonical reference strings for CRM-owned identities inside kickside_crm_ref.

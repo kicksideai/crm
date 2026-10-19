@@ -4,6 +4,7 @@ local component = require("component")
 local reader = require("reader")
 local writer = require("writer")
 local types = require("types")
+local locate = require("locate")
 
 local M = {}
 
@@ -16,12 +17,6 @@ type ErrorBody = {
 
 type NotProvisionedBody = { success: boolean, provisioned: boolean, can_create: boolean }
 type BootstrapResolutionBody = ErrorBody | NotProvisionedBody
-
-type ComponentMeta = {
-    label: unknown?,
-    title: unknown?,
-    name: unknown?,
-}
 
 type ComponentRow = {
     component_id: unknown?,
@@ -44,31 +39,6 @@ local function denied(message: string): ErrorBody
     return { success = false, error = message }
 end
 
-local function component_label(row: ComponentRow): string
-    local meta: ComponentMeta =
-        type(row.meta) == "table" and (row.meta :: ComponentMeta) or {}
-    local label = trim(meta.label)
-    if label == "" then label = trim(meta.title) end
-    if label == "" then label = trim(meta.name) end
-    if label == "" then label = "CRM" end
-    return label
-end
-
-local function component_candidates(rows: { ComponentRow }): { unknown }
-    local out: { unknown } = {}
-    for _, row in ipairs(rows) do
-        local id = trim(row.component_id)
-        if id ~= "" then
-            out[#out + 1] = {
-                crm_id = id,
-                component_id = id,
-                label = component_label(row),
-            }
-        end
-    end
-    return out
-end
-
 local function workspace_label(crm_id: string): (string?, error?)
     local rows, err = component.query({
         component_ids = { crm_id },
@@ -78,7 +48,7 @@ local function workspace_label(crm_id: string): (string?, error?)
     if err then return nil, errors.wrap(err, "CRM workspace metadata lookup failed") end
     local row = type(rows) == "table" and type(rows[1]) == "table" and rows[1] :: ComponentRow or nil
     if not row then return nil, errors.new({ kind = errors.NOT_FOUND, message = "CRM workspace metadata was not found" }) end
-    local label = component_label(row)
+    local label = locate.label(row)
     if label == "" then return nil, errors.new({ kind = errors.INTERNAL, message = "CRM workspace title is missing" }) end
     return label, nil
 end
@@ -138,28 +108,25 @@ function M.resolve_bootstrap_crm_id(explicit_crm_id: string?): (string?, number?
         return explicit, nil, nil
     end
 
-    local rows, err = component.query({
-        impl_ids = { types.CRM_IMPL },
-        access_mask = component.ACCESS.READ,
-        include = { meta = true },
-        order_by = { field = "created_at", direction = "ASC" },
-        limit = 50,
-    })
-    if not rows then return nil, http.STATUS.INTERNAL_ERROR, denied(tostring(err)) end
-    local components = rows :: { ComponentRow }
-    if #components == 0 then
+    local crms, err = locate.readable()
+    if not crms then return nil, http.STATUS.INTERNAL_ERROR, denied(tostring(err)) end
+    if #crms == 0 then
         return nil, http.STATUS.OK, { success = true, provisioned = false,
             can_create = security.can("access", types.SCHEMA_MUTATION_GATE) == true }
     end
-    if #components > 1 then
+    if #crms > 1 then
+        local candidates: { unknown } = {}
+        for _, crm in ipairs(crms) do
+            candidates[#candidates + 1] = { crm_id = crm.crm_id, component_id = crm.crm_id, label = crm.label }
+        end
         return nil, http.STATUS.CONFLICT, {
             success = false,
             error = "multiple crm components available",
             code = "multiple_crm_components",
-            candidates = component_candidates(components),
+            candidates = candidates,
         }
     end
-    return trim(components[1].component_id), nil, nil
+    return crms[1].crm_id, nil, nil
 end
 
 return M

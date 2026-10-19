@@ -9,6 +9,9 @@ local resolver = require("resolver")
 local schema = require("schema")
 local mutation = require("mutation")
 local tool_result = require("tool_result")
+local types = require("types")
+local locate = require("locate")
+local create_service = require("create_service")
 
 local M = {}
 
@@ -27,10 +30,18 @@ local function field(name: string, value: unknown, err: error?): (unknown?, erro
     return { [name] = value }, nil
 end
 
-local function crm_id(args: UnknownMap): string
+-- crm_id answers the CRM a call addresses: the call's crm_id, the trait
+-- context's crm_id, or the caller's only readable CRM.
+local function crm_id(args: UnknownMap): (string?, error?)
     local direct = trim(args.crm_id)
-    if direct ~= "" then return direct end
-    return trim(ctx.get("crm_id"))
+    if direct == "" then direct = trim(ctx.get("crm_id")) end
+    return locate.resolve(direct)
+end
+
+local function record_id_for(object_type: string, given: unknown): (string?, error?)
+    local record_id = trim(given)
+    if record_id ~= "" then return record_id, nil end
+    return types.new_record_id(object_type)
 end
 
 local function generated_id(): (string?, error?)
@@ -42,13 +53,13 @@ local function generated_id(): (string?, error?)
     return id, nil
 end
 
--- execute runs one CRM operation. A missing crm_id is the tool's domain error;
--- an operation failure is its typed error; a result is the published success
--- shape, which carries success = true.
+-- execute runs one CRM operation. A CRM the call cannot address is the tool's
+-- domain error, naming how to address one; an operation failure is its typed
+-- error; a result is the published success shape, which carries success = true.
 local function execute(args: unknown, operation: Operation): (UnknownMap?, error?)
     local input: UnknownMap = type(args) == "table" and (args :: UnknownMap) or {}
-    local component_id = crm_id(input)
-    if component_id == "" then return tool_result.domain_error("crm_id is required") end
+    local component_id, locate_err = crm_id(input)
+    if not component_id then return tool_result.domain_error(tostring(locate_err)) end
 
     local fields, err = operation(component_id, input)
     if err then return nil, err end
@@ -56,6 +67,35 @@ local function execute(args: unknown, operation: Operation): (UnknownMap?, error
     for key, value in pairs(type(fields) == "table" and (fields :: UnknownMap) or {}) do out[key] = value end
     out.success = true
     return out, nil
+end
+
+function M.list_crms(_args: unknown): (UnknownMap?, error?)
+    local crms, err = locate.readable()
+    if not crms then return nil, err end
+    local rows: { UnknownMap } = {}
+    for _, crm in ipairs(crms) do rows[#rows + 1] = { crm_id = crm.crm_id, title = crm.label } end
+    return { success = true, crms = rows }, nil
+end
+
+function M.create_crm(args: unknown): (UnknownMap?, error?)
+    if require("security").can("access", types.SCHEMA_MUTATION_GATE) ~= true then
+        return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "CRM schema administration access denied" })
+    end
+    local input: UnknownMap = type(args) == "table" and (args :: UnknownMap) or {}
+    local created, err = create_service.create({
+        idempotency_key = input.idempotency_key,
+        title = input.title,
+        parent_id = input.parent_id,
+    })
+    if not created then return nil, err end
+    local result = created :: UnknownMap
+    return {
+        success = true,
+        crm_id = result.component_id,
+        title = result.title,
+        revision = result.revision,
+        replayed = result.replayed,
+    }, nil
 end
 
 function M.list_records(args: unknown): (UnknownMap?, error?)
@@ -133,7 +173,11 @@ function M.apply_schema(args: unknown): (UnknownMap?, error?)
         if checkpoint_err then
             return nil, errors.wrap(checkpoint_err, "CRM schema import requires a current read model")
         end
-        return mutation.import_config(component_id, input.artifact, input.expected_revision)
+        -- The calling agent authors this declaration, so the tool seals it; the
+        -- portable sourceHash guards artifacts in transit, not the author's own edit.
+        local sealed, seal_err = schema.seal(input.artifact)
+        if not sealed then return nil, seal_err end
+        return mutation.import_config(component_id, sealed, input.expected_revision)
     end)
 end
 
@@ -150,15 +194,39 @@ end
 
 function M.create_record(args: unknown): (UnknownMap?, error?)
     return execute(args, function(component_id: string, input: UnknownMap): (unknown?, error?)
-        local record_id = trim(input.record_id)
-        if record_id == "" then
-            local generated, generation_err = generated_id()
-            if not generated then return nil, generation_err end
-            record_id = generated
-        end
-        local written, err = writer.create_record(component_id, record_id, trim(input.object_type), input.values or {})
+        local object_type = trim(input.object_type)
+        local record_id, id_err = record_id_for(object_type, input.record_id)
+        if not record_id then return nil, id_err end
+        local written, err = writer.create_record(component_id, record_id, object_type, input.values or {})
         if not written then return nil, err end
         return { record_id = record_id }, nil
+    end)
+end
+
+-- create_records appends every record in one batch: all land or none do, and a
+-- relation may name a record created earlier in the same batch.
+function M.create_records(args: unknown): (UnknownMap?, error?)
+    return execute(args, function(component_id: string, input: UnknownMap): (unknown?, error?)
+        if type(input.records) ~= "table" or #(input.records :: { unknown }) == 0 then
+            return nil, errors.new({ kind = errors.INVALID, message = "records must be a non-empty array" })
+        end
+        local commands: { UnknownMap } = {}
+        local record_ids: { string } = {}
+        for index, raw in ipairs(input.records :: { unknown }) do
+            if type(raw) ~= "table" then
+                return nil, errors.new({ kind = errors.INVALID, message = "records[" .. index .. "] must be an object" })
+            end
+            local record = raw :: UnknownMap
+            local object_type = trim(record.object_type)
+            local record_id, id_err = record_id_for(object_type, record.record_id)
+            if not record_id then return nil, id_err end
+            record_ids[index] = record_id
+            commands[index] = { type = types.EVENTS.RECORD_CREATED,
+                body = { record_id = record_id, object_type = object_type, values = record.values or {} } }
+        end
+        local written, err = writer.append(component_id, commands)
+        if not written then return nil, err end
+        return { record_ids = record_ids }, nil
     end)
 end
 
