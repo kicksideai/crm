@@ -45,7 +45,8 @@ const Ga = { class: "crm-rail" }, Qa = { class: "crm-brand" }, Ja = { class: "cr
     activeObject: {},
     activeSurface: {},
     workspaceLabel: {},
-    canWrite: { type: Boolean }
+    canWrite: { type: Boolean },
+    revision: {}
   },
   emits: ["navigate"],
   setup(e, { emit: o }) {
@@ -74,7 +75,7 @@ const Ga = { class: "crm-rail" }, Qa = { class: "crm-brand" }, Ja = { class: "cr
     function V() {
       I(), k();
     }
-    return ve(() => [t.crmId, t.objects], V), Ne(V), (g, i) => (n(), r("aside", Ga, [
+    return ve(() => [t.crmId, t.objects, t.revision], V), Ne(V), (g, i) => (n(), r("aside", Ga, [
       a("div", Qa, [
         a("span", Ja, [
           j(p(x), {
@@ -2771,8 +2772,9 @@ const Zr = {
           "active-surface": U.value,
           "workspace-label": me.value,
           "can-write": I.value,
+          revision: g.value,
           onNavigate: re
-        }, null, 8, ["crm-id", "objects", "active-object", "active-surface", "workspace-label", "can-write"]),
+        }, null, 8, ["crm-id", "objects", "active-object", "active-surface", "workspace-label", "can-write", "revision"]),
         a("section", Oo, [
           U.value === "review" ? (n(), le($o, {
             key: 0,
@@ -2846,4 +2848,4 @@ const Zr = {
 export {
   Xo as default
 };
-//# sourceMappingURL=CrmSurface-CUAz0qWn.js.map
+//# sourceMappingURL=CrmSurface-93gpdwog.js.map
