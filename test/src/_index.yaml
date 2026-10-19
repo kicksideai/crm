@@ -445,6 +445,22 @@ entries:
       storage: kickside.crm.persist:repo
       materializer: kickside.crm.persist:materializer
 
+  - name: crm_relation_values_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Relation fields named in record values materialize as typed edges through the deferral-aware link path.
+    source: file://crm_relation_values_test.lua
+    method: run
+    modules: [sql, uuid]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      materializer: kickside.crm.persist:materializer
+
   - name: crm_timeline_rollup_test
     kind: function.lua
     meta:
@@ -724,6 +740,20 @@ entries:
       actors: app:actors
       test: wippy.test:test
       types: kickside.crm:types
+
+  - name: crm_agent_surface_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: Agent tools locate or create a CRM, apply agent-authored schema, and write records with their links in one call or one batch.
+    source: file://crm_agent_surface_test.lua
+    method: run
+    modules: [funcs, json, registry, security, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test
 
   - name: crm_config_access_test
     kind: function.lua

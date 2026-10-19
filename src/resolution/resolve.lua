@@ -1,4 +1,3 @@
-local uuid = require("uuid")
 local aliases = require("aliases")
 local reader = require("reader")
 local writer = require("writer")
@@ -74,15 +73,6 @@ local function copy_values(value: Values): Values
     return out
 end
 
-local function new_record_id(object_type: string): (string?, error?)
-    local id, err = uuid.v7()
-    if err then return nil, errors.wrap(err, "failed to generate CRM record id") end
-    if type(id) ~= "string" or id == "" then
-        return nil, errors.new({ kind = errors.INTERNAL, message = "failed to generate CRM record id" })
-    end
-    return object_type .. ":" .. id, nil
-end
-
 local function alias_attributes(crm_id: string, object_type: string, alias_type: string): ({ AliasAttribute }?, error?)
     local attributes, err = aliases.alias_attrs(crm_id, object_type, alias_type)
     if err then return nil, err end
@@ -126,7 +116,7 @@ function M.resolve(crm_id: string, args: ResolveArgs): (ResolveResult?, error?)
 
     local proposed_id = trim(args.record_id)
     if proposed_id == "" then
-        local generated, id_err = new_record_id(object_type)
+        local generated, id_err = types.new_record_id(object_type)
         if id_err then return nil, id_err end
         proposed_id = generated :: string
     end

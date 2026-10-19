@@ -32,6 +32,7 @@ type FieldSchema = { config: unknown? }
 type ObjectSchema = {
     object_type: unknown?,
     fields: {[string]: FieldSchema},
+    relations: {[string]: FieldSchema},
 }
 type Outcome = {
     outcome: string,
@@ -111,8 +112,8 @@ local function command_fields(event_type: string, body: RecordBody): (UnknownMap
 end
 
 local function validate_field_policy(object: ObjectSchema, attr: string, machine: boolean): error?
-    local field = object.fields[attr]
-    if not field then return errors.new({ kind = errors.INVALID, message = "unknown or non-scalar CRM field: " .. tostring(object.object_type) .. "." .. attr }) end
+    local field = object.fields[attr] or object.relations[attr]
+    if not field then return errors.new({ kind = errors.INVALID, message = "unknown CRM field: " .. tostring(object.object_type) .. "." .. attr }) end
     local config = type(field.config) == "table" and field.config :: FieldConfig or nil
     local policy = config and config.policy or nil
     if type(policy) ~= "table" then return nil end

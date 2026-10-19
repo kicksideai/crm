@@ -443,6 +443,7 @@ end
 -- Defined below alongside the relation helpers it depends on; forward-declared so
 -- the record-materialization path can drain the edges parked on a new record.
 local drain_pending_relations: (Executor, string, string) -> ()
+local assign_relation: (Executor, string, ObjectSchema, string, string, unknown) -> ()
 
 function M.upsert(db: Executor, crm_id: string, object_type: string, record: unknown)
     return protected(function()
@@ -450,16 +451,28 @@ function M.upsert(db: Executor, crm_id: string, object_type: string, record: unk
         if type(record) ~= "table" or type(record.record_id) ~= "string" or record.record_id == "" then fail(errors.INVALID, "record_id is required") end
         local input = record :: RecordInput
         local object, schema = object_for(write_db, crm_id, object_type)
+        -- Scalar fields are columns on the object table; relation fields named in
+        -- values or unset are edge sets, assigned once the record row holds.
         local unset = {}
+        local relation_assignments: UnknownMap = {}
         if input.unset ~= nil and type(input.unset) ~= "table" then fail(errors.INVALID, "record.unset must be an array") end
         for _, attr in ipairs(input.unset or {}) do
-            if type(attr) ~= "string" or not object.fields[attr] then fail(errors.INVALID, "unknown or non-scalar CRM field in unset: " .. tostring(attr)) end
-            if unset[attr] then fail(errors.INVALID, "duplicate CRM field in unset: " .. attr) end
-            unset[attr] = true
+            if type(attr) ~= "string" or not (object.fields[attr] or object.relations[attr]) then fail(errors.INVALID, "unknown CRM field in unset: " .. tostring(attr)) end
+            if unset[attr] or relation_assignments[attr] then fail(errors.INVALID, "duplicate CRM field in unset: " .. attr) end
+            if object.fields[attr] then unset[attr] = true else relation_assignments[attr] = {} end
         end
         if input.values ~= nil and type(input.values) ~= "table" then fail(errors.INVALID, "record.values must be a map") end
-        local input_values: UnknownMap = input.values or {}
-        for attr in pairs(input_values) do if not object.fields[attr] then fail(errors.INVALID, "unknown or non-scalar CRM value field: " .. tostring(attr)) end end
+        local input_values: UnknownMap = {}
+        for attr, value in pairs(input.values or {}) do
+            if object.fields[attr] then
+                input_values[attr] = value
+            elseif object.relations[attr] then
+                if relation_assignments[attr] ~= nil then fail(errors.INVALID, "CRM relation cannot be both set and unset: " .. tostring(attr)) end
+                relation_assignments[attr] = value
+            else
+                fail(errors.INVALID, "unknown CRM value field: " .. tostring(attr))
+            end
+        end
         assert_unique_available(write_db, schema, object, input.record_id, input_values)
         local timestamp = input.updated_at or now()
         local created_at = input.created_at or timestamp
@@ -496,6 +509,12 @@ function M.upsert(db: Executor, crm_id: string, object_type: string, record: unk
             raise(write_err)
         end
         if schema.dialect == "sqlite" then rebuild_sqlite_fts(write_db, crm_id, object, input.record_id) end
+        local relation_attrs: { string } = {}
+        for attr in pairs(relation_assignments) do relation_attrs[#relation_attrs + 1] = attr end
+        table.sort(relation_attrs)
+        for _, attr in ipairs(relation_attrs) do
+            assign_relation(write_db, crm_id, object, input.record_id, attr, relation_assignments[attr])
+        end
         -- The record now holds, so any edge parked on it as source or target can land.
         drain_pending_relations(write_db, crm_id, input.record_id)
         return hydrate(object, query(write_db, "SELECT * FROM " .. object.table_name .. " WHERE crm_id = $1 AND record_id = $2", { crm_id, input.record_id })[1])
@@ -614,6 +633,40 @@ local function link_internal(db: Executor, crm_id: string, object: ObjectSchema,
     local rows = query(db, "SELECT COALESCE(MAX(ordinal), 0) AS ordinal FROM " .. relation.relation_table
         .. " WHERE crm_id = $1 AND source_id = $2", { crm_id, source_id })
     insert_relation(db, crm_id, relation, source_id, typed_ref, (tonumber(rows[1] and rows[1].ordinal) or 0) + 1, now())
+end
+
+-- Assign a relation's whole edge set from a record value: one typed reference or
+-- an array of them, applied in order. Prior edges and parked edges for the same
+-- source and relation are replaced; an endpoint not yet materialized parks exactly
+-- as a relation.linked would.
+assign_relation = function(db: Executor, crm_id: string, object: ObjectSchema, source_id: string,
+    attr: string, value: unknown)
+    local relation = object.relations[attr]
+    if not relation then fail(errors.INVALID, "unknown CRM relation: " .. object.object_type .. "." .. attr) end
+    local refs: { unknown } = {}
+    if type(value) == "table" and (value :: UnknownMap).kind ~= nil then
+        refs[1] = value
+    elseif type(value) == "table" then
+        for key in pairs(value :: UnknownMap) do
+            if type(key) ~= "number" or key % 1 ~= 0 or key < 1 or key > #(value :: { unknown }) then
+                fail(errors.INVALID, "relation value must be a typed reference or an array of them: " .. attr)
+            end
+        end
+        refs = value :: { unknown }
+    elseif value ~= nil then
+        fail(errors.INVALID, "relation value must be a typed reference or an array of them: " .. attr)
+    end
+    if relation.cardinality == "one" and #refs > 1 then fail(errors.INVALID, "one-valued relation accepts at most one reference: " .. attr) end
+    local typed_refs: { TypedRef } = {}
+    for index, ref in ipairs(refs) do typed_refs[index] = validate_ref(relation, ref) end
+    execute(db, "DELETE FROM " .. relation.relation_table .. " WHERE crm_id = $1 AND source_id = $2", { crm_id, source_id })
+    execute(db, "DELETE FROM kickside_crm_pending_relation WHERE crm_id = $1 AND source_id = $2 AND attr = $3",
+        { crm_id, source_id, attr })
+    for _, typed_ref in ipairs(typed_refs) do
+        if not defer_if_endpoint_absent(db, crm_id, object.object_type, source_id, attr, typed_ref, true) then
+            link_internal(db, crm_id, object, relation, object.object_type, source_id, attr, typed_ref)
+        end
+    end
 end
 
 local function unlink_internal(db: Executor, crm_id: string, relation: Relation, source_id: string, typed_ref: TypedRef)

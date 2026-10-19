@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 (2026-10-19)
+
+- Relation fields are record values: create values and update set/unset carry typed references, so a required relation is satisfiable at creation.
+- Agent tools resolve their CRM like the bootstrap API; add CRMList, CRMCreate and the atomic CRMCreateRecords batch.
+- CRMSchemaApply seals the agent-authored declaration, accepts expected_revision and documents the declaration grammar.
+- Generated record ids take the form <object_type>:<uuid> for every tool and the resolver.
+
 ## 0.5.1 (2026-10-17)
 
 - Declare registry entry requirements with value_kind and default bindings.

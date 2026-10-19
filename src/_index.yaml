@@ -117,7 +117,7 @@ entries:
     meta:
       comment: CRM type predicates and runtime value accessors.
     source: file://types.lua
-    modules: [registry]
+    modules: [registry, uuid]
     imports:
       consts: kickside.crm:consts
 

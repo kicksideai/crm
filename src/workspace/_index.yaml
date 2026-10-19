@@ -13,3 +13,12 @@ entries:
       mutation: kickside.crm.schema:mutation
       types: kickside.crm:types
       component: kickside.component:component
+
+  - name: locate
+    kind: library.lua
+    meta:
+      comment: Readable CRM listing and the canonical explicit-or-only CRM selection rule.
+    source: file://locate.lua
+    imports:
+      types: kickside.crm:types
+      component: kickside.component:component

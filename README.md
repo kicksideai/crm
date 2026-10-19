@@ -28,6 +28,8 @@ resource access determine which tools are available.
 
 | Tool | Selection and paging inputs |
 | --- | --- |
+| [`CRMList`](src/traits/_index.yaml) | None |
+| [`CRMCreate`](src/traits/_index.yaml) | `title`, `idempotency_key` |
 | [`CRMListRecords`](src/traits/_index.yaml) | `fields`, `limit`, `offset` |
 | [`CRMGetRecord`](src/traits/_index.yaml) | See the operation schema |
 | [`CRMGetBoard`](src/traits/_index.yaml) | `limit`, `offset` |
@@ -36,6 +38,7 @@ resource access determine which tools are available.
 | [`CRMSchemaApply`](src/traits/_index.yaml) | See the operation schema |
 | [`CRMResolveRecord`](src/traits/_index.yaml) | See the operation schema |
 | [`CRMCreateRecord`](src/traits/_index.yaml) | See the operation schema |
+| [`CRMCreateRecords`](src/traits/_index.yaml) | `records` |
 | [`CRMUpdateRecord`](src/traits/_index.yaml) | See the operation schema |
 | [`CRMSetMembership`](src/traits/_index.yaml) | See the operation schema |
 | [`CRMLogActivity`](src/traits/_index.yaml) | See the operation schema |

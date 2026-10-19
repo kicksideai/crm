@@ -17,6 +17,9 @@ entries:
       resolver: kickside.crm.resolution:resolve_lib
       schema: kickside.crm.schema:schema
       mutation: kickside.crm.schema:mutation
+      types: kickside.crm:types
+      locate: kickside.crm.workspace:locate
+      create_service: kickside.crm.workspace:create
 
   - name: crm_trait
     kind: registry.entry
@@ -35,13 +38,30 @@ entries:
             description: CRM component/thread id used when a call does not provide crm_id.
         additionalProperties: false
     prompt: |
-      Use the exact CRM tool for the operation you need. Object types, fields,
-      collections, and views are application-owned declarations. SchemaGet exports
-      the canonical portable declaration and SchemaApply validates and applies
-      that artifact through the schema authority. ResolveRecord performs exact-alias
-      resolution through the canonical resolver. Record writes append typed CRM events. Merge candidates must
-      use the CRM merge-review Block; agents cannot merge records directly.
+      A CRM holds typed records (companies, people, deals, or any object type its
+      schema declares), relations between them, staged collections such as a
+      sales pipeline, and an activity timeline. Each tool is one exact operation.
+
+      Addressing: every record tool takes an optional crm_id. Omit it when the
+      caller has one CRM; CRMList shows the CRMs you can read, and CRMCreate makes
+      one when there is none.
+
+      Shaping: CRMSchemaGet exports the declaration; edit it and pass it whole to
+      CRMSchemaApply. A fresh CRM has an empty declaration. Removals are explicit
+      (spec.remove), never by omission.
+
+      Writing: CRMCreateRecords creates many records in one atomic batch, so an
+      import is one call. A relation field takes a typed reference
+      {"kind": "record", "type": "<object_type>", "id": "<record_id>"} (or an
+      array for many-valued relations) directly in values, including a record
+      created earlier in the same batch when you supply its record_id. Use
+      CRMResolveRecord to find-or-create by an exact alias (email, domain) when a
+      record may already exist. CRMSetMembership places a record on a pipeline
+      stage. Record writes append typed CRM events. Merge candidates must use the
+      CRM merge-review Block; agents cannot merge records directly.
     tools:
+      - kickside.crm.traits:list_crms
+      - kickside.crm.traits:create_crm
       - kickside.crm.traits:list_records
       - kickside.crm.traits:get_record
       - kickside.crm.traits:get_board
@@ -50,12 +70,103 @@ entries:
       - kickside.crm.traits:schema.apply
       - kickside.crm.traits:resolve_record
       - kickside.crm.traits:create_record
+      - kickside.crm.traits:create_records
       - kickside.crm.traits:update_record
       - kickside.crm.traits:set_membership
       - kickside.crm.traits:log_activity
       - kickside.crm.traits:delete_activity
       - kickside.crm.traits:link_reference
       - kickside.crm.traits:unlink_reference
+
+  - name: list_crms
+    kind: function.lua
+    meta:
+      type: tool
+      title: List CRMs
+      llm_alias: CRMList
+      llm_description: List the CRMs you can read, oldest first, with their crm_id and title.
+      mcp: { required_scopes: [state.read] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "success": { "type": "boolean", "const": true },
+            "crms": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "crm_id": { "type": "string" },
+                  "title": { "type": "string" }
+                },
+                "required": ["crm_id", "title"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["success", "crms"],
+          "additionalProperties": false
+        }
+    source: file://crm_tool.lua
+    method: list_crms
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: create_crm
+    kind: function.lua
+    meta:
+      type: tool
+      title: Create CRM
+      llm_alias: CRMCreate
+      llm_description: "Create a CRM with an empty declaration, then shape it with CRMSchemaApply. idempotency_key is any stable string, such as the title: repeating the call with the same key returns the same CRM (replayed: true)."
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "idempotency_key": { "type": "string" },
+            "parent_id": { "type": "string" }
+          },
+          "required": ["title", "idempotency_key"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean", "const": true },
+                "crm_id": { "type": "string" },
+                "title": { "type": "string" },
+                "revision": {},
+                "replayed": { "type": "boolean" }
+              },
+              "required": ["success", "crm_id", "title", "replayed"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean", "const": false },
+                "error": { "type": "string" }
+              },
+              "required": ["success", "error"],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: create_crm
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
 
   - name: list_records
     kind: function.lua
@@ -428,7 +539,7 @@ entries:
       type: tool
       title: Get CRM Schema
       llm_alias: CRMSchemaGet
-      llm_description: Export the canonical CRM declaration as a deterministic portable artifact.
+      llm_description: Export the CRM declaration (object types, fields, relations, pipelines, views) as the artifact CRMSchemaApply accepts back.
       mcp: { required_scopes: [state.read] }
       input_schema: |
         {
@@ -506,7 +617,7 @@ entries:
       type: tool
       title: Apply CRM Schema
       llm_alias: CRMSchemaApply
-      llm_description: Validate and transactionally apply one canonical portable CRM declaration artifact.
+      llm_description: "Apply a whole CRM declaration in one transaction. Start from CRMSchemaGet and pass the edited artifact back; a fresh CRM starts empty. spec.objectTypes rows: {portableKey: \"object/<type>\", type, label, plural, icon}. spec.attributes rows: {portableKey: \"attribute/<type>/<attr>\", object_type, attr, label, data_type, sort_order, config}; data_type is text, number, boolean, date, time, datetime, select, multi_select, currency, email, phone, url or relation; config may set required, unique, alias (an exact-match key such as email or domain), options for selects, ui.role title or subtitle, and for relations target {kind: record, object_type}, cardinality one or many. spec.pipelines rows: {portableKey: \"pipeline/<id>\", collection_id, object_type, label, stages: [{stage_id, label, order, terminal, won}]}. spec.views and spec.policies are arrays, possibly empty. Pass expected_revision from the exported metadata.revision to refuse a concurrent change."
       mcp: { required_scopes: [state.read, state.write] }
       input_schema: |
         {
@@ -523,7 +634,8 @@ entries:
               },
               "required": ["apiVersion", "kind", "metadata", "spec"],
               "additionalProperties": true
-            }
+            },
+            "expected_revision": { "type": "string" }
           },
           "required": ["artifact"],
           "additionalProperties": false
@@ -685,7 +797,7 @@ entries:
       type: tool
       title: Create CRM Record
       llm_alias: CRMCreateRecord
-      llm_description: Append a typed record-created event for a declared CRM object table.
+      llm_description: "Create one record of a declared object type. values holds field values; a relation field takes a typed reference {kind: record, type: <object_type>, id: <record_id>} or an array of them. record_id is generated as <object_type>:<uuid> when omitted. For several records use CRMCreateRecords."
       mcp: { required_scopes: [state.read, state.write] }
       input_schema: |
         {
@@ -743,13 +855,72 @@ entries:
     modules: [ctx, security, uuid]
     imports: *crm_tool_imports
 
+  - name: create_records
+    kind: function.lua
+    meta:
+      type: tool
+      title: Create CRM Records
+      llm_alias: CRMCreateRecords
+      llm_description: "Create many records in one atomic batch: all land or none do. Each item is {object_type, values, record_id?}. A relation value may reference a record created earlier in the same batch when that record's record_id is given. Returns record_ids in input order."
+      mcp: { required_scopes: [state.read, state.write] }
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "crm_id": { "type": "string" },
+            "records": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "object_type": { "type": "string" },
+                  "record_id": { "type": "string" },
+                  "values": { "type": "object" }
+                },
+                "required": ["object_type", "values"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["records"],
+          "additionalProperties": false
+        }
+      output_schema: |
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean", "const": true },
+                "record_ids": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["success", "record_ids"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean", "const": false },
+                "error": { "type": "string" }
+              },
+              "required": ["success", "error"],
+              "additionalProperties": false
+            }
+          ]
+        }
+    source: file://crm_tool.lua
+    method: create_records
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
   - name: update_record
     kind: function.lua
     meta:
       type: tool
       title: Update CRM Record
       llm_alias: CRMUpdateRecord
-      llm_description: Append a typed record-updated event for declared fields on one CRM record.
+      llm_description: "Update declared fields on one record. set replaces values, including a relation field's whole reference set; unset clears fields."
       mcp: { required_scopes: [state.read, state.write] }
       input_schema: |
         {

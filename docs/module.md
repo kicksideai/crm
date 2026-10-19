@@ -128,12 +128,36 @@ Deleting a sync retires its engine receipts and keeps CRM records.
 
 ## Agent operations
 
-`kickside.crm.traits:crm_trait` exposes small exact tools for exporting and
-applying the canonical portable schema; listing and reading records, boards,
-and timelines; resolving, creating, and updating records; setting collection
-membership; logging activity; and linking or unlinking typed references. Each
-tool calls the same schema, reader, writer, or resolver facade used by the rest
-of CRM. There is no mixed action dispatcher or direct merge tool.
+`kickside.crm.traits:crm_trait` exposes small exact tools for listing and
+creating CRMs; exporting and applying the canonical portable schema; listing
+and reading records, boards, and timelines; resolving, creating (one or a
+batch), and updating records; setting collection membership; logging activity;
+and linking or unlinking typed references. Each tool calls the same schema,
+reader, writer, resolver, or workspace facade used by the rest of CRM. There is
+no mixed action dispatcher or direct merge tool.
+
+### Addressing a CRM
+
+Every record tool takes an optional `crm_id`. Without one, the trait context's
+`crm_id` applies, and otherwise the caller's only readable CRM, the same rule
+the CRM bootstrap API follows. No readable CRM, or several, is a domain refusal
+that names `CRMCreate` or the candidate ids. `CRMList` returns `{success, crms}`
+with each readable CRM's `crm_id` and `title`. `CRMCreate` requires schema
+administration access and calls the workspace creation authority with the
+caller's `title` and `idempotency_key`; a repeated key returns the same CRM with
+`replayed = true`.
+
+### Records and relations
+
+A relation field is a record value. `values` on create and `set` on update
+take one typed reference `{kind, type, id}` or an array of them, which replaces
+the relation's edge set; `unset` clears it. A required relation is therefore
+satisfied at creation. The projection assigns the edges through the same
+deferral path as `relation.linked`, so an edge whose endpoint has not
+materialized parks until it does. `CRMCreateRecords` appends every record of a
+batch at once, so they all land or none do, and a relation may name a record
+created earlier in the batch by its `record_id`. Generated record ids take the
+form `<object_type>:<uuid>` for every tool and the resolver.
 
 ### Structured reads
 
@@ -148,7 +172,9 @@ the complete record and associations.
 `{success, entries, next_cursor}`. Its rows keep activity/record identifiers and
 selected display fields rather than full payloads. `CRMGetBoard` returns
 `{success, board}`. `CRMSchemaGet` returns `{success, schema}` and
-`CRMSchemaApply` uses the same revisioned import path as the API. Typed failures
+`CRMSchemaApply` uses the same revisioned import path as the API. The calling
+agent authors the artifact it applies, so the tool seals it before import; the
+API import keeps verifying `metadata.sourceHash` of portable artifacts. Typed failures
 return `nil, err`; domain refusals retain `{success = false, error, ...}`.
 The [tool declarations](../src/traits/_index.yaml) own the exact schemas.
 
