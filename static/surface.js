@@ -16,7 +16,7 @@ class p extends t {
     return { propsSchema: n, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: r };
   }
   static get vueConfig() {
-    return { lazyConfig: () => import("./CrmSurface-CUAz0qWn.js").then((e) => ({ rootComponent: e.default, plugins: [i] })) };
+    return { lazyConfig: () => import("./CrmSurface-93gpdwog.js").then((e) => ({ rootComponent: e.default, plugins: [i] })) };
   }
 }
 o(import.meta.url, p);

@@ -207,7 +207,7 @@ onBeforeUnmount(() => { loadRun++; unsubscribe?.(); dataRefresh.cancel(); if (ro
     </section>
     <div v-else-if="error || !data" class="crm-state full error" role="alert"><Icon icon="tabler:alert-circle" /><div><strong>CRM could not open</strong><span>{{ error || 'No CRM data was returned.' }}</span></div><button class="crm-button" @click="load">Try again</button></div>
     <template v-else>
-      <CrmSidebar :crm-id="data.crm_id" :objects="data.objects" :active-object="activeObject?.type" :active-surface="surface" :workspace-label="workspaceLabel" :can-write="canWrite" @navigate="navigate" />
+      <CrmSidebar :crm-id="data.crm_id" :objects="data.objects" :active-object="activeObject?.type" :active-surface="surface" :workspace-label="workspaceLabel" :can-write="canWrite" :revision="dataRevision" @navigate="navigate" />
       <section class="crm-content">
         <ReviewQueue v-if="surface === 'review'" :crm-id="data.crm_id" :objects="data.objects" :attributes="data.attributes" :can-write="canWrite" />
         <CrmSettings v-else-if="surface === 'model'" :crm-id="data.crm_id" :initial="data" :can-write="canWrite" @changed="data = $event" />

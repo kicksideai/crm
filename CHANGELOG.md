@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2 (2026-10-19)
+
+- The CRM rail re-reads its object counts when the CRM's data revision advances, so records written by agents or other modules show in the counts without reopening the CRM.
+
 ## 0.6.1 (2026-10-19)
 
 - Document the object label and icon contract in CRMSchemaApply: label is the collection name the CRM shows, icon an Iconify id.

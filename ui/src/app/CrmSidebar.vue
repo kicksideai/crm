@@ -14,6 +14,7 @@ const props = defineProps<{
   activeSurface?: string
   workspaceLabel?: string
   canWrite?: boolean
+  revision?: number
 }>()
 const emit = defineEmits<{ navigate: [route: string] }>()
 
@@ -41,7 +42,7 @@ async function loadQueues() {
 }
 function refresh() { void loadCounts(); void loadQueues() }
 
-watch(() => [props.crmId, props.objects] as const, refresh)
+watch(() => [props.crmId, props.objects, props.revision] as const, refresh)
 onMounted(refresh)
 </script>
 
