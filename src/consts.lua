@@ -41,6 +41,18 @@ M.ATTR_TYPES = {
 
 M.LAYOUTS = { "table", "board", "timeline" }
 
+-- Exact-match alias vocabulary a field's config.alias may name; external:<system>
+-- names an identifier issued by an external system.
+M.ALIAS_TYPES = { "email", "domain", "phone", "linkedin" }
+
+function M.is_alias_type(kind: unknown): boolean
+    if type(kind) ~= "string" then return false end
+    for _, known in ipairs(M.ALIAS_TYPES) do
+        if kind == known then return true end
+    end
+    return kind:match("^external:[a-z][a-z0-9_.-]*$") ~= nil
+end
+
 -- Closed role vocabulary for the generalized reference edge (crm_ref.edge_type).
 M.EDGE_TYPES = {
     "deal_context", "participant", "company_context", "owner", "transcript",

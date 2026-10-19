@@ -1,3 +1,4 @@
+local consts = require("consts")
 local normalize = require("normalize")
 local suggest = require("suggest")
 local test = require("test")
@@ -17,6 +18,21 @@ local function define_tests()
             local unknown, unknown_err = normalize.normalize("identity", "ada")
             test.is_nil(unknown)
             test.not_nil(unknown_err)
+        end)
+
+        test.it("normalizes every alias type a schema may declare", function()
+            local samples = { email = "ada@example.test", domain = "example.test", phone = "+1 555 0100",
+                linkedin = "https://linkedin.com/in/ada" }
+            for _, kind in ipairs(consts.ALIAS_TYPES) do
+                local value, err = normalize.normalize(kind, samples[kind])
+                test.is_nil(err, kind)
+                test.not_nil(value, kind)
+            end
+            local external, external_err = normalize.normalize("external:hubspot", "42")
+            test.is_nil(external_err)
+            test.eq(external, "42")
+            test.is_true(consts.is_alias_type("external:hubspot"))
+            test.is_false(consts.is_alias_type("website"))
         end)
 
         test.it("scores declared patterns and never auto-merges", function()

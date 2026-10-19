@@ -160,6 +160,33 @@ local function define_tests()
             test.is_true(found)
         end)
 
+        test.it("refuses a field alias the CRM cannot match on", function()
+            local execute = fixture()
+            local artifact = map(call(execute, "schema.get", {}).schema)
+            local attributes = list(map(artifact.spec).attributes)
+            attributes[#attributes + 1] = {
+                portableKey = "attribute/company/website", object_type = "company", attr = "website",
+                data_type = "url", label = "Website", config = { alias = "website" },
+            }
+            local applied, err = execute:call(TOOLS .. "schema.apply", { artifact = artifact })
+            test.is_nil(applied)
+            test.contains(tostring(err), "unsupported alias type: website")
+        end)
+
+        test.it("accepts each alias type the CRM matches on", function()
+            local execute = fixture()
+            local artifact = map(call(execute, "schema.get", {}).schema)
+            local attributes = list(map(artifact.spec).attributes)
+            for _, alias in ipairs({ "email", "domain", "phone", "linkedin", "external:hubspot" }) do
+                local attr = "alias_" .. alias:gsub("[^%w]", "_")
+                attributes[#attributes + 1] = {
+                    portableKey = "attribute/company/" .. attr, object_type = "company", attr = attr,
+                    data_type = "text", label = attr, config = { alias = alias },
+                }
+            end
+            call(execute, "schema.apply", { artifact = artifact })
+        end)
+
         test.it("declares every argument schema.apply reads", function()
             local properties = input_properties("schema.apply")
             test.not_nil(properties.artifact)

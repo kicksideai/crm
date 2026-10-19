@@ -490,6 +490,7 @@ entries:
     modules: [hash]
     imports:
       test: wippy.test:test
+      consts: kickside.crm:consts
       normalize: kickside.crm.resolution:normalize
       suggest: kickside.crm.resolution:suggest
 
