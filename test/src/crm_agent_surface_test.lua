@@ -11,7 +11,7 @@ local uuid = require("uuid")
 
 type Map = { [string]: unknown }
 type Executor = { call: (self: Executor, target: string, input: Map) -> (unknown?, unknown?) }
-type ToolEntry = { meta: { input_schema: string } }
+type ToolEntry = { meta: { input_schema: string, llm_description: string } }
 
 local CREATE = "app:create_probe"
 local SCHEMA = "app:schema_probe"
@@ -138,6 +138,63 @@ local function define_tests()
     end)
 
     test.describe("CRM agent surface: schema authoring", function()
+        test.it("documents the select vocabulary in the registered schema.apply contract", function()
+            local entry, err = registry.get(TOOLS .. "schema.apply")
+            test.is_nil(err, tostring(err))
+            local artifact_properties = map(map(input_properties("schema.apply").artifact).properties)
+            for _, description in ipairs({
+                (entry :: ToolEntry).meta.llm_description,
+                tostring(map(artifact_properties.spec).description),
+            }) do
+                test.contains(description, "config.choices")
+                test.contains(description, "select and multi_select")
+                test.contains(description, "strings")
+                test.contains(description, "value")
+                test.is_nil((description:find("options", 1, true)))
+            end
+        end)
+
+        test.it("applies choices, validates records, and exports the declared vocabulary", function()
+            local execute = fixture()
+            local artifact = map(call(execute, "schema.get", {}).schema)
+            local attributes = list(map(artifact.spec).attributes)
+            for _, data_type in ipairs({ "select", "multi_select" }) do
+                attributes[#attributes + 1] = {
+                    portableKey = "attribute/company/" .. data_type, object_type = "company", attr = data_type,
+                    data_type = data_type, config = { choices = { "new", "active" } },
+                }
+            end
+            attributes[#attributes + 1] = {
+                portableKey = "attribute/company/status", object_type = "company", attr = "status",
+                data_type = "select", config = { choices = { { value = "open", label = "Open" } } },
+            }
+            call(execute, "schema.apply", { artifact = artifact })
+            local created = call(execute, "create_record", { object_type = "company", values = {
+                name = "Example", select = "active", multi_select = { "new", "active" }, status = "open",
+            } })
+            local record = map(call(execute, "get_record", { record_id = tostring(created.record_id) }).record)
+            test.eq(map(record.values).select, "active")
+            test.eq((json.encode(map(record.values).multi_select)), (json.encode({ "new", "active" })))
+            test.eq(map(record.values).status, "open")
+            for _, values in ipairs({ { select = "unknown" }, { multi_select = { "new", "unknown" } } }) do
+                values.name = "Invalid"
+                local rejected, err = execute:call(TOOLS .. "create_record", { object_type = "company", values = values })
+                test.is_nil(rejected)
+                test.not_nil(err)
+                test.contains(tostring(err), "must be one of new, active")
+            end
+            local exported = map(call(execute, "schema.get", {}).schema)
+            local configs: Map = {}
+            for _, raw in ipairs(list(map(exported.spec).attributes)) do
+                configs[tostring(map(raw).attr)] = map(raw).config
+            end
+            for _, data_type in ipairs({ "select", "multi_select" }) do
+                test.eq((json.encode(map(configs[data_type]).choices)), (json.encode({ "new", "active" })))
+                test.is_nil(map(configs[data_type]).options)
+            end
+            test.eq((json.encode(map(configs.status).choices)), (json.encode({ { value = "open", label = "Open" } })))
+        end)
+
         test.it("applies an agent-authored declaration that carries no source hash", function()
             local execute = fixture()
             local artifact = map(call(execute, "schema.get", {}).schema)
