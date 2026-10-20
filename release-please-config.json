@@ -4,7 +4,8 @@
   "include-component-in-tag": true,
   "separate-pull-requests": false,
   "bump-minor-pre-major": true,
-  "last-release-sha": "8a7f9b710b2c9e0c1bb536bb234083eed5a0e1da",
+  "bump-patch-for-minor-pre-major": true,
+  "bootstrap-sha": "f2334950db0dcb179963f227636d9b289a8b827c",
   "packages": {
     ".": {
       "component": "crm",
