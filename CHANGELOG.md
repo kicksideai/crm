@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.4](https://github.com/kicksideai/crm/compare/crm-v0.6.3...crm-v0.6.4) (2026-10-20)
+
+
+### Bug Fixes
+
+* **crm:** document the select choices vocabulary ([#12](https://github.com/kicksideai/crm/issues/12)) ([bb30826](https://github.com/kicksideai/crm/commit/bb3082678829420cdcf12434390ff6cb290f74d0))
+
 ## 0.6.3 (2026-10-19)
 
 - Schema apply refuses a field alias outside the CRM's alias vocabulary (email, domain, phone, linkedin, external:<system>) instead of accepting it and failing the first record write.
