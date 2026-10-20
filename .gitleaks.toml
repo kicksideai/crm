@@ -1,0 +1,12 @@
+# Extends the default gitleaks rules with allowlists for values that match
+# secret patterns but carry no secret.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "CRM portable key prefix in the agent surface suite"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(^|/)test/src/crm_agent_surface_test\.lua$''']
+regexes = ['''^attribute/company/$''']
