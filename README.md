@@ -46,6 +46,11 @@ resource access determine which tools are available.
 | [`CRMLinkReference`](src/traits/_index.yaml) | See the operation schema |
 | [`CRMUnlinkReference`](src/traits/_index.yaml) | See the operation schema |
 
+`CRMSchemaApply` uses a non-empty `config.choices` array for `select` and
+`multi_select` attributes. Items are strings or objects with a non-empty
+`value` and optional `label`; tokens are at most 255 bytes. See
+[select vocabularies](docs/field-config.md#select-vocabularies) for examples.
+
 ### Host requirements
 
 Bind these exact requirement IDs through the module’s dependency declaration

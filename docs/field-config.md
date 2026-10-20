@@ -47,6 +47,28 @@ Supported scalar types are `text`, `email`, `phone`, `url`, `number`,
 `min_length`, `max_length`, `pattern`, `min`, `max`, `precision`, and
 `choices`. `config.ui` is presentation metadata and is returned unchanged.
 
+## Select vocabularies
+
+For `select` and `multi_select`, `config.choices` is a non-empty array of
+allowed tokens. Prefer plain strings:
+
+```yaml
+data_type: select
+config:
+  choices: [new, active, closed]
+```
+
+An item can also be an object such as `{value: active, label: Active}`.
+Schema application requires each object to carry a non-empty `value`; each
+token is at most 255 bytes. Exports preserve the declared array and item shape.
+A `select` record value matches one token; a `multi_select` value is an array
+of string tokens.
+
+The validator's `choice_token` converts string, number, and boolean items to
+text. For objects it reads the first truthy `value`, `id`, or `label` and
+converts it to text. Schema application requires `value` on object items, so
+an object with only `id` or `label` is not a valid schema declaration.
+
 ## Typed references
 
 Relations use one canonical target declaration:

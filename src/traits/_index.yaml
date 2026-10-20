@@ -617,7 +617,7 @@ entries:
       type: tool
       title: Apply CRM Schema
       llm_alias: CRMSchemaApply
-      llm_description: "Apply a whole CRM declaration in one transaction. Start from CRMSchemaGet and pass the edited artifact back; a fresh CRM starts empty. spec.objectTypes rows: {portableKey: \"object/<type>\", type, label, icon}; label is the collection name shown in navigation and headings (for example Companies), and icon is an Iconify id such as tabler:building. spec.attributes rows: {portableKey: \"attribute/<type>/<attr>\", object_type, attr, label, data_type, sort_order, config}; data_type is text, number, boolean, date, time, datetime, select, multi_select, currency, email, phone, url or relation; config may set required, unique, alias (an exact-match key: email, domain, phone, linkedin or external:<system>), options for selects, ui.role title or subtitle, and for relations target {kind: record, object_type}, cardinality one or many. spec.pipelines rows: {portableKey: \"pipeline/<id>\", collection_id, object_type, label, stages: [{stage_id, label, order, terminal, won}]}. spec.views and spec.policies are arrays, possibly empty. Pass expected_revision from the exported metadata.revision to refuse a concurrent change."
+      llm_description: "Apply a whole CRM declaration in one transaction. Start from CRMSchemaGet and pass the edited artifact back; a fresh CRM starts empty. spec.objectTypes rows: {portableKey: \"object/<type>\", type, label, icon}; label is the collection name shown in navigation and headings (for example Companies), and icon is an Iconify id such as tabler:building. spec.attributes rows: {portableKey: \"attribute/<type>/<attr>\", object_type, attr, label, data_type, sort_order, config}; data_type is text, number, boolean, date, time, datetime, select, multi_select, currency, email, phone, url or relation; config may set required, unique, alias (an exact-match key: email, domain, phone, linkedin or external:<system>), config.choices for select and multi_select (a non-empty array of strings or objects with a non-empty value token and optional label; each token is at most 255 bytes), ui.role title or subtitle, and for relations target {kind: record, object_type}, cardinality one or many. spec.pipelines rows: {portableKey: \"pipeline/<id>\", collection_id, object_type, label, stages: [{stage_id, label, order, terminal, won}]}. spec.views and spec.policies are arrays, possibly empty. Pass expected_revision from the exported metadata.revision to refuse a concurrent change."
       mcp: { required_scopes: [state.read, state.write] }
       input_schema: |
         {
@@ -630,7 +630,7 @@ entries:
                 "apiVersion": { "type": "string", "const": "kickside.crm/config.v1" },
                 "kind": { "type": "string", "const": "CRMConfig" },
                 "metadata": { "type": "object" },
-                "spec": { "type": "object" }
+                "spec": { "type": "object", "description": "Attribute config.choices for select and multi_select is a non-empty array of strings or objects with a non-empty value token and optional label; each token is at most 255 bytes." }
               },
               "required": ["apiVersion", "kind", "metadata", "spec"],
               "additionalProperties": true
