@@ -1,6 +1,7 @@
 -- Compiles declared CRM schemas into engine-specific SQL plans.
 local hash = require("hash")
 local sql = require("sql")
+local consts = require("consts")
 
 local M = {}
 
@@ -415,6 +416,10 @@ local function normalize(declaration: unknown): Normalized
             refuse(errors.INVALID, "duplicate attribute identity: " .. field.object_type .. "." .. field.attr)
         end
         field_ids[ikey], logical_fields[lkey] = true, true
+        if field.config.alias ~= nil and not consts.is_alias_type(field.config.alias) then
+            refuse(errors.INVALID, "unsupported alias type: " .. tostring(field.config.alias)
+                .. " (" .. field.object_type .. "." .. field.attr .. "); use email, domain, phone, linkedin or external:<system>")
+        end
         if field.data_type == "relation" then
             if field.config.unique == true then
                 refuse(errors.INVALID, "relation uniqueness is expressed by cardinality: " .. field.object_type .. "." .. field.attr)

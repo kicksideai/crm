@@ -14,6 +14,8 @@ entries:
       comment: Compiles and transactionally applies per-CRM typed physical schemas.
     source: file://compiler.lua
     modules: [hash, sql]
+    imports:
+      consts: kickside.crm:consts
 
   - name: repo
     kind: library.lua

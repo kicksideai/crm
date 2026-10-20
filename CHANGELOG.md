@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.3 (2026-10-19)
+
+- Schema apply refuses a field alias outside the CRM's alias vocabulary (email, domain, phone, linkedin, external:<system>) instead of accepting it and failing the first record write.
+
 ## 0.6.2 (2026-10-19)
 
 - The CRM rail re-reads its object counts when the CRM's data revision advances, so records written by agents or other modules show in the counts without reopening the CRM.
