@@ -39,7 +39,7 @@ entries:
     component: kickside/widgets
 
   - name: dep.wippy.migration
-    version: '*'
+    version: '>=v0.3.24'
     kind: ns.dependency
     component: wippy/migration
 
