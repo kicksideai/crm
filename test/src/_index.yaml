@@ -1057,3 +1057,37 @@ entries:
     source: file://isolated_database.lua
     method: run
     modules: [funcs, registry, sql, channel, ctx, uuid, time]
+
+  - name: crm_resolve_lifetime_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_resolve_lifetime_test.lua
+    method: run
+    modules: [contract, funcs, security, sql, uuid]
+    imports:
+      actors: app:actors
+      aliases: kickside.crm.resolution:aliases
+      storage: kickside.crm.persist:repo
+      types: kickside.crm:types
+      test: wippy.test:test
+
+  - name: crm_alias_migration_test
+    kind: function.lua
+    meta: { type: test, suite: "01_alias_migration" }
+    source: file://crm_alias_migration_test.lua
+    method: run
+    modules: [funcs, json, sql]
+    imports:
+      test: wippy.test:test
+      repository: wippy.migration:repository
+      isolated: app:isolated_database
+
+  - name: crm_alias_migration_cases
+    kind: function.lua
+    source: file://crm_alias_migration_test.lua
+    method: cases
+    modules: [funcs, json, sql]
+    imports:
+      test: wippy.test:test
+      repository: wippy.migration:repository
+      isolated: app:isolated_database

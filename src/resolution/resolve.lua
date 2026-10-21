@@ -22,6 +22,7 @@ type Reservation = {
     state: string?,
     record_id: string?,
     alias_hash: string?,
+    create_id: string?,
 }
 type Record = { record_id: string, object_type: string, values: Values }
 type External = {
@@ -37,7 +38,7 @@ type EventBody = {
 }
 type Command = { type: string, body: EventBody, external: External? }
 type ProjectionCheckpoint = { last_seq: unknown? }
-type AppendResult = { max_seq: number?, outcomes: { { status: string? } }? }
+type AppendResult = { inserted: number?, max_seq: number?, outcomes: { { status: string? } }? }
 type Suggestion = {
     left_id: string?,
     right_id: string?,
@@ -123,23 +124,24 @@ function M.resolve(crm_id: string, args: ResolveArgs): (ResolveResult?, error?)
     local reservation, reservation_err = aliases.reserve(crm_id, object_type, alias_type, alias_value, proposed_id)
     if not reservation then return nil, reservation_err end
 
-    -- A pending claim is durable write intent. Its private alias hash identifies
-    -- exactly one create event until projection commits the claim.
+    -- Each reservation owns one create identity across retries. Legacy claims
+    -- retain their original identity until projection or deletion retires them.
     local claim = reservation :: Reservation
-    local created = claim.state == "pending"
+    local creating = claim.state == "pending"
     local record_id = trim(claim.record_id)
     local values = copy_values(args.values or {})
-    if created then apply_alias_value(values, attributes, alias_value) end
+    if creating then apply_alias_value(values, attributes, alias_value) end
 
-    local event_type = created and types.EVENTS.RECORD_CREATED or types.EVENTS.RECORD_UPDATED
+    local event_type = creating and types.EVENTS.RECORD_CREATED or types.EVENTS.RECORD_UPDATED
     local body: EventBody = { record_id = record_id, object_type = object_type }
-    if created then body.values = values else body.set = values end
+    if creating then body.values = values else body.set = values end
 
     local command: Command = { type = event_type, body = body }
-    if created then
+    if creating then
         command.external = {
             external_source = "kickside.crm.resolve",
-            external_id = object_type .. ":" .. alias_type .. ":" .. trim(claim.alias_hash),
+            external_id = object_type .. ":" .. alias_type .. ":" .. trim(claim.alias_hash)
+                .. (claim.create_id and ":" .. claim.create_id or ""),
             external_version = "1",
         }
     end
@@ -152,21 +154,19 @@ function M.resolve(crm_id: string, args: ResolveArgs): (ResolveResult?, error?)
     if not projected then return nil, projection_err end
     local projected_seq = tonumber((projected :: ProjectionCheckpoint).last_seq)
 
-    local record: Record
-    if created then
-        record = { record_id = record_id, object_type = object_type, values = copy_values(values) }
-    else
-        local existing, read_err = reader.get_record(crm_id, record_id)
-        if read_err then return nil, read_err end
-        if not existing then return nil, errors.new({ kind = errors.NOT_FOUND, message = "resolved record not found: " .. record_id }) end
-        local existing_record = existing :: Record
-        record = {
-            record_id = existing_record.record_id,
-            object_type = existing_record.object_type,
-            values = copy_values(existing_record.values or {}),
-        }
+    local existing, read_err = reader.get_record(crm_id, record_id)
+    if read_err then return nil, read_err end
+    if not existing then return nil, errors.new({ kind = errors.NOT_FOUND, message = "resolved record not found: " .. record_id }) end
+    local existing_record = existing :: Record
+    local record: Record = {
+        record_id = existing_record.record_id,
+        object_type = existing_record.object_type,
+        values = copy_values(existing_record.values or {}),
+    }
+    if not creating then
         for key, value in pairs(values) do record.values[key] = value end
     end
+    local created = creating and append_result ~= nil and (append_result.inserted or 0) > 0
 
     local out: ResolveResult = {
         record = record,
@@ -185,7 +185,7 @@ function M.resolve(crm_id: string, args: ResolveArgs): (ResolveResult?, error?)
         },
         merge_suggestions = {},
     }
-    if not created then
+    if not creating then
         local suggestions, suggestion_err = suggest.after_resolve(crm_id, out)
         if suggestion_err then return nil, suggestion_err end
         out.merge_suggestions = suggestions and suggestions :: { Suggestion } or {}

@@ -54,3 +54,17 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  - name: 08_alias_create_identity
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage, schema]
+      comment: Give alias claims a create identity and release proven legacy collisions without removing durable record intent.
+      target_db: app:db
+      timestamp: "2026-10-21T00:00:00Z"
+    source: file://08_alias_create_identity.lua
+    modules: [sql]
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

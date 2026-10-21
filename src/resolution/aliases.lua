@@ -8,7 +8,7 @@ local M = {}
 
 type UnknownMap = { [string]: unknown }
 type Executor = sql.DB | sql.Transaction
-type ReservationRow = { record_id: unknown?, state: unknown?, reserved_at: unknown? }
+type ReservationRow = { record_id: unknown?, state: unknown?, reserved_at: unknown?, create_id: unknown? }
 type AliasRow = { record_id: unknown? }
 type Claim = {
     record_id: string,
@@ -16,6 +16,7 @@ type Claim = {
     normalized: string?,
     alias_hash: string,
     state: string,
+    create_id: string?,
 }
 type FieldSchema = {
     data_type: unknown?,
@@ -82,7 +83,7 @@ end
 
 local function reservation(db: Executor, crm_id: string, object_scope: string, alias_type: string, alias_hash: string): (ReservationRow?, error?)
     local rows, err = db:query([[
-        SELECT record_id, state, reserved_at
+        SELECT record_id, state, reserved_at, create_id
         FROM kickside_crm_alias_reservation
         WHERE crm_id = $1 AND object_scope = $2 AND alias_type = $3 AND alias_hash = $4
         LIMIT 1
@@ -133,12 +134,14 @@ function M.internal_reserve(db: Executor, crm_id: string, object_scope: string, 
     row, err = reservation(db, crm_id, object_scope, alias_type, alias_hash)
     if err then return nil, err end
     if not row then
+        local create_id, id_err = types.new_record_id(object_scope)
+        if not create_id then return nil, id_err end
         local _, insert_err = db:execute([[
             INSERT INTO kickside_crm_alias_reservation
-                (crm_id, object_scope, alias_type, alias_hash, record_id, state, reserved_at)
-            VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+                (crm_id, object_scope, alias_type, alias_hash, record_id, state, reserved_at, create_id)
+            VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
             ON CONFLICT (crm_id, object_scope, alias_type, alias_hash) DO NOTHING
-        ]], { crm_id, object_scope, alias_type, alias_hash, proposed_record_id, types.now() })
+        ]], { crm_id, object_scope, alias_type, alias_hash, proposed_record_id, types.now(), create_id })
         if insert_err then return nil, insert_err end
         row, err = reservation(db, crm_id, object_scope, alias_type, alias_hash)
         if err then return nil, err end
@@ -162,11 +165,13 @@ function M.internal_reserve(db: Executor, crm_id: string, object_scope: string, 
             if type(live) ~= "table" or type(live[1]) ~= "table" then
                 -- Placeholders are bound in order of appearance: the SET
                 -- values come first, the key last.
+                local create_id, id_err = types.new_record_id(object_scope)
+                if not create_id then return nil, id_err end
                 local _, take_err = db:execute([[
                     UPDATE kickside_crm_alias_reservation
-                    SET record_id = $1, state = 'pending', reserved_at = $2
-                    WHERE crm_id = $3 AND object_scope = $4 AND alias_type = $5 AND alias_hash = $6
-                ]], { proposed_record_id, types.now(), crm_id, object_scope, alias_type, alias_hash })
+                    SET record_id = $1, state = 'pending', reserved_at = $2, create_id = $3
+                    WHERE crm_id = $4 AND object_scope = $5 AND alias_type = $6 AND alias_hash = $7
+                ]], { proposed_record_id, types.now(), create_id, crm_id, object_scope, alias_type, alias_hash })
                 if take_err then return nil, take_err end
                 row, err = reservation(db, crm_id, object_scope, alias_type, alias_hash)
                 if err then return nil, err end
@@ -182,6 +187,7 @@ function M.internal_reserve(db: Executor, crm_id: string, object_scope: string, 
         normalized = normalized,
         alias_hash = alias_hash,
         state = tostring(row.state or ""),
+        create_id = type(row.create_id) == "string" and row.create_id or nil,
     }, nil
 end
 
