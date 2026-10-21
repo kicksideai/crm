@@ -366,7 +366,8 @@ function M.suggest_for_record(crm_id: string, object_type: string,
                 external_version = "1",
             },
         }
-        output[#output + 1] = { left_id = left, right_id = right, object_type = object_type, score = score }
+        output[#output + 1] = { left_id = left, right_id = right, object_type = object_type,
+            confidence = score.confidence, score = score }
     end
     local ok, append_err, result = writer.append(crm_id, commands)
     if not ok then return nil, append_err end

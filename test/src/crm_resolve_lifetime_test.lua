@@ -11,7 +11,7 @@ local uuid = require("uuid")
 
 type Map = { [string]: any }
 
-local function setup(): (string, any)
+local function setup(merge_config: Map?): (string, any)
     local crm_id = uuid.v7()
     local actor = actors.make(uuid.v4())
     local scope = assert(security.new_scope({ assert(security.policy("app:user")) }))
@@ -21,6 +21,7 @@ local function setup(): (string, any)
     local db = assert(sql.get(types.db_id())) :: sql.DB
     local _, schema_err = storage.ensure(db, db:type(), crm_id, {
         version = "resolve-v1",
+        merge_config = merge_config,
         objects = { { id = "entity", type = "entity", label = "Entity", plural = "Entities" } },
         attributes = {
             { id = "name", object_type = "entity", attr = "name", data_type = "text", config = {} },
@@ -90,6 +91,41 @@ local function define()
                 test.eq(query("SELECT state FROM kickside_crm_alias_reservation WHERE crm_id = $1", { crm_id })[1].state, "committed")
             end)
         end
+
+        test.it("Resolve Block suggestions expose confidence and retain the nested score", function()
+            local crm_id, execute = setup({objects = {entity = {
+                thresholds = {ignore_below = 0.5, review_at = 0.5},
+                patterns = {{kind = "value_exact", attr = "name", weight = 1.0, reason = "name_exact"}},
+            }}})
+            local first, first_err = resolve(execute, crm_id, "entity:left", "Matching")
+            test.is_nil(first_err)
+            test.eq((first :: Map).created, true)
+            local seeded, seed_err = execute:call("app:writer_probe", {crm_id = crm_id, commands = {
+                {type = types.EVENTS.RECORD_CREATED, body = {
+                    record_id = "entity:right", object_type = "entity", values = {name = "Matching"},
+                }},
+            }})
+            test.is_nil(seed_err)
+            test.eq((seeded :: Map).ok, true, tostring((seeded :: Map).error))
+            local projected, projection_err = execute:call("app:writer_probe", {crm_id = crm_id, catch_up = true})
+            test.is_nil(projection_err)
+            test.eq((projected :: Map).ok, true, tostring((projected :: Map).error))
+            local result, resolve_err = execute:call("kickside.crm.resolution:block_resolve", {
+                config = {crm_id = crm_id}, input = {object_type = "entity",
+                    match = {alias_type = "email", alias_value = "identity@example.test"},
+                    values = {name = "Matching"}},
+            })
+            test.is_nil(resolve_err)
+            test.eq((result :: Map).created, false)
+            test.eq(#(result :: Map).merge_suggestions, 1)
+            local suggestion = (result :: Map).merge_suggestions[1]
+            test.eq(suggestion.left_id, "entity:left")
+            test.eq(suggestion.right_id, "entity:right")
+            test.eq(suggestion.object_type, "entity")
+            test.eq(suggestion.score.confidence, 1.0)
+            test.eq(suggestion.score.reason, "name_exact")
+            test.eq(suggestion.confidence, suggestion.score.confidence)
+        end)
 
         test.it("returns the projected create values including schema defaults", function()
             local crm_id, execute = setup()
