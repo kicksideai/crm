@@ -267,7 +267,7 @@ entries:
             "properties": {
               "code": {
                 "type": "string",
-                "enum": ["auth_expired", "rate_limited", "invalid_config", "invalid_request", "not_found", "conflict", "permission_denied", "provider_unavailable", "provider_error", "cursor_expired", "history_unavailable", "stalled", "unknown"]
+                "enum": ["auth_expired", "rate_limited", "invalid_config", "invalid_request", "not_found", "conflict", "idempotency_conflict", "permission_denied", "provider_unavailable", "provider_error", "cursor_expired", "history_unavailable", "stalled", "unknown"]
               },
               "message": { "type": "string" },
               "retriable": { "type": "boolean" },

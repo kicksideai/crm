@@ -281,6 +281,10 @@ local function define_conditional()
             test.eq(table.concat(list(map(map(output.properties).result).enum), ","), "created,updated,deleted,noop")
             local data_error = map(map(map(output["$defs"]).DataError).properties)
             test.eq(table.concat(list(map(data_error.scope).enum), ","), "item,flow,connection,provider")
+            local codes = {}
+            for _, code in ipairs(list(map(data_error.code).enum)) do codes[tostring(code)] = true end
+            test.eq(codes.conflict, true)
+            test.eq(codes.idempotency_conflict, true)
         end)
         test.it("a conditional update writes only where the destination is empty", function()
             local crm_id = uuid.v7()

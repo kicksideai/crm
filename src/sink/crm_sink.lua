@@ -68,7 +68,7 @@ local function validation_error(message: string): ErrorResponse
 end
 
 local function idempotency_conflict(): ErrorResponse
-    return response_error("conflict", "sink idempotency conflict", false, "item")
+    return response_error("idempotency_conflict", "sink idempotency conflict", false, "item")
 end
 
 local function stable(value: unknown): string
