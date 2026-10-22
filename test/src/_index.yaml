@@ -1091,3 +1091,23 @@ entries:
       test: wippy.test:test
       repository: wippy.migration:repository
       isolated: app:isolated_database
+
+  - name: crm_suggestion_output_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_suggestion_output_test.lua
+    method: run
+    modules: [funcs, security, uuid]
+    imports:
+      test: wippy.test:test
+      actors: app:actors
+
+  - name: crm_suggestion_probe
+    kind: function.lua
+    source: file://crm_suggestion_probe.lua
+    method: run
+    imports:
+      mutation: kickside.crm.schema:mutation
+      writer: kickside.crm.command:writer
+      resolve: kickside.crm.resolution:resolve_lib
+      merge_arm: kickside.crm.resolution:merge_arm_lib

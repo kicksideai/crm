@@ -83,7 +83,7 @@ local function define()
 
             local changed = f.call_sink(execute, f.request(crm_id, "window:1", entity("entity:window", { name = "Other" })))
             test.eq(changed.success, false)
-            test.eq(changed.error.code, "conflict")
+            test.eq(changed.error.code, "idempotency_conflict")
             test.eq(f.event_count(crm_id), 1)
         end)
 
@@ -95,7 +95,7 @@ local function define()
 
             local changed = f.call_sink(execute, f.request(crm_id, "window:2", entity("entity:window-2", { name = "Other" })))
             test.eq(changed.success, false)
-            test.eq(changed.error.code, "conflict")
+            test.eq(changed.error.code, "idempotency_conflict")
             test.eq(changed.error.retriable, false)
             test.eq(f.event_count(crm_id), 1, "a divergent payload applies nothing")
             test.eq(#f.receipt_rows(crm_id, "window:2"), 0, "no receipt binds the divergent payload")
@@ -109,7 +109,7 @@ local function define()
 
             local moved = f.call_sink(execute, f.request(crm_id, "window:3", entity("entity:elsewhere", { name = "Window" })))
             test.eq(moved.success, false)
-            test.eq(moved.error.code, "conflict")
+            test.eq(moved.error.code, "idempotency_conflict")
             test.eq(f.event_count(crm_id), 1, "a divergent target applies nothing")
             test.eq(#f.receipt_rows(crm_id, "window:3"), 0, "no receipt binds the divergent target")
         end)
@@ -130,7 +130,7 @@ local function define()
                 test.is_nil(err)
                 local result = f.sink_result(payload:data())
                 if result.success then applied = applied + 1 end
-                if not result.success and result.error.code == "conflict" then refused = refused + 1 end
+                if not result.success and result.error.code == "idempotency_conflict" then refused = refused + 1 end
             end
             test.eq(applied, 1, "exactly one payload takes effect")
             test.eq(refused, 1, "the other is refused as a conflict")
