@@ -2,10 +2,16 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MIRROR="$HERE/module-mirror"
-rsync -a --delete \
-  --exclude 'test/' --exclude 'postgres-test/' --exclude '.git/' \
-  --exclude 'ui/node_modules/' \
-  "$HERE/../" "$MIRROR/"
+# The test runner image intentionally contains the Wippy CLI and basic POSIX
+# tooling, but not rsync.  Rebuild the disposable mirror with tar instead:
+# this preserves modes, symlinks and dotfiles while applying the same source
+# exclusions as the previous rsync invocation.
+rm -rf -- "$MIRROR"
+mkdir -p "$MIRROR"
+tar -C "$HERE/.." \
+  --exclude='./test' --exclude='./postgres-test' --exclude='./.git' \
+  --exclude='./ui/node_modules' \
+  -cf - . | tar -C "$MIRROR" -xf -
 awk '
   /^exclude_meta:$/ { excluded = 1; next }
   excluded && ($0 ~ /^[ \t]/ || $0 ~ /^$/) { next }
