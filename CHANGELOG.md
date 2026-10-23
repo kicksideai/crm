@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.5](https://github.com/kicksideai/crm/compare/crm-v0.6.4...crm-v0.6.5) (2026-10-23)
+
+
+### Bug Fixes
+
+* **crm:** align writable conflicts and suggestion output ([3cdb074](https://github.com/kicksideai/crm/commit/3cdb074d2e1ee9853e4665e40312d6314cf73f88))
+* **crm:** avoid rsync in test mirror setup ([4e966f7](https://github.com/kicksideai/crm/commit/4e966f74cd3db9066e70b53428aa09c7495ea252))
+* **crm:** distinguish record lifetimes during alias resolution ([#15](https://github.com/kicksideai/crm/issues/15)) ([fb633c7](https://github.com/kicksideai/crm/commit/fb633c7020d393edf15e95952606aaae62836da0))
+
 ## [0.6.4](https://github.com/kicksideai/crm/compare/crm-v0.6.3...crm-v0.6.4) (2026-10-20)
 
 
