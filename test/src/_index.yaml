@@ -1191,3 +1191,4 @@ entries:
       test: wippy.test:test
       download: kickside.crm.files:download
       read_model: kickside.crm.persist:read_model
+      trusted_reader: kickside.uploads:trusted_reader

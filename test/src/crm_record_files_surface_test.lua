@@ -8,6 +8,7 @@ local test = require("test")
 local uuid = require("uuid")
 local download = require("download")
 local read_model = require("read_model")
+local trusted_reader = require("trusted_reader")
 
 type Map = { [string]: unknown }
 type Executor = { call: (self: Executor, target: string, input: Map) -> (unknown?, unknown?) }
@@ -371,6 +372,84 @@ local function define_tests()
         end)
     end)
 
+    test.describe("CRM record files a field no longer names (#1118)", function()
+        local function set_files(execute: Executor, crm_id: string, record_id: string, value: string)
+            local answer = call(execute, "update_record", { crm_id = crm_id, object_type = "person",
+                record_id = record_id, set = { file_url = value } })
+            test.eq(answer.success, true, tostring(answer.error))
+        end
+
+        local function upload_of(out: { Map }, ref: string): string?
+            for _, file in ipairs(out) do
+                if file.ref == ref then return file.upload_id :: string? end
+            end
+            return nil
+        end
+
+        test.it("unlinks the edge of a file taken out of the field and keeps its upload", function()
+            local execute, crm_id, record_id = fixture()
+            deliver(execute, crm_id, record_id)
+            local gone_id = upload_of(files_of(execute, crm_id, record_id), "22")
+            test.not_nil(gone_id)
+
+            set_files(execute, crm_id, record_id, "11")
+            test.eq(deliver(execute, crm_id, record_id).result, "updated")
+
+            local out = files_of(execute, crm_id, record_id)
+            test.eq(#out, 1)
+            test.eq(out[1].ref, "11")
+            for _, edge in ipairs(edges_of(execute, crm_id, record_id)) do
+                if edge.upload_id == gone_id then test.eq(edge.active, false) end
+            end
+            test.not_nil(trusted_reader.provenance(gone_id :: string))
+            test.eq(deliver(execute, crm_id, record_id).result, "noop")
+        end)
+
+        test.it("leaves out a file taken out of the field before its edge is unlinked", function()
+            local execute, crm_id, record_id = fixture()
+            deliver(execute, crm_id, record_id)
+            local gone_id = upload_of(files_of(execute, crm_id, record_id), "22")
+            set_files(execute, crm_id, record_id, "11")
+
+            local out = files_of(execute, crm_id, record_id)
+            test.eq(#out, 1)
+            test.eq(out[1].ref, "11")
+            local image = call(execute, "record.file_image", { crm_id = crm_id, record_ref = record_id,
+                upload_id = gone_id })
+            test.eq(image.success, false)
+            test.eq(tostring(image.error):find("not a file of this record", 1, true) ~= nil, true, tostring(image.error))
+        end)
+
+        test.it("downloads a file put back into the field again", function()
+            local execute, crm_id, record_id = fixture()
+            deliver(execute, crm_id, record_id)
+            local first_id = upload_of(files_of(execute, crm_id, record_id), "22")
+            set_files(execute, crm_id, record_id, "11")
+            deliver(execute, crm_id, record_id)
+
+            set_files(execute, crm_id, record_id, "11; 22")
+            test.eq(files_of(execute, crm_id, record_id)[2].status, "pending")
+            test.eq(deliver(execute, crm_id, record_id).result, "updated")
+            local again_id = upload_of(files_of(execute, crm_id, record_id), "22")
+            test.not_nil(again_id)
+            test.eq(again_id ~= first_id, true)
+        end)
+
+        test.it("keeps an edge of a provider no field of the record belongs to", function()
+            local execute, crm_id, record_id = fixture()
+            local other_id = plant(execute, crm_id, record_id, { status = "pending",
+                provider = "other", ref = "77", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
+            deliver(execute, crm_id, record_id)
+
+            local out = files_of(execute, crm_id, record_id)
+            test.eq(#out, 3)
+            test.eq(out[3].upload_id, other_id)
+            for _, edge in ipairs(edges_of(execute, crm_id, record_id)) do
+                if edge.upload_id == other_id then test.eq(edge.active, true) end
+            end
+        end)
+    end)
+
     test.describe("CRM record files surface", function()
         test.it("lists the files the record's marked field promises as pending", function()
             local execute, crm_id, record_id = fixture()
@@ -392,9 +471,9 @@ local function define_tests()
             local pending_id = plant(execute, crm_id, record_id, { status = "pending",
                 provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
             plant(execute, crm_id, record_id, { status = "pending",
-                provider = "test", ref = "77", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
+                provider = "other", ref = "77", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
             local later_id = plant(execute, crm_id, record_id, { status = "pending",
-                provider = "test", ref = "77", attempt = 1, updated_at = "2026-11-04T11:00:00Z" })
+                provider = "other", ref = "77", attempt = 1, updated_at = "2026-11-04T11:00:00Z" })
 
             local files = files_of(execute, crm_id, record_id)
             test.eq(#files, 3)

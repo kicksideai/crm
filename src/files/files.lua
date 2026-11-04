@@ -233,23 +233,57 @@ function M.best_edges(edges: { Map }): { [string]: Map }
     return best
 end
 
+-- unnamed(crm_id, record, expected, edges) -> the edges whose file the field
+-- no longer names: an edge of a provider one of the record's marked fields
+-- belongs to stands only while that field names its file (Максим 04.11, #1118).
+-- An edge of any other provider was linked otherwise and stays.
+function M.unnamed(crm_id: string, record: Map, expected: { Expected }, edges: { Map }): ({ Map }?, error?)
+    local fields, err = M.file_fields(crm_id, trim(record.object_type))
+    if not fields then return nil, err end
+    local providers: { [string]: boolean } = {}
+    for _, field in ipairs(fields) do providers[field.provider] = true end
+    local named: { [string]: boolean } = {}
+    for _, item in ipairs(expected) do named[item.provider .. "\0" .. item.ref] = true end
+    local out: { Map } = {}
+    for _, edge in ipairs(edges) do
+        local attrs = type(edge.attrs) == "table" and edge.attrs or {}
+        if providers[trim(attrs.provider)] and not named[M.edge_key(edge)] then out[#out + 1] = edge end
+    end
+    return out, nil
+end
+
+-- named_edges(crm_id, record_id) -> the record, what its fields promise and
+-- its active edges without those unnamed() drops. No record: no promise, every edge.
+local function named_edges(crm_id: string, record_id: string): (Map?, { Expected }?, { Map }?, error?)
+    local record = M.deps.reader.internal_get_record(crm_id, record_id)
+    local edges, edge_err = M.edges(crm_id, record_id)
+    if not edges then return nil, nil, nil, edge_err end
+    if not record then return nil, {}, edges, nil end
+    local expected, err = M.expected(crm_id, record :: Map)
+    if not expected then return nil, nil, nil, err end
+    local dropped, drop_err = M.unnamed(crm_id, record :: Map, expected, edges)
+    if not dropped then return nil, nil, nil, drop_err end
+    local gone: { [Map]: boolean } = {}
+    for _, edge in ipairs(dropped) do gone[edge] = true end
+    local kept: { Map } = {}
+    for _, edge in ipairs(edges) do
+        if not gone[edge] then kept[#kept + 1] = edge end
+    end
+    return record :: Map, expected, kept, nil
+end
+
 -- record_files(crm_id, record_ref, opts) -> the record's files: every
--- expected file (pending until its edge exists), then edges no field names.
+-- expected file (pending until its edge exists), then edges linked otherwise.
 function M.record_files(crm_id: string, record_ref: any, opts: any): ({ Map }?, error?)
     local record_id = M.record_id(record_ref)
     if record_id == "" then return nil, invalid("record_ref is required") end
     local options = type(opts) == "table" and opts or {}
     local max_chars = math.floor(tonumber(options.max_chars) or M.DEFAULT_MAX_CHARS)
 
-    local record = M.deps.reader.internal_get_record(crm_id, record_id)
-    local expected: { Expected } = {}
-    if record then
-        local found, err = M.expected(crm_id, record :: Map)
-        if not found then return nil, err end
-        expected = found
-    end
-    local edges, edge_err = M.edges(crm_id, record_id)
-    if not edges then return nil, edge_err end
+    local _, found, kept, err = named_edges(crm_id, record_id)
+    if not kept then return nil, err end
+    local expected = found :: { Expected }
+    local edges = kept :: { Map }
 
     local by_key = M.best_edges(edges)
 
@@ -282,7 +316,7 @@ function M.record_file_image(crm_id: string, record_ref: any, upload_id: any): (
     local record_id = M.record_id(record_ref)
     local id = trim(upload_id)
     if record_id == "" or id == "" then return nil, invalid("record_ref and upload_id are required") end
-    local edges, err = M.edges(crm_id, record_id)
+    local _, _, edges, err = named_edges(crm_id, record_id)
     if not edges then return nil, err end
     local edge: Map? = nil
     for _, candidate in ipairs(edges) do

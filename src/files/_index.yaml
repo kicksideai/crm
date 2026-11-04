@@ -226,6 +226,7 @@ entries:
               "downloaded": { "type": "integer" },
               "failed": { "type": "integer" },
               "skipped": { "type": "integer" },
+              "unlinked": { "type": "integer", "description": "Edges retired because the field no longer names their file." },
               "errors": { "type": "integer", "description": "Records whose field value the provider could not parse." },
               "error_records": {
                 "type": "array",

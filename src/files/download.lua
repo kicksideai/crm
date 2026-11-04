@@ -42,7 +42,7 @@ M.deps = {
 
 type Map = { [string]: any }
 type Item = { provider: string, ref: string, field: string }
-type Counts = { downloaded: integer, failed: integer, skipped: integer }
+type Counts = { downloaded: integer, failed: integer, skipped: integer, unlinked: integer }
 
 local function trim(value: any): string
     if type(value) == "number" then value = tostring(value) end
@@ -181,7 +181,7 @@ end
 -- token lifetime -> failed/expired; failed with a retryable code and attempts
 -- left -> the old edge is cleared and the file downloaded again.
 function M.download_record(crm_id: string, record_id: string, component_id: string, opts: Map?): (Counts?, error?)
-    local counts: Counts = { downloaded = 0, failed = 0, skipped = 0 }
+    local counts: Counts = { downloaded = 0, failed = 0, skipped = 0, unlinked = 0 }
     local record, read_err = M.deps.reader.internal_get_record(crm_id, record_id)
     if read_err then return nil, read_err end
     if not record then return counts, nil end
@@ -224,7 +224,24 @@ function M.download_record(crm_id: string, record_id: string, component_id: stri
             counts.skipped = counts.skipped + 1
         end
     end
+    local unlinked, unlink_err = M.unlink_unnamed(crm_id, record_id, record :: Map, expected, edges)
+    if not unlinked then return nil, unlink_err end
+    counts.unlinked = unlinked
     return counts, nil
+end
+
+-- unlink_unnamed(...) -> how many edges it retired: each edge whose file the
+-- record's field no longer names (files.unnamed) is unlinked; the upload stays.
+-- reference.unlinked, not a linked write with active=false: the files
+-- automation reads a linked ready edge as a file that arrived late.
+function M.unlink_unnamed(crm_id: string, record_id: string, record: Map, expected: { Item }, edges: { Map }): (integer?, error?)
+    local dropped, err = M.deps.files.unnamed(crm_id, record, expected, edges)
+    if not dropped then return nil, err end
+    for _, edge in ipairs(dropped) do
+        local _, unlink_err = M.deps.writer.unlink_ref(crm_id, "crm:" .. record_id, files.EDGE_TYPE, trim(edge.to_ref))
+        if unlink_err then return nil, unlink_err end
+    end
+    return #dropped, nil
 end
 
 -- on_upload_complete(args) -- the uploads completion callback, run as the
@@ -285,7 +302,7 @@ function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, err
             types[#types + 1] = object_type
         end
     end
-    local total: Map = { records = 0, downloaded = 0, failed = 0, skipped = 0, errors = 0, error_records = {},
+    local total: Map = { records = 0, downloaded = 0, failed = 0, skipped = 0, unlinked = 0, errors = 0, error_records = {},
         object_types = types }
     for _, object_type in ipairs(types) do
         local offset = 0
@@ -302,6 +319,7 @@ function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, err
                     total.downloaded = total.downloaded + counts.downloaded
                     total.failed = total.failed + counts.failed
                     total.skipped = total.skipped + counts.skipped
+                    total.unlinked = total.unlinked + counts.unlinked
                 elseif M.deps.files.is_value_error(download_err) then
                     total.errors = total.errors + 1
                     if #total.error_records < M.ERRORS_SHOWN then

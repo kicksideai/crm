@@ -45,7 +45,7 @@ local function write(req: any): Map
 
     local counts, err = download.download_record(crm_id, record_id, component_id)
     if not counts then return refusal(err) end
-    local result = (counts.downloaded + counts.failed) > 0 and "updated" or "noop"
+    local result = (counts.downloaded + counts.failed + counts.unlinked) > 0 and "updated" or "noop"
     return { success = true, result = result, dest_ref = dest_ref, dest_refs = { [slot] = { dest_ref = dest_ref } } }
 end
 
@@ -73,8 +73,8 @@ local function sweep(req: any): Map
     local total, err = download.backfill(crm_id, trim(config.component_id), { fresh_ms = download.SWEEP_FRESH_MS })
     if not total then return refusal(err) end
     local counts = { records = total.records, downloaded = total.downloaded, failed = total.failed,
-        skipped = total.skipped, errors = total.errors, error_records = total.error_records }
-    local result = (total.downloaded + total.failed) > 0 and "updated" or "noop"
+        skipped = total.skipped, unlinked = total.unlinked, errors = total.errors, error_records = total.error_records }
+    local result = (total.downloaded + total.failed + total.unlinked) > 0 and "updated" or "noop"
     return { success = true, result = result, counts = counts }
 end
 

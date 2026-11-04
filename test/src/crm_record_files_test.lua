@@ -124,17 +124,18 @@ local function define_tests()
             test.is_nil(out[1].text)
         end)
 
-        test.it("passes failed and pending edges through and lists unexpected edges last", function()
+        test.it("passes failed and pending edges through and lists edges linked otherwise last", function()
             stub({
                 file_url = "11;22",
                 edges = {
-                    edge("u-old", { status = "ready", provider = "hubspot", ref = "99" }),
+                    edge("u-old", { status = "ready", provider = "box", ref = "99" }),
+                    edge("u-gone", { status = "ready", provider = "hubspot", ref = "77" }),
                     edge("u-1", { status = "failed", provider = "hubspot", ref = "11", error = "too_large" }),
                     edge("u-2", { status = "pending", provider = "hubspot", ref = "22" }),
                     edge("u-off", { status = "ready", provider = "hubspot", ref = "11" }, { active = false }),
                     edge("x", { status = "ready" }, { edge_type = "document" }),
                 },
-                origins = { ["u-old"] = origin("99") },
+                origins = { ["u-old"] = origin("99"), ["u-gone"] = origin("77") },
             })
             local out = files.record_files(CRM, RECORD)
             test.eq(#out, 3)
@@ -157,6 +158,7 @@ local function define_tests()
         test.after_each(function() files.deps = original end)
 
         local world = {
+            file_url = "11;22;33",
             edges = {
                 edge("u-png", { status = "ready", provider = "hubspot", ref = "22" }),
                 edge("u-pdf", { status = "ready", provider = "hubspot", ref = "11" }),
@@ -182,6 +184,16 @@ local function define_tests()
             test.is_true(errors.is(foreign_err, errors.PERMISSION_DENIED))
             local _, forged_err = files.record_file_image(CRM, RECORD, "u-forged")
             test.is_true(errors.is(forged_err, errors.PERMISSION_DENIED))
+        end)
+
+        test.it("refuses the image of a file the field no longer names", function()
+            local unnamed = {}
+            for k, v in pairs(world) do unnamed[k] = v end
+            unnamed.file_url = "11"
+            stub(unnamed)
+            local img, err = files.record_file_image(CRM, RECORD, "u-png")
+            test.is_nil(img)
+            test.is_true(errors.is(err, errors.PERMISSION_DENIED))
         end)
     end)
 end

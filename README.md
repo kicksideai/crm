@@ -72,7 +72,7 @@ file refs without downloading; `fetch_func` downloads one ref.
 | [`kickside.crm.files:record_attachments`](src/files/_index.yaml) | Automation port: `upsert` downloads, `delete` is a noop (the ops `kickside.sync` delivers). Config `crm_id`, `component_id` (provider connection; empty uses the single one). Input `{ record_id }`. Downloads every file the record's marked fields promise into uploads and tracks each on an `attachment` edge `crm:<record>` → `file:<upload_id>` with `attrs.status` `pending`, `ready` or `failed`. |
 | [`kickside.crm.files:on_upload_complete`](src/files/_index.yaml) | Upload completion callback. Turns the live edge of the upload `ready` or `failed` (`conversion_failed`); a repeat with the same outcome writes nothing. |
 | [`kickside.crm.files:backfill`](src/files/_index.yaml) | `{ crm_id, component_id, object_type? }` → counts. Runs the same download for every existing record with a marked field, under the caller's WRITE. Safe to repeat. A record whose field value the provider cannot parse is counted in `errors` (the first 5 named in `error_records`) and the backfill goes on; an access, CRM or setup failure stops it. |
-| [`kickside.crm.files:record_files_sweep`](src/files/_index.yaml) | Automation port for a recurring task: `upsert` runs the backfill over the CRM. Config `crm_id`, `component_id`; input `{}`. Leaves the first download of a record younger than 15 min to `record_attachments`. Answers `{ success, result, counts }`; `counts` carries `errors` and `error_records` as the backfill does. |
+| [`kickside.crm.files:record_files_sweep`](src/files/_index.yaml) | Automation port for a recurring task: `upsert` runs the backfill over the CRM. Config `crm_id`, `component_id`; input `{}`. Leaves the first download of a record younger than 15 min to `record_attachments`. Answers `{ success, result, counts }`; `counts` carries `unlinked`, `errors` and `error_records` as the backfill does. |
 | [`kickside.crm.traits:record.files`](src/traits/_index.yaml) | `{ crm_id, record_ref, max_chars? }` → `{ success, files }`. Expected and downloaded files with status, error and text; READ on the CRM. |
 | [`kickside.crm.traits:record.file_image`](src/traits/_index.yaml) | `{ crm_id, record_ref, upload_id }` → the original image of an `image/*` file, base64, up to 25 MB; READ on the CRM. |
 
@@ -88,6 +88,12 @@ Rules:
   sweep a failed file stays failed.
 - Two live edges for one file (two downloads that raced) read as one: the one
   furthest along (`ready`, `pending`, `failed`; the later on a tie).
+- A file taken out of the field is no longer the record's: `record.files`
+  leaves it out and `record.file_image` refuses it at once, and the next
+  download of the record unlinks its edge (`reference.unlinked`). Its upload
+  stays. Put back, the file is downloaded again as a new upload. This holds for
+  edges of a provider one of the record's marked fields belongs to; an edge of
+  any other provider was linked otherwise and stays.
 - A fault reading an uploaded file fails `record.files`; only an upload
   without a text artifact reads as a file with no text.
 - Error codes on the edge: `too_large` (over 50 MB), `no_access`, `not_found`,
@@ -98,6 +104,21 @@ Rules:
 - An upload is served only if its `metadata.crm_files` names this CRM, record,
   provider and ref. An edge to any other upload is reported `failed` /
   `no_access` and not read.
+
+#### Install: the download automations
+
+Two `kickside.sync:sync` automations on the CRM's thread, both into
+`record_attachments` with `{ record_id: payload.record_id }`, so a new file
+downloads at once and a removed one is unlinked at once:
+
+| source | filter |
+| --- | --- |
+| `kickside.crm.ports:record_created` | `payload.object_type == "person" && trim(payload.values.file_url ?? "") != ""` |
+| `kickside.crm.ports:record_updated` | `payload.object_type == "person" && ((payload.set != nil && payload.set.file_url != nil) \|\| (payload.unset != nil && "file_url" in payload.unset))` |
+
+Use the object type and attribute of your marked field. `record_updated`
+carries only what changed: a set value (an emptied field from a sync arrives as
+`set.file_url = ""`) or a cleared one in `unset`.
 
 #### Install: the hourly sweep
 
