@@ -51,6 +51,45 @@ resource access determine which tools are available.
 `value` and optional `label`; tokens are at most 255 bytes. See
 [select vocabularies](docs/field-config.md#select-vocabularies) for examples.
 
+### Record files
+
+An attribute whose value holds provider file links is marked in the schema:
+
+```yaml
+- object_type: person
+  attr: file_url
+  data_type: text          # text or url
+  config:
+    attachment: { provider: hubspot }
+```
+
+The provider must declare a `registry.entry` with `meta.type: attachment.fetcher`,
+`provider`, `fetch_func` and `parse_func`. `parse_func` turns a field value into
+file refs without downloading; `fetch_func` downloads one ref.
+
+| Entry | What it does |
+| --- | --- |
+| [`kickside.crm.files:record_attachments`](src/files/_index.yaml) | Automation port, operation `download`. Config `crm_id`, `component_id` (provider connection; empty uses the single one). Input `{ record_id }`. Downloads every file the record's marked fields promise into uploads and tracks each on an `attachment` edge `crm:<record>` → `file:<upload_id>` with `attrs.status` `pending`, `ready` or `failed`. |
+| [`kickside.crm.files:on_upload_complete`](src/files/_index.yaml) | Upload completion callback. Turns the live edge of the upload `ready` or `failed` (`conversion_failed`); a repeat with the same outcome writes nothing. |
+| [`kickside.crm.files:backfill`](src/files/_index.yaml) | `{ crm_id, component_id, object_type? }` → counts. Runs the same download for every existing record with a marked field, under the caller's WRITE. Safe to repeat. |
+| [`kickside.crm.traits:record.files`](src/traits/_index.yaml) | `{ crm_id, record_ref, max_chars? }` → `{ success, files }`. Expected and downloaded files with status, error and text; READ on the CRM. |
+| [`kickside.crm.traits:record.file_image`](src/traits/_index.yaml) | `{ crm_id, record_ref, upload_id }` → the original image of an `image/*` file, base64, up to 25 MB; READ on the CRM. |
+
+Rules:
+
+- A file already `ready`, or `pending` for less than 24 h, is never downloaded
+  again. A `pending` edge older than 24 h becomes `failed` / `expired`.
+  `download_failed`, `no_access` and `expired` are retried up to 3 attempts,
+  each with a new upload; the old edge is deactivated.
+- Error codes on the edge: `too_large` (over 50 MB), `no_access`, `not_found`,
+  `download_failed`, `unsupported_type`, `upload_failed`, `conversion_failed`,
+  `expired`.
+- Each edge write emits `kickside.crm.events:reference.linked` with the full
+  `attrs`; consumers wake on it and read the state from `record.files`.
+- An upload is served only if its `metadata.crm_files` names this CRM, record,
+  provider and ref. An edge to any other upload is reported `failed` /
+  `no_access` and not read.
+
 ### Host requirements
 
 Bind these exact requirement IDs through the module’s dependency declaration
