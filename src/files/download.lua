@@ -166,12 +166,7 @@ function M.download_record(crm_id: string, record_id: string, component_id: stri
     if not expected then return nil, expected_err end
     local edges, edge_err = M.deps.files.edges(crm_id, record_id)
     if not edges then return nil, edge_err end
-    local by_key: { [string]: Map } = {}
-    for _, edge in ipairs(edges) do
-        local attrs = type(edge.attrs) == "table" and edge.attrs or {}
-        local key = trim(attrs.provider) .. "\0" .. trim(attrs.ref)
-        if not by_key[key] then by_key[key] = edge end
-    end
+    local by_key = M.deps.files.best_edges(edges)
 
     for _, item in ipairs(expected) do
         local edge = by_key[item.provider .. "\0" .. item.ref]

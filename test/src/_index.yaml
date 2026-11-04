@@ -1168,12 +1168,13 @@ entries:
       type: test
       suite: kickside_crm
       group: CRM
-      comment: kickside.crm.files:download units -- the attachment error code of an ingest failure.
+      comment: kickside.crm.files download units -- the attachment error code of an ingest failure and the edge that stands for a file.
     source: file://crm_record_files_download_test.lua
     method: run
     imports:
       test: wippy.test:test
       download: kickside.crm.files:download
+      files: kickside.crm.files:files
 
   - name: crm_record_files_surface_test
     kind: function.lua

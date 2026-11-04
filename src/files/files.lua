@@ -177,6 +177,38 @@ local function edge_file(crm_id: string, record_id: string, edge: Map, field: st
     return file
 end
 
+-- A record holds one file per (provider, ref); when two downloads raced and
+-- left two live edges for it, the one that got furthest stands for both.
+M.STATUS_RANK = { ready = 3, pending = 2, failed = 1 }
+
+-- edge_key(edge) -> "provider\0ref" of an attachment edge.
+function M.edge_key(edge: Map): string
+    local attrs = type(edge.attrs) == "table" and edge.attrs or {}
+    return trim(attrs.provider) .. "\0" .. trim(attrs.ref)
+end
+
+-- best_edges(edges) -> { [edge_key]: edge }, the edge of each key with the
+-- best status (ready, pending, failed), the later one on a tie.
+function M.best_edges(edges: { Map }): { [string]: Map }
+    local best: { [string]: Map } = {}
+    local function rank(edge: Map): (number, string)
+        local attrs = type(edge.attrs) == "table" and edge.attrs or {}
+        return M.STATUS_RANK[trim(attrs.status)] or 0, trim(attrs.updated_at)
+    end
+    for _, edge in ipairs(edges) do
+        local key = M.edge_key(edge)
+        local held = best[key]
+        if not held then
+            best[key] = edge
+        else
+            local r, at = rank(edge)
+            local held_r, held_at = rank(held)
+            if r > held_r or (r == held_r and at > held_at) then best[key] = edge end
+        end
+    end
+    return best
+end
+
 -- record_files(crm_id, record_ref, opts) -> the record's files: every
 -- expected file (pending until its edge exists), then edges no field names.
 function M.record_files(crm_id: string, record_ref: any, opts: any): ({ Map }?, error?)
@@ -195,12 +227,7 @@ function M.record_files(crm_id: string, record_ref: any, opts: any): ({ Map }?, 
     local edges, edge_err = M.edges(crm_id, record_id)
     if not edges then return nil, edge_err end
 
-    local by_key: { [string]: Map } = {}
-    for _, edge in ipairs(edges) do
-        local attrs = type(edge.attrs) == "table" and edge.attrs or {}
-        local key = trim(attrs.provider) .. "\0" .. trim(attrs.ref)
-        if not by_key[key] then by_key[key] = edge end
-    end
+    local by_key = M.best_edges(edges)
 
     local out: { Map } = {}
     local used: { [Map]: boolean } = {}
@@ -214,7 +241,9 @@ function M.record_files(crm_id: string, record_ref: any, opts: any): ({ Map }?, 
         end
     end
     for _, edge in ipairs(edges) do
-        if not used[edge] then out[#out + 1] = edge_file(crm_id, record_id, edge, nil, max_chars) end
+        if not used[edge] and by_key[M.edge_key(edge)] == edge then
+            out[#out + 1] = edge_file(crm_id, record_id, edge, nil, max_chars)
+        end
     end
     return out, nil
 end

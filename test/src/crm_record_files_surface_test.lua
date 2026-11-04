@@ -265,6 +265,24 @@ local function define_tests()
             test.eq(download.too_fresh({}, 0), true)
         end)
 
+        test.it("downloads nothing again for a file whose duplicate live edge is pending", function()
+            local execute, crm_id, record_id = fixture()
+            plant(execute, crm_id, record_id, { status = "failed", error = "download_failed",
+                provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T10:00:00Z" })
+            plant(execute, crm_id, record_id, { status = "pending",
+                provider = "test", ref = "11", attempt = 1, updated_at = os.date("!%Y-%m-%dT%H:%M:%SZ") })
+            deliver(execute, crm_id, record_id)
+
+            local live = 0
+            for _, edge in ipairs(edges_of(execute, crm_id, record_id)) do
+                if map(edge.attrs).ref == "11" then
+                    test.eq(edge.active, true)
+                    live = live + 1
+                end
+            end
+            test.eq(live, 2)
+        end)
+
         test.it("records a provider refusal on the edge", function()
             local execute, crm_id, record_id = fixture()
             call(execute, "update_record", { crm_id = crm_id, object_type = "person", record_id = record_id,
@@ -312,6 +330,27 @@ local function define_tests()
             test.eq(map(files[1]).field, "file_url")
             test.eq(map(files[1]).status, "pending")
             test.eq(map(files[2]).ref, "22")
+        end)
+
+        test.it("shows one file for two live edges of one file, the one furthest along", function()
+            local execute, crm_id, record_id = fixture()
+            plant(execute, crm_id, record_id, { status = "failed", error = "download_failed",
+                provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T10:00:00Z" })
+            local pending_id = plant(execute, crm_id, record_id, { status = "pending",
+                provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
+            plant(execute, crm_id, record_id, { status = "pending",
+                provider = "test", ref = "77", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
+            local later_id = plant(execute, crm_id, record_id, { status = "pending",
+                provider = "test", ref = "77", attempt = 1, updated_at = "2026-11-04T11:00:00Z" })
+
+            local files = files_of(execute, crm_id, record_id)
+            test.eq(#files, 3)
+            test.eq(files[1].ref, "11")
+            test.eq(files[1].upload_id, pending_id)
+            test.eq(files[1].status, "pending")
+            test.eq(files[2].ref, "22")
+            test.eq(files[3].ref, "77")
+            test.eq(files[3].upload_id, later_id)
         end)
 
         test.it("refuses a ready edge to an upload this CRM did not write", function()
