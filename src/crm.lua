@@ -114,6 +114,14 @@ function M.record_file_image(crm_id: string, record_ref: unknown, upload_id: unk
     return files.record_file_image(crm_id, record_ref, upload_id)
 end
 
+-- record_file_url(crm_id, record_ref, upload_id) -> a short-lived link to the
+-- original of one of the record's ready files (#1115).
+function M.record_file_url(crm_id: string, record_ref: unknown, upload_id: unknown): (unknown?, error?)
+    local err = read_access_error(crm_id)
+    if err then return nil, err end
+    return files.record_file_url(crm_id, record_ref, upload_id)
+end
+
 function M.attributes(crm_id: string, object_type: string?): (unknown?, error?)
     local err = read_access_error(crm_id)
     if err then return nil, err end

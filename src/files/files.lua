@@ -15,6 +15,7 @@ local funcs = require("funcs")
 local registry = require("registry")
 local reader = require("reader_internal")
 local trusted = require("trusted_reader")
+local uploads = require("uploads")
 
 local M = {}
 
@@ -23,8 +24,10 @@ M.EDGE_TYPE = "attachment"
 M.MAX_EDGES = 500
 M.DEFAULT_MAX_CHARS = 200000
 M.MAX_IMAGE_BYTES = 25 * 1024 * 1024
+-- How long a link record_file_url hands out stays good, in seconds (#1115).
+M.URL_TTL_SECONDS = 300
 
-M.deps = { reader = reader, registry = registry, funcs = funcs, trusted = trusted }
+M.deps = { reader = reader, registry = registry, funcs = funcs, trusted = trusted, uploads = uploads }
 
 type Map = { [string]: any }
 type FileField = { attr: string, provider: string }
@@ -310,22 +313,47 @@ function M.record_files(crm_id: string, record_ref: any, opts: any): ({ Map }?, 
     return out, nil
 end
 
--- record_file_image(crm_id, record_ref, upload_id) -> the original image of
--- one of the record's image files, base64.
-function M.record_file_image(crm_id: string, record_ref: any, upload_id: any): (Map?, error?)
+-- owned_file(crm_id, record_ref, upload_id) -> (upload id, edge attrs) of one
+-- of the record's files: an edge the record's field still names whose upload
+-- this CRM wrote for it. Anything else is PERMISSION_DENIED.
+local function owned_file(crm_id: string, record_ref: any, upload_id: any): (string?, Map?, error?)
     local record_id = M.record_id(record_ref)
     local id = trim(upload_id)
-    if record_id == "" or id == "" then return nil, invalid("record_ref and upload_id are required") end
+    if record_id == "" or id == "" then return nil, nil, invalid("record_ref and upload_id are required") end
     local _, _, edges, err = named_edges(crm_id, record_id)
-    if not edges then return nil, err end
+    if not edges then return nil, nil, err end
     local edge: Map? = nil
     for _, candidate in ipairs(edges) do
         if trim(candidate.to_ref) == "file:" .. id then edge = candidate; break end
     end
     local attrs = edge and type(edge.attrs) == "table" and edge.attrs or {}
     if not edge or not M.authentic(crm_id, record_id, id, attrs) then
-        return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "the upload is not a file of this record" })
+        return nil, nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "the upload is not a file of this record" })
     end
+    return id, attrs, nil
+end
+
+-- record_file_url(crm_id, record_ref, upload_id) -> { url, expires_in,
+-- filename, content_type }: a link to the original of one of the record's
+-- ready files, good for URL_TTL_SECONDS (#1115). uploads.delivery_url leaves
+-- the access check to its caller: owned_file is it.
+function M.record_file_url(crm_id: string, record_ref: any, upload_id: any): (Map?, error?)
+    local id, attrs, err = owned_file(crm_id, record_ref, upload_id)
+    if not id then return nil, err end
+    local file = attrs :: Map
+    if trim(file.status) ~= "ready" then
+        return nil, errors.new({ kind = errors.INVALID, message = "the file is not downloaded yet", details = { code = "not_ready" } })
+    end
+    local url, url_err = M.deps.uploads.delivery_url(id, { expires_in = M.URL_TTL_SECONDS })
+    if not url then return nil, url_err end
+    return { url = url, expires_in = M.URL_TTL_SECONDS, filename = file.filename, content_type = file.content_type }, nil
+end
+
+-- record_file_image(crm_id, record_ref, upload_id) -> the original image of
+-- one of the record's image files, base64.
+function M.record_file_image(crm_id: string, record_ref: any, upload_id: any): (Map?, error?)
+    local id, _, err = owned_file(crm_id, record_ref, upload_id)
+    if not id then return nil, err end
     local image = M.deps.trusted.source_image(id)
     if not image then
         return nil, errors.new({ kind = errors.INVALID, message = "the file is not an image", details = { code = "not_an_image" } })

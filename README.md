@@ -75,6 +75,7 @@ file refs without downloading; `fetch_func` downloads one ref.
 | [`kickside.crm.files:record_files_sweep`](src/files/_index.yaml) | Automation port for a recurring task: `upsert` runs the backfill over the CRM. Config `crm_id`, `component_id`; input `{}`. Leaves the first download of a record younger than 15 min to `record_attachments`. Answers `{ success, result, counts }`; `counts` carries `unlinked`, `errors` and `error_records` as the backfill does. |
 | [`kickside.crm.traits:record.files`](src/traits/_index.yaml) | `{ crm_id, record_ref, max_chars? }` → `{ success, files }`. Expected and downloaded files with status, error and text; READ on the CRM. |
 | [`kickside.crm.traits:record.file_image`](src/traits/_index.yaml) | `{ crm_id, record_ref, upload_id }` → the original image of an `image/*` file, base64, up to 25 MB; READ on the CRM. |
+| [`kickside.crm.traits:record.file_url`](src/traits/_index.yaml) | `{ crm_id, record_ref, upload_id }` → `{ success, url, expires_in, filename, content_type }`: a link to the original of a `ready` file, good for 5 minutes (`kickside.uploads:uploads` `delivery_url`). READ on the CRM, the field must still name the file and its upload must be this CRM's for this record; anything else is refused. |
 
 Rules:
 

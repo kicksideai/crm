@@ -5,6 +5,7 @@ local actors = require("actors")
 local funcs = require("funcs")
 local security = require("security")
 local test = require("test")
+local time = require("time")
 local uuid = require("uuid")
 local download = require("download")
 local read_model = require("read_model")
@@ -447,6 +448,55 @@ local function define_tests()
             for _, edge in ipairs(edges_of(execute, crm_id, record_id)) do
                 if edge.upload_id == other_id then test.eq(edge.active, true) end
             end
+        end)
+    end)
+
+    test.describe("CRM record file links (#1115)", function()
+        -- ready_upload(...) -> the upload id of ref "11" once its download settled.
+        local function ready_upload(execute: Executor, crm_id: string, record_id: string): string
+            deliver(execute, crm_id, record_id)
+            for _ = 1, 100 do
+                local first = files_of(execute, crm_id, record_id)[1]
+                if first.status == "ready" then return tostring(first.upload_id) end
+                time.sleep("50ms")
+            end
+            error("ref 11 never became ready")
+        end
+
+        test.it("hands out a short-lived link to a ready file of the record", function()
+            local execute, crm_id, record_id = fixture()
+            local upload_id = ready_upload(execute, crm_id, record_id)
+            local link = call(execute, "record.file_url", { crm_id = crm_id, record_ref = record_id, upload_id = upload_id })
+            test.eq(link.success, true, tostring(link.error))
+            test.eq(tostring(link.url):find(upload_id, 1, true) ~= nil, true, tostring(link.url))
+            test.eq(link.expires_in, 300)
+            test.eq(link.filename, "11.txt")
+        end)
+
+        test.it("refuses a link to a file taken out of the field", function()
+            local execute, crm_id, record_id = fixture()
+            local upload_id = ready_upload(execute, crm_id, record_id)
+            call(execute, "update_record", { crm_id = crm_id, object_type = "person", record_id = record_id,
+                set = { file_url = "22" } })
+            local link = call(execute, "record.file_url", { crm_id = crm_id, record_ref = record_id, upload_id = upload_id })
+            test.eq(link.success, false)
+            test.eq(tostring(link.error):find("not a file of this record", 1, true) ~= nil, true, tostring(link.error))
+        end)
+
+        test.it("refuses a link to a caller without access to the CRM", function()
+            local execute, crm_id, record_id = fixture()
+            local upload_id = ready_upload(execute, crm_id, record_id)
+            local link = call(executor(), "record.file_url", { crm_id = crm_id, record_ref = record_id, upload_id = upload_id })
+            test.eq(link.success, false)
+            test.is_nil(link.url)
+        end)
+
+        test.it("refuses a link to a file not downloaded yet", function()
+            local execute, crm_id, record_id = fixture()
+            local pending_id = plant(execute, crm_id, record_id, { status = "pending",
+                provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
+            local link = call(execute, "record.file_url", { crm_id = crm_id, record_ref = record_id, upload_id = pending_id })
+            test.eq(link.success, false)
         end)
     end)
 

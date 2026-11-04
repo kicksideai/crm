@@ -11,6 +11,7 @@ entries:
     imports:
       reader_internal: kickside.crm.persist:read_model
       trusted_reader: kickside.uploads:trusted_reader
+      uploads: kickside.uploads:uploads
 
   - name: download
     kind: library.lua

@@ -357,4 +357,15 @@ function M.record_file_image(args: unknown): (UnknownMap?, error?)
     return { success = true, content_base64 = out.content_base64, content_type = out.content_type, size = out.size }, nil
 end
 
+function M.record_file_url(args: unknown): (UnknownMap?, error?)
+    local input: UnknownMap = type(args) == "table" and (args :: UnknownMap) or {}
+    local component_id, locate_err = crm_id(input)
+    if not component_id then return answer("url", nil, locate_err) end
+    local link, err = reader.record_file_url(component_id, input.record_ref, input.upload_id)
+    if err then return answer("url", nil, err), nil end
+    local out = link :: UnknownMap
+    return { success = true, url = out.url, expires_in = out.expires_in, filename = out.filename,
+        content_type = out.content_type }, nil
+end
+
 return M
