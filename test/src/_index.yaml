@@ -290,6 +290,26 @@ entries:
       - { name: kickside.widgets:api_router, value: app:api }
       - { name: kickside.widgets:ui_server, value: app:gateway }
 
+  - name: uploads
+    kind: fs.directory
+    meta:
+      comment: Local file storage for record attachment tests.
+    directory: ./.wippy/uploads
+
+  - name: dep.kickside.uploads
+    kind: ns.dependency
+    version: "*"
+    meta:
+      comment: Uploads -- record attachments are downloaded into it and read back through trusted_reader.
+    component: kickside/uploads
+    parameters:
+      - { name: kickside.uploads:database_resource, value: app:db }
+      - { name: kickside.uploads:storage_id, value: app:uploads }
+      - { name: kickside.uploads:env_storage, value: app:env_storage }
+      - { name: kickside.uploads:api_router, value: app:api }
+      - { name: kickside.uploads:ui_server, value: app:gateway }
+      - { name: kickside.uploads.security:user_security_scope, value: app:user }
+
   - name: dep.wippy.migration
     kind: ns.dependency
     version: "*"
