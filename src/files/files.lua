@@ -41,6 +41,21 @@ local function invalid(message: string): error
     return errors.new({ kind = errors.INVALID, message = message })
 end
 
+-- A record's own field value the provider could not parse: one record's
+-- problem, not the CRM's or the provider setup's.
+M.RECORD_VALUE = "record_value"
+
+local function value_error(message: string): error
+    return errors.new({ kind = errors.INVALID, message = message, details = { code = M.RECORD_VALUE } })
+end
+
+-- is_value_error(err) -> true for an error value_error made.
+function M.is_value_error(err: any): boolean
+    if not errors.is(err, errors.INVALID) then return false end
+    local detail = err:details()
+    return type(detail) == "table" and detail.code == M.RECORD_VALUE
+end
+
 -- record_id(record_ref) -> the record id without the crm: prefix.
 function M.record_id(record_ref: any): string
     return (trim(record_ref):gsub("^crm:", ""))
@@ -86,9 +101,9 @@ function M.parse(provider: string, value: any): ({ string }?, error?)
     local fetcher, err = M.fetcher(provider)
     if not fetcher then return nil, err end
     local result, call_err = M.deps.funcs.call(fetcher.parse_func, { value = value })
-    if call_err then return nil, call_err end
-    if type(result) ~= "table" then return nil, invalid("parse_func returned no refs") end
-    if trim(result.error) ~= "" then return nil, invalid("parse_func: " .. trim(result.error)) end
+    if call_err then return nil, value_error("parse_func failed: " .. tostring(call_err)) end
+    if type(result) ~= "table" then return nil, value_error("parse_func returned no refs") end
+    if trim(result.error) ~= "" then return nil, value_error("parse_func: " .. trim(result.error)) end
     local refs: { string } = {}
     for _, item in ipairs(type(result.refs) == "table" and result.refs or {}) do
         local ref = trim(type(item) == "table" and item.ref or nil)

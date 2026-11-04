@@ -25,14 +25,14 @@ local function executor(): Executor
     return funcs.new():with_actor(actors.make(uuid.v4())):with_scope(scope) :: Executor
 end
 
-local function declaration(): Map
+local function declaration(provider: string?): Map
     return {
         version = "record-files-v1",
         objects = { { id = "person", type = "person", label = "Contact", plural = "Contacts" } },
         attributes = {
             { id = "person-name", object_type = "person", attr = "name", data_type = "text", config = {} },
             { id = "person-files", object_type = "person", attr = "file_url", data_type = "text",
-                config = { attachment = { provider = "test" } } },
+                config = { attachment = { provider = provider or "test" } } },
         },
         pipelines = {}, views = {}, policies = {}, merge_config = {},
     }
@@ -44,13 +44,14 @@ local function call(execute: Executor, tool: string, input: Map): Map
     return map(raw)
 end
 
--- fixture() -> executor, crm_id, record_id of a person whose file_url holds "11;22".
-local function fixture(): (Executor, string, string)
+-- fixture(provider?) -> executor, crm_id, record_id of a person whose file_url
+-- holds "11;22", the field marked for provider (default "test").
+local function fixture(provider: string?): (Executor, string, string)
     local execute = executor()
     local created, err = execute:call(CREATE, { title = "Files", idempotency_key = uuid.v4() })
     test.is_nil(err, tostring(err))
     local crm_id = tostring(map(created).component_id)
-    local _, schema_err = execute:call(SCHEMA, { crm_id = crm_id, operation = "apply", declaration = declaration() })
+    local _, schema_err = execute:call(SCHEMA, { crm_id = crm_id, operation = "apply", declaration = declaration(provider) })
     test.is_nil(schema_err, tostring(schema_err))
     local person = call(execute, "create_record", { crm_id = crm_id, object_type = "person",
         values = { name = "Ada", file_url = "11; 22" } })
@@ -315,6 +316,46 @@ local function define_tests()
             test.eq(counts.records, 3)
             test.eq(counts.downloaded, 3)
             test.eq(counts.failed, 0)
+            test.eq(counts.errors, 0)
+        end)
+
+        test.it("goes on past records whose field value the provider cannot parse", function()
+            local execute, crm_id = fixture()
+            local bad = call(execute, "create_record", { crm_id = crm_id, object_type = "person",
+                values = { name = "Bad", file_url = "bad" } })
+            local crash = call(execute, "create_record", { crm_id = crm_id, object_type = "person",
+                values = { name = "Crash", file_url = "crash" } })
+            call(execute, "create_record", { crm_id = crm_id, object_type = "person", values = { name = "Cy", file_url = "33" } })
+            local raw, err = execute:call(BACKFILL, { crm_id = crm_id })
+            test.is_nil(err, tostring(err))
+            local counts = map(raw)
+            test.eq(counts.records, 4)
+            test.eq(counts.downloaded, 3)
+            test.eq(counts.failed, 0)
+            test.eq(counts.errors, 2)
+            local named: { [string]: string } = {}
+            for _, row in ipairs(list(counts.error_records)) do named[tostring(map(row).record_id)] = tostring(map(row).error) end
+            test.not_nil(named[tostring(bad.record_id)])
+            test.eq(named[tostring(bad.record_id)]:find("value is too long", 1, true) ~= nil, true, named[tostring(bad.record_id)])
+            test.not_nil(named[tostring(crash.record_id)])
+        end)
+
+        test.it("names the record errors of a sweep", function()
+            local execute, crm_id = fixture()
+            call(execute, "create_record", { crm_id = crm_id, object_type = "person", values = { name = "Bad", file_url = "bad" } })
+            local answer = map(execute:call(SWEEP, { config = { crm_id = crm_id }, sink_op = "upsert", input = {} }))
+            test.eq(answer.success, true, tostring(map(answer.error).message))
+            test.eq(map(answer.counts).records, 2)
+            test.eq(map(answer.counts).errors, 1)
+            test.eq(#list(map(answer.counts).error_records), 1)
+        end)
+
+        test.it("stops a backfill when the field's provider declares no fetcher", function()
+            local execute, crm_id = fixture("ghost")
+            local raw, err = execute:call(BACKFILL, { crm_id = crm_id })
+            test.is_nil(raw)
+            test.not_nil(err)
+            test.eq(tostring(err):find("no attachment fetcher for provider ghost", 1, true) ~= nil, true, tostring(err))
         end)
     end)
 

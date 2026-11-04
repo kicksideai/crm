@@ -1,5 +1,10 @@
 -- Test attachment fetcher (provider "test"): a value is ids separated by ";".
+-- parse_refs({value}) -> refs split on ";" and spaces; "bad" is refused the
+-- way HubSpot refuses a value over 64 KB, "crash" raises.
 local function parse_refs(args: any): any
+    local value = tostring(type(args) == "table" and args.value or "")
+    if value == "bad" then return { error = "value is too long" } end
+    if value == "crash" then error("parse_refs crashed") end
     local refs = {}
     for ref in tostring(type(args) == "table" and args.value or ""):gmatch("[^;%s]+") do refs[#refs + 1] = { ref = ref } end
     return { refs = refs }

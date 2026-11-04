@@ -72,7 +72,8 @@ local function sweep(req: any): Map
     if crm_id == "" then return failure("invalid_request", "config.crm_id is required", false, "item") end
     local total, err = download.backfill(crm_id, trim(config.component_id), { fresh_ms = download.SWEEP_FRESH_MS })
     if not total then return refusal(err) end
-    local counts = { records = total.records, downloaded = total.downloaded, failed = total.failed, skipped = total.skipped }
+    local counts = { records = total.records, downloaded = total.downloaded, failed = total.failed,
+        skipped = total.skipped, errors = total.errors, error_records = total.error_records }
     local result = (total.downloaded + total.failed) > 0 and "updated" or "noop"
     return { success = true, result = result, counts = counts }
 end

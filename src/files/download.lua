@@ -26,6 +26,8 @@ M.MAX_ATTEMPTS = 3
 M.PENDING_TTL_MS = 24 * 60 * 60 * 1000
 M.DETAIL_MAX = 200
 M.BACKFILL_PAGE = 100
+-- How many record errors a backfill names in its answer.
+M.ERRORS_SHOWN = 5
 -- The hourly sweep leaves a record's first downloads to the download
 -- automation while the record is this young, so both never fetch one file.
 M.SWEEP_FRESH_MS = 15 * 60 * 1000
@@ -245,7 +247,9 @@ function M.on_upload_complete(args: any): (Map?, error?)
 end
 
 -- backfill(crm_id, component_id, opts) -> counts over every record of every
--- object type with an attachment field, page by page.
+-- object type with an attachment field, page by page. A record whose field
+-- value the provider cannot parse is counted in errors (the first few named)
+-- and the backfill goes on; any other error stops it.
 function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, error?)
     local options = type(opts) == "table" and opts or {}
     local types: { string } = {}
@@ -259,7 +263,8 @@ function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, err
             types[#types + 1] = object_type
         end
     end
-    local total: Map = { records = 0, downloaded = 0, failed = 0, skipped = 0, object_types = types }
+    local total: Map = { records = 0, downloaded = 0, failed = 0, skipped = 0, errors = 0, error_records = {},
+        object_types = types }
     for _, object_type in ipairs(types) do
         local offset = 0
         while true do
@@ -267,13 +272,22 @@ function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, err
             if not page then return nil, err end
             local rows = type(page.rows) == "table" and page.rows or {}
             for _, record in ipairs(rows) do
-                local counts, download_err = M.download_record(crm_id, trim(record.record_id), component_id,
+                local record_id = trim(record.record_id)
+                local counts, download_err = M.download_record(crm_id, record_id, component_id,
                     { fresh_ms = options.fresh_ms })
-                if not counts then return nil, download_err end
                 total.records = total.records + 1
-                total.downloaded = total.downloaded + counts.downloaded
-                total.failed = total.failed + counts.failed
-                total.skipped = total.skipped + counts.skipped
+                if counts then
+                    total.downloaded = total.downloaded + counts.downloaded
+                    total.failed = total.failed + counts.failed
+                    total.skipped = total.skipped + counts.skipped
+                elseif M.deps.files.is_value_error(download_err) then
+                    total.errors = total.errors + 1
+                    if #total.error_records < M.ERRORS_SHOWN then
+                        total.error_records[#total.error_records + 1] = { record_id = record_id, error = detail(download_err) }
+                    end
+                else
+                    return nil, download_err
+                end
             end
             if #rows < M.BACKFILL_PAGE then break end
             offset = offset + #rows
