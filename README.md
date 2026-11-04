@@ -69,7 +69,7 @@ file refs without downloading; `fetch_func` downloads one ref.
 
 | Entry | What it does |
 | --- | --- |
-| [`kickside.crm.files:record_attachments`](src/files/_index.yaml) | Automation port, operation `download`. Config `crm_id`, `component_id` (provider connection; empty uses the single one). Input `{ record_id }`. Downloads every file the record's marked fields promise into uploads and tracks each on an `attachment` edge `crm:<record>` → `file:<upload_id>` with `attrs.status` `pending`, `ready` or `failed`. |
+| [`kickside.crm.files:record_attachments`](src/files/_index.yaml) | Automation port: `upsert` downloads, `delete` is a noop (the ops `kickside.sync` delivers). Config `crm_id`, `component_id` (provider connection; empty uses the single one). Input `{ record_id }`. Downloads every file the record's marked fields promise into uploads and tracks each on an `attachment` edge `crm:<record>` → `file:<upload_id>` with `attrs.status` `pending`, `ready` or `failed`. |
 | [`kickside.crm.files:on_upload_complete`](src/files/_index.yaml) | Upload completion callback. Turns the live edge of the upload `ready` or `failed` (`conversion_failed`); a repeat with the same outcome writes nothing. |
 | [`kickside.crm.files:backfill`](src/files/_index.yaml) | `{ crm_id, component_id, object_type? }` → counts. Runs the same download for every existing record with a marked field, under the caller's WRITE. Safe to repeat. |
 | [`kickside.crm.traits:record.files`](src/traits/_index.yaml) | `{ crm_id, record_ref, max_chars? }` → `{ success, files }`. Expected and downloaded files with status, error and text; READ on the CRM. |
