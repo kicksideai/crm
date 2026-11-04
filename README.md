@@ -72,6 +72,7 @@ file refs without downloading; `fetch_func` downloads one ref.
 | [`kickside.crm.files:record_attachments`](src/files/_index.yaml) | Automation port: `upsert` downloads, `delete` is a noop (the ops `kickside.sync` delivers). Config `crm_id`, `component_id` (provider connection; empty uses the single one). Input `{ record_id }`. Downloads every file the record's marked fields promise into uploads and tracks each on an `attachment` edge `crm:<record>` → `file:<upload_id>` with `attrs.status` `pending`, `ready` or `failed`. |
 | [`kickside.crm.files:on_upload_complete`](src/files/_index.yaml) | Upload completion callback. Turns the live edge of the upload `ready` or `failed` (`conversion_failed`); a repeat with the same outcome writes nothing. |
 | [`kickside.crm.files:backfill`](src/files/_index.yaml) | `{ crm_id, component_id, object_type? }` → counts. Runs the same download for every existing record with a marked field, under the caller's WRITE. Safe to repeat. |
+| [`kickside.crm.files:record_files_sweep`](src/files/_index.yaml) | Automation port for a recurring task: `upsert` runs the backfill over the CRM. Config `crm_id`, `component_id`; input `{}`. Leaves the first download of a record younger than 15 min to `record_attachments`. Answers `{ success, result, counts }`. |
 | [`kickside.crm.traits:record.files`](src/traits/_index.yaml) | `{ crm_id, record_ref, max_chars? }` → `{ success, files }`. Expected and downloaded files with status, error and text; READ on the CRM. |
 | [`kickside.crm.traits:record.file_image`](src/traits/_index.yaml) | `{ crm_id, record_ref, upload_id }` → the original image of an `image/*` file, base64, up to 25 MB; READ on the CRM. |
 
@@ -81,6 +82,14 @@ Rules:
   again. A `pending` edge older than 24 h becomes `failed` / `expired`.
   `download_failed`, `no_access` and `expired` are retried up to 3 attempts,
   each with a new upload; the old edge is deactivated.
+- Retries and expiry run only when a record is downloaded again: a new
+  delivery to `record_attachments`, a `backfill`, or the hourly sweep below.
+  An automation on `record_created` reaches each record once, so without the
+  sweep a failed file stays failed.
+- Two live edges for one file (two downloads that raced) read as one: the one
+  furthest along (`ready`, `pending`, `failed`; the later on a tie).
+- A fault reading an uploaded file fails `record.files`; only an upload
+  without a text artifact reads as a file with no text.
 - Error codes on the edge: `too_large` (over 50 MB), `no_access`, `not_found`,
   `download_failed`, `unsupported_type`, `upload_failed`, `conversion_failed`,
   `expired`.
@@ -89,6 +98,23 @@ Rules:
 - An upload is served only if its `metadata.crm_files` names this CRM, record,
   provider and ref. An edge to any other upload is reported `failed` /
   `no_access` and not read.
+
+#### Install: the hourly sweep
+
+One recurring task per CRM, created by the owner of the download automation
+(the sweep downloads as its creator, who needs WRITE on the CRM):
+
+```
+RecurringTasks action=create
+  title:    CRM record files sweep
+  schedule: { type: interval, expression: 1h }
+  target:   { kind: action, port: kickside.crm.files:record_files_sweep,
+              config: { crm_id: <CRM>, component_id: <provider connection> },
+              input: {} }
+```
+
+The module cannot create it itself: it does not know the CRM, the connection
+or whose WRITE to use.
 
 ### Host requirements
 
