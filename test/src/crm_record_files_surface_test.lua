@@ -6,6 +6,8 @@ local funcs = require("funcs")
 local security = require("security")
 local test = require("test")
 local uuid = require("uuid")
+local download = require("download")
+local read_model = require("read_model")
 
 type Map = { [string]: unknown }
 type Executor = { call: (self: Executor, target: string, input: Map) -> (unknown?, unknown?) }
@@ -60,6 +62,7 @@ local SINK = "kickside.crm.files:attachments_write"
 local ON_COMPLETE = "kickside.crm.files:on_upload_complete"
 local BACKFILL = "kickside.crm.files:backfill"
 local READ_REFERENCES = "kickside.crm.read:references"
+local SWEEP = "kickside.crm.files:sweep_write"
 
 -- deliver(...) -- as kickside.sync delivers: sink_op is the source item's op,
 -- upsert or delete (kickside/platform/sync/src/round/consumer.lua).
@@ -224,6 +227,42 @@ local function define_tests()
             test.eq(old.active, true)
             test.eq(map(old.attrs).status, "pending")
             test.eq(#others, 0)
+        end)
+
+        test.it("sweeps a fresh record: retries its failed file and leaves its first download to the automation", function()
+            local execute, crm_id, record_id = fixture()
+            local old_id = plant(execute, crm_id, record_id, { status = "failed", error = "no_access",
+                provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T10:00:00Z" })
+            local raw, err = execute:call(SWEEP, { config = { crm_id = crm_id }, sink_op = "upsert", input = {} })
+            test.is_nil(err, tostring(err))
+            local answer = map(raw)
+            test.eq(answer.success, true, tostring(map(answer.error).message))
+            test.eq(answer.result, "updated")
+            test.eq(map(answer.counts).records, 1)
+            test.eq(map(answer.counts).downloaded, 1)
+            test.eq(map(answer.counts).skipped, 1)
+
+            local edges = edges_of(execute, crm_id, record_id)
+            local old, others = ref_11(edges, old_id)
+            test.eq(old.active, false)
+            test.eq(map(others[1].attrs).attempt, 2)
+            for _, edge in ipairs(edges) do test.eq(map(edge.attrs).ref ~= "22", true, "ref 22 was downloaded") end
+        end)
+
+        test.it("refuses a sweep without a CRM", function()
+            local raw = map(executor():call(SWEEP, { config = {}, sink_op = "upsert", input = {} }))
+            test.eq(raw.success, false)
+            test.eq(map(raw.error).code, "invalid_request")
+        end)
+
+        test.it("reads a record's creation time for the sweep's age gate", function()
+            local _, crm_id, record_id = fixture()
+            local record, err = read_model.internal_get_record(crm_id, record_id)
+            test.is_nil(err, tostring(err))
+            test.eq(download.too_fresh(map(record), 0), false)
+            test.eq(download.too_fresh(map(record), download.SWEEP_FRESH_MS), true)
+            test.eq(download.too_fresh(map(record), nil), false)
+            test.eq(download.too_fresh({}, 0), true)
         end)
 
         test.it("records a provider refusal on the edge", function()

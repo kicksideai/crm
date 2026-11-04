@@ -26,6 +26,9 @@ M.MAX_ATTEMPTS = 3
 M.PENDING_TTL_MS = 24 * 60 * 60 * 1000
 M.DETAIL_MAX = 200
 M.BACKFILL_PAGE = 100
+-- The hourly sweep leaves a record's first downloads to the download
+-- automation while the record is this young, so both never fetch one file.
+M.SWEEP_FRESH_MS = 15 * 60 * 1000
 
 -- Errors worth another download: the file may come later or access may return.
 M.RETRYABLE = { download_failed = true, no_access = true, expired = true }
@@ -98,6 +101,15 @@ local function age_ms(stamp: any): number?
     return time.now():sub(parsed):milliseconds()
 end
 
+-- too_fresh(record, fresh_ms) -> true when fresh_ms is set and the record was
+-- created less than fresh_ms ago; an unreadable created_at counts as fresh.
+function M.too_fresh(record: Map, fresh_ms: any): boolean
+    local limit = tonumber(fresh_ms)
+    if limit == nil then return false end
+    local age = age_ms(record.created_at)
+    return age == nil or age < limit
+end
+
 -- fetch(crm_id, record_id, item, component_id, attempt) -> "downloaded" or
 -- "failed". The pending edge is written before the download, so a record's
 -- files show the upload id at once.
@@ -139,15 +151,17 @@ function M.fetch(crm_id: string, record_id: string, item: Item, component_id: st
     return "failed", nil
 end
 
--- download_record(crm_id, record_id, component_id) -> counts. Per expected
--- file: no edge -> download; ready or young pending -> skip; pending older
--- than the token lifetime -> failed/expired; failed with a retryable code and
--- attempts left -> the old edge is cleared and the file downloaded again.
-function M.download_record(crm_id: string, record_id: string, component_id: string): (Counts?, error?)
+-- download_record(crm_id, record_id, component_id, opts) -> counts. Per
+-- expected file: no edge -> download, unless opts.fresh_ms is set and the
+-- record is younger; ready or young pending -> skip; pending older than the
+-- token lifetime -> failed/expired; failed with a retryable code and attempts
+-- left -> the old edge is cleared and the file downloaded again.
+function M.download_record(crm_id: string, record_id: string, component_id: string, opts: Map?): (Counts?, error?)
     local counts: Counts = { downloaded = 0, failed = 0, skipped = 0 }
     local record, read_err = M.deps.reader.internal_get_record(crm_id, record_id)
     if read_err then return nil, read_err end
     if not record then return counts, nil end
+    local too_fresh = M.too_fresh(record :: Map, (opts or {}).fresh_ms)
     local expected, expected_err = M.deps.files.expected(crm_id, record :: Map)
     if not expected then return nil, expected_err end
     local edges, edge_err = M.deps.files.edges(crm_id, record_id)
@@ -162,7 +176,7 @@ function M.download_record(crm_id: string, record_id: string, component_id: stri
     for _, item in ipairs(expected) do
         local edge = by_key[item.provider .. "\0" .. item.ref]
         local attempt = 1
-        local go = edge == nil
+        local go = edge == nil and not too_fresh
         if edge then
             local attrs = type(edge.attrs) == "table" and edge.attrs or {}
             local upload_id = trim(edge.to_ref):sub(6)
@@ -258,7 +272,8 @@ function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, err
             if not page then return nil, err end
             local rows = type(page.rows) == "table" and page.rows or {}
             for _, record in ipairs(rows) do
-                local counts, download_err = M.download_record(crm_id, trim(record.record_id), component_id)
+                local counts, download_err = M.download_record(crm_id, trim(record.record_id), component_id,
+                    { fresh_ms = options.fresh_ms })
                 if not counts then return nil, download_err end
                 total.records = total.records + 1
                 total.downloaded = total.downloaded + counts.downloaded

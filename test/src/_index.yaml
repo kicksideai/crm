@@ -1188,3 +1188,5 @@ entries:
     imports:
       actors: app:actors
       test: wippy.test:test
+      download: kickside.crm.files:download
+      read_model: kickside.crm.persist:read_model

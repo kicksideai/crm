@@ -150,3 +150,94 @@ entries:
           }
         },
         "required": ["success"] }
+
+  - name: sweep_write
+    kind: function.lua
+    meta:
+      comment: kickside.data:writable.write of the record files sweep -- backfill the CRM's files, leaving records younger than 15 min to the download automation.
+    source: file://functions.lua
+    method: sweep
+    imports: *download_imports
+
+  - name: sweep_sink
+    kind: contract.binding
+    meta:
+      title: CRM record files sweep
+      icon: tabler:refresh
+      comment: Retry failed record file downloads, expire stuck pending ones and download files the automation missed, as the recurring task's identity.
+      group: CRM
+      class: kickside.crm
+      # A file is fetched only when it has no live edge or its failed edge has
+      # attempts left, so an overlapping run downloads nothing twice once the
+      # automation has written its pending edge.
+      delivery: at_least_once
+      input_shape: record
+    contracts:
+      - contract: kickside.data:writable
+        methods:
+          write: kickside.crm.files:sweep_write
+
+  - name: record_files_sweep
+    kind: registry.entry
+    meta:
+      type: kickside.automation.port
+      title: CRM record files sweep
+      icon: tabler:refresh
+      group: CRM
+      class: kickside.crm
+    binding: kickside.crm.files:sweep_sink
+    # Run hourly by a recurring task (README, record files): one task per CRM.
+    operations:
+      upsert: {}
+    config_schema:
+      crm_id:
+        type: string
+        picker: wc-component-picker
+        class: crm
+        required: true
+        role: primary
+        title: CRM
+        description: The CRM whose record files are swept.
+      component_id:
+        type: string
+        picker: wc-component-picker
+        class: connection
+        required: false
+        title: Provider connection
+        description: The provider connection the files are fetched through; empty uses the provider's single connection.
+    input_schema: |
+      { "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "description": "No per-run input: the sweep covers every record of the CRM.",
+        "properties": {} }
+    output_schema: |
+      { "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "success": { "type": "boolean" },
+          "result": { "type": "string", "enum": ["updated", "noop"] },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "records": { "type": "integer" },
+              "downloaded": { "type": "integer" },
+              "failed": { "type": "integer" },
+              "skipped": { "type": "integer" }
+            }
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "retriable": { "type": "boolean" },
+              "scope": { "type": "string" }
+            },
+            "required": ["code", "message", "retriable", "scope"]
+          }
+        },
+        "required": ["success"] }
