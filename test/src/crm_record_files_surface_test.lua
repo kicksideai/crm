@@ -59,6 +59,7 @@ end
 local SINK = "kickside.crm.files:attachments_write"
 local ON_COMPLETE = "kickside.crm.files:on_upload_complete"
 local BACKFILL = "kickside.crm.files:backfill"
+local READ_REFERENCES = "kickside.crm.read:references"
 
 -- deliver(...) -- as kickside.sync delivers: sink_op is the source item's op,
 -- upsert or delete (kickside/platform/sync/src/round/consumer.lua).
@@ -77,41 +78,66 @@ local function files_of(execute: Executor, crm_id: string, record_id: string): {
     return out
 end
 
+-- edge_to(...) -> the attrs of the record's active attachment edge to the upload.
+local function edge_to(execute: Executor, crm_id: string, record_id: string, upload_id: string): Map
+    local raw, err = execute:call(READ_REFERENCES, { crm_id = crm_id, from_ref = "crm:" .. record_id, include_inactive = false })
+    test.is_nil(err, tostring(err))
+    for _, row in ipairs(list(map(raw).rows)) do
+        local edge = map(row)
+        if edge.to_ref == "file:" .. upload_id then return map(edge.attrs) end
+    end
+    return {}
+end
+
 local function define_tests()
     test.describe("CRM record file downloads", function()
-        test.it("downloads each promised file once and settles it from the upload callback", function()
+        -- The uploads pipeline runs for real here and settles a download's edge
+        -- from its own completion callback, so the edge may already be ready.
+        test.it("downloads each promised file once", function()
             local execute, crm_id, record_id = fixture()
             local first = deliver(execute, crm_id, record_id)
             test.eq(first.success, true, tostring(map(first.error).message))
             test.eq(first.result, "updated")
 
-            local pending = files_of(execute, crm_id, record_id)
-            test.eq(#pending, 2)
-            test.eq(pending[1].status, "pending")
-            test.not_nil(pending[1].upload_id)
+            local downloaded = files_of(execute, crm_id, record_id)
+            test.eq(#downloaded, 2)
+            for _, file in ipairs(downloaded) do
+                test.not_nil(file.upload_id)
+                test.eq(file.status == "pending" or file.status == "ready", true, tostring(file.status))
+            end
             test.eq(deliver(execute, crm_id, record_id).result, "noop")
             test.eq(deliver(execute, crm_id, record_id, "delete").result, "noop")
             test.eq(#files_of(execute, crm_id, record_id), 2)
+        end)
 
-            local settled, err = execute:call(ON_COMPLETE, {
-                upload_id = pending[1].upload_id, status = "completed", mime_type = "text/plain", size = 7,
+        -- A pending edge to an upload id the pipeline never saw: only this
+        -- test's callback settles it.
+        test.it("settles a pending edge from the upload callback once", function()
+            local execute, crm_id, record_id = fixture()
+            local upload_id = uuid.v4()
+            local attrs = { provider = "test", ref = "11", attempt = 1 }
+            local linked, link_err = execute:call(WRITER, { link_ref = true, crm_id = crm_id,
+                from_ref = "crm:" .. record_id, edge_type = "attachment", to_ref = "file:" .. upload_id,
+                attrs = { status = "pending", provider = "test", ref = "11", attempt = 1 } })
+            test.is_nil(link_err, tostring(link_err))
+            test.eq(map(linked).ok, true, tostring(map(linked).error))
+
+            local callback = {
+                upload_id = upload_id, status = "completed", mime_type = "text/plain", size = 7,
                 metadata = { filename = "11.txt" },
-                params = { crm_id = crm_id, record_id = record_id, attrs = { provider = "test", ref = "11", attempt = 1 } },
-            })
+                params = { crm_id = crm_id, record_id = record_id, attrs = attrs },
+            }
+            local settled, err = execute:call(ON_COMPLETE, callback)
             test.is_nil(err, tostring(err))
             test.eq(map(settled).changed, true)
 
-            local ready = files_of(execute, crm_id, record_id)
-            test.eq(ready[1].status, "ready")
-            test.eq(ready[1].filename, "11.txt")
-            test.eq(ready[1].content_type, "text/plain")
-            test.is_nil(ready[1].error, tostring(ready[1].error_detail))
+            local edge = edge_to(execute, crm_id, record_id, upload_id)
+            test.eq(edge.status, "ready")
+            test.eq(edge.filename, "11.txt")
+            test.eq(edge.content_type, "text/plain")
+            test.is_nil(edge.error, tostring(edge.error_detail))
 
-            local again = map(execute:call(ON_COMPLETE, {
-                upload_id = pending[1].upload_id, status = "completed", mime_type = "text/plain", size = 7,
-                params = { crm_id = crm_id, record_id = record_id, attrs = { provider = "test", ref = "11", attempt = 1 } },
-            }))
-            test.eq(again.changed, false)
+            test.eq(map(execute:call(ON_COMPLETE, callback)).changed, false)
         end)
 
         test.it("records a provider refusal on the edge", function()
