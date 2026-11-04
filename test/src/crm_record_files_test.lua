@@ -57,7 +57,8 @@ local function stub(world: any)
             end,
             primary_text = function(upload_id, max_chars)
                 local text = (world.texts or {})[upload_id]
-                if not text then return nil, "no text" end
+                -- As uploads answers an upload without a primary text artifact.
+                if not text then return nil, errors.new({ kind = errors.NOT_FOUND, message = "primary content artifact not found" }) end
                 return { text = text:sub(1, max_chars), chars = #text, truncated = #text > max_chars,
                     metadata = { pages = 2 } }, nil
             end,

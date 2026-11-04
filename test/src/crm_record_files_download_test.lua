@@ -1,5 +1,6 @@
 -- kickside.crm.files download units (ATN-98): the attachment error code an
--- ingest failure maps to (contract §1) and the edge that stands for a file.
+-- ingest failure maps to (contract §1), the edge that stands for a file and
+-- how a failed upload read surfaces.
 local test = require("test")
 local download = require("download")
 local files = require("files")
@@ -50,6 +51,51 @@ local function define_tests()
             local late = edge("b", "pending", "2026-11-04T11:00:00Z")
             test.eq(files.best_edges({ early, late })["test\0" .. "11"], late)
             test.eq(files.best_edges({ late, early })["test\0" .. "11"], late)
+        end)
+    end)
+
+    -- record_files over stubbed reads: one ready edge whose upload this CRM wrote.
+    test.describe("CRM record file reads", function()
+        local saved = { reader = files.deps.reader, trusted = files.deps.trusted }
+        local function with_reads(text: any, text_err: any, image_err: any): ({ any }?, any?)
+            files.deps.reader = {
+                internal_get_record = function() return nil, nil end,
+                internal_references = function()
+                    return { { edge_type = "attachment", active = true, to_ref = "file:u1",
+                        attrs = { status = "ready", provider = "test", ref = "11" } } }, nil
+                end,
+            }
+            files.deps.trusted = {
+                provenance = function()
+                    return { crm_files = { crm_id = "c1", record_id = "r1", provider = "test", ref = "11" } }
+                end,
+                primary_text = function() return text, text_err end,
+                source_image = function() return nil, image_err end,
+            }
+            local out, err = files.record_files("c1", "crm:r1", {})
+            files.deps.reader, files.deps.trusted = saved.reader, saved.trusted
+            return out, err
+        end
+
+        test.it("reads an upload without a text artifact as a file with no text", function()
+            local out, err = with_reads(nil, errors.new({ kind = errors.NOT_FOUND, message = "primary content artifact not found" }), nil)
+            test.is_nil(err, tostring(err))
+            test.eq(#(out :: { any }), 1)
+            test.eq((out :: { any })[1].status, "ready")
+            test.eq((out :: { any })[1].text_available, false)
+        end)
+
+        test.it("fails the read when the file text cannot be read", function()
+            local out, err = with_reads(nil, "failed to get primary content artifact: database is locked", nil)
+            test.is_nil(out)
+            test.not_nil(err)
+            test.eq(errors.is(err, errors.INTERNAL), true)
+        end)
+
+        test.it("fails the read when the file image cannot be read", function()
+            local out, err = with_reads({ text = "x", chars = 1, truncated = false }, nil, "failed to find artifact parts: database is locked")
+            test.is_nil(out)
+            test.not_nil(err)
         end)
     end)
 end

@@ -151,7 +151,10 @@ local function pending_file(item: Expected): Map
         text_truncated = false, text_available = false }
 end
 
-local function edge_file(crm_id: string, record_id: string, edge: Map, field: string?, max_chars: number): Map
+-- edge_file(...) -> the file of one edge. A ready upload without a text
+-- artifact (NOT_FOUND) has no text; any other read failure is an error, so a
+-- caller never reads a storage fault as a file with no text or no image.
+local function edge_file(crm_id: string, record_id: string, edge: Map, field: string?, max_chars: number): (Map?, error?)
     local attrs = type(edge.attrs) == "table" and edge.attrs or {}
     local upload_id = trim(edge.to_ref):sub(6)
     local file: Map = {
@@ -161,20 +164,26 @@ local function edge_file(crm_id: string, record_id: string, edge: Map, field: st
         error = attrs.error, error_detail = attrs.error_detail, updated_at = attrs.updated_at,
         text_truncated = false, text_available = false,
     }
-    if file.status ~= "ready" then return file end
+    if file.status ~= "ready" then return file, nil end
     if not M.authentic(crm_id, record_id, upload_id, attrs) then
         file.status, file.error, file.error_detail = "failed", "no_access", "upload provenance does not match this record"
-        return file
+        return file, nil
     end
-    local text = M.deps.trusted.primary_text(upload_id, max_chars)
+    local text, text_err = M.deps.trusted.primary_text(upload_id, max_chars)
+    if text_err and not errors.is(text_err, errors.NOT_FOUND) then
+        return nil, errors.new({ kind = errors.INTERNAL, message = "file text of upload " .. upload_id .. ": " .. tostring(text_err) })
+    end
     if text then
         file.text, file.text_chars, file.text_truncated, file.text_available = text.text, text.chars, text.truncated, true
         local meta = type(text.metadata) == "table" and text.metadata or {}
         file.pages = tonumber(meta.pages or meta.page_count)
     end
-    local image = M.deps.trusted.source_image(upload_id)
+    local image, image_err = M.deps.trusted.source_image(upload_id)
+    if image_err then
+        return nil, errors.new({ kind = errors.INTERNAL, message = "file image of upload " .. upload_id .. ": " .. tostring(image_err) })
+    end
     if image then file.image = image end
-    return file
+    return file, nil
 end
 
 -- A record holds one file per (provider, ref); when two downloads raced and
@@ -235,14 +244,18 @@ function M.record_files(crm_id: string, record_ref: any, opts: any): ({ Map }?, 
         local edge = by_key[item.provider .. "\0" .. item.ref]
         if edge then
             used[edge] = true
-            out[#out + 1] = edge_file(crm_id, record_id, edge, item.field, max_chars)
+            local file, err = edge_file(crm_id, record_id, edge, item.field, max_chars)
+            if not file then return nil, err end
+            out[#out + 1] = file
         else
             out[#out + 1] = pending_file(item)
         end
     end
     for _, edge in ipairs(edges) do
         if not used[edge] and by_key[M.edge_key(edge)] == edge then
-            out[#out + 1] = edge_file(crm_id, record_id, edge, nil, max_chars)
+            local file, err = edge_file(crm_id, record_id, edge, nil, max_chars)
+            if not file then return nil, err end
+            out[#out + 1] = file
         end
     end
     return out, nil
