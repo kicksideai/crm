@@ -89,6 +89,42 @@ local function edge_to(execute: Executor, crm_id: string, record_id: string, upl
     return {}
 end
 
+-- edges_of(...) -> every attachment edge of the record, inactive ones too, as
+-- { upload_id, active, attrs }.
+local function edges_of(execute: Executor, crm_id: string, record_id: string): { Map }
+    local raw, err = execute:call(READ_REFERENCES, { crm_id = crm_id, from_ref = "crm:" .. record_id, include_inactive = true })
+    test.is_nil(err, tostring(err))
+    local out: { Map } = {}
+    for _, row in ipairs(list(map(raw).rows)) do
+        local edge = map(row)
+        if edge.edge_type == "attachment" then
+            out[#out + 1] = { upload_id = tostring(edge.to_ref):sub(6), active = edge.active, attrs = map(edge.attrs) }
+        end
+    end
+    return out
+end
+
+-- plant(...) -> the upload id of an attachment edge for ref "11" written as is.
+local function plant(execute: Executor, crm_id: string, record_id: string, attrs: Map): string
+    local upload_id = uuid.v4()
+    local linked, err = execute:call(WRITER, { link_ref = true, crm_id = crm_id,
+        from_ref = "crm:" .. record_id, edge_type = "attachment", to_ref = "file:" .. upload_id, attrs = attrs })
+    test.is_nil(err, tostring(err))
+    test.eq(map(linked).ok, true, tostring(map(linked).error))
+    return upload_id
+end
+
+-- ref_11(edges, upload_id) -> the old edge to upload_id and the other edges of ref "11".
+local function ref_11(edges: { Map }, upload_id: string): (Map, { Map })
+    local old: Map = {}
+    local others: { Map } = {}
+    for _, edge in ipairs(edges) do
+        if edge.upload_id == upload_id then old = edge
+        elseif map(edge.attrs).ref == "11" then others[#others + 1] = edge end
+    end
+    return old, others
+end
+
 local function define_tests()
     test.describe("CRM record file downloads", function()
         -- The uploads pipeline runs for real here and settles a download's edge
@@ -138,6 +174,56 @@ local function define_tests()
             test.is_nil(edge.error, tostring(edge.error_detail))
 
             test.eq(map(execute:call(ON_COMPLETE, callback)).changed, false)
+        end)
+
+        test.it("downloads a failed file again with the next attempt and retires the old edge", function()
+            local execute, crm_id, record_id = fixture()
+            local old_id = plant(execute, crm_id, record_id, { status = "failed", error = "download_failed",
+                provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T10:00:00Z" })
+            test.eq(deliver(execute, crm_id, record_id).result, "updated")
+
+            local old, others = ref_11(edges_of(execute, crm_id, record_id), old_id)
+            test.eq(old.active, false)
+            test.eq(#others, 1)
+            test.eq(others[1].active, true)
+            test.eq(map(others[1].attrs).attempt, 2)
+        end)
+
+        test.it("stops downloading a failed file after the last attempt", function()
+            local execute, crm_id, record_id = fixture()
+            local old_id = plant(execute, crm_id, record_id, { status = "failed", error = "download_failed",
+                provider = "test", ref = "11", attempt = 3, updated_at = "2026-11-04T10:00:00Z" })
+            deliver(execute, crm_id, record_id)
+
+            local old, others = ref_11(edges_of(execute, crm_id, record_id), old_id)
+            test.eq(old.active, true)
+            test.eq(#others, 0)
+        end)
+
+        test.it("expires a pending edge older than a day and downloads the file again", function()
+            local execute, crm_id, record_id = fixture()
+            local old_id = plant(execute, crm_id, record_id, { status = "pending",
+                provider = "test", ref = "11", attempt = 1, updated_at = "2020-01-01T00:00:00Z" })
+            test.eq(deliver(execute, crm_id, record_id).result, "updated")
+
+            local old, others = ref_11(edges_of(execute, crm_id, record_id), old_id)
+            test.eq(old.active, false)
+            test.eq(map(old.attrs).status, "failed")
+            test.eq(map(old.attrs).error, "expired")
+            test.eq(#others, 1)
+            test.eq(map(others[1].attrs).attempt, 2)
+        end)
+
+        test.it("leaves a young pending edge alone", function()
+            local execute, crm_id, record_id = fixture()
+            local old_id = plant(execute, crm_id, record_id, { status = "pending",
+                provider = "test", ref = "11", attempt = 1, updated_at = os.date("!%Y-%m-%dT%H:%M:%SZ") })
+            deliver(execute, crm_id, record_id)
+
+            local old, others = ref_11(edges_of(execute, crm_id, record_id), old_id)
+            test.eq(old.active, true)
+            test.eq(map(old.attrs).status, "pending")
+            test.eq(#others, 0)
         end)
 
         test.it("records a provider refusal on the edge", function()

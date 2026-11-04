@@ -174,7 +174,7 @@ function M.download_record(crm_id: string, record_id: string, component_id: stri
                     local _, err = M.link(crm_id, record_id, upload_id,
                         copy(attrs, { status = "failed", error = "expired", error_detail = "no completion within 24 h" }))
                     if err then return nil, err end
-                    status, attrs = "failed", copy(attrs, { error = "expired" })
+                    status, attrs = "failed", copy(attrs, { status = "failed", error = "expired" })
                 end
             end
             if status == "failed" and M.RETRYABLE[trim(attrs.error)] and tries < M.MAX_ATTEMPTS then
