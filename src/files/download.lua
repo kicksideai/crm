@@ -70,10 +70,20 @@ function M.link(crm_id: string, record_id: string, upload_id: string, attrs: Map
     return M.deps.writer.link_ref(crm_id, "crm:" .. record_id, files.EDGE_TYPE, "file:" .. upload_id, attrs, active ~= false)
 end
 
+-- Codes a provider's fetcher may report (contract §1); any other word is not
+-- a code the CRM shows and reads as download_failed.
+M.FETCH_CODES = {
+    too_large = true, no_access = true, not_found = true, download_failed = true,
+    unsupported_type = true, upload_failed = true,
+}
+
 -- error_code(message) -> the shared attachment error code of an ingest failure.
 function M.error_code(message: string): (string, string)
     local provider_code, provider_detail = message:match("^fetch failed: ([%w_]+): (.*)$")
-    if provider_code then return provider_code, provider_detail end
+    if provider_code then
+        if M.FETCH_CODES[provider_code] then return provider_code, provider_detail end
+        return "download_failed", message
+    end
     if message == "too large" then return "too_large", message end
     if message:find("^upload failed:") then
         if message:lower():find("unsupported") or message:lower():find("type") then return "unsupported_type", message end

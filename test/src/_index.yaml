@@ -1162,6 +1162,19 @@ entries:
     fetch_func: app:test_fetch_attachment
     parse_func: app:test_parse_refs
 
+  - name: crm_record_files_download_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: kickside.crm.files:download units -- the attachment error code of an ingest failure.
+    source: file://crm_record_files_download_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      download: kickside.crm.files:download
+
   - name: crm_record_files_surface_test
     kind: function.lua
     meta:
