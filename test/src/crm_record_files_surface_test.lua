@@ -296,6 +296,18 @@ local function define_tests()
             test.eq(out[1].error_detail, "file access denied")
         end)
 
+        test.it("fails an archive at once as an unsupported type", function()
+            local execute, crm_id, record_id = fixture()
+            call(execute, "update_record", { crm_id = crm_id, object_type = "person", record_id = record_id,
+                set = { file_url = "zip" } })
+            deliver(execute, crm_id, record_id)
+            local out = files_of(execute, crm_id, record_id)
+            test.eq(#out, 1)
+            test.eq(out[1].status, "failed")
+            test.eq(out[1].error, "unsupported_type")
+            test.eq(deliver(execute, crm_id, record_id).result, "noop")
+        end)
+
         test.it("ignores a callback for an upload the record does not hold", function()
             local execute, crm_id, record_id = fixture()
             local answer = map(execute:call(ON_COMPLETE, {

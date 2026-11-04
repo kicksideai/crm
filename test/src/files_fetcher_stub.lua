@@ -12,6 +12,9 @@ end
 
 local function fetch_attachment(args: any): any
     if tostring(args.ref) == "403" then return { error = "no_access: file access denied" } end
+    if tostring(args.ref) == "zip" then
+        return { bytes = "PK\3\4 archive", filename = "bundle.zip", content_type = "application/zip" }
+    end
     return { bytes = "file " .. tostring(args.ref), filename = tostring(args.ref) .. ".txt", content_type = "text/plain" }
 end
 

@@ -112,6 +112,19 @@ function M.too_fresh(record: Map, fresh_ms: any): boolean
     return age == nil or age < limit
 end
 
+-- Files the uploads pipeline keeps but never converts nor reports back on: an
+-- archive is unpacked into parts and its own completion callback never comes.
+M.UNSUPPORTED_TYPES = { ["application/zip"] = true, ["application/x-zip-compressed"] = true }
+M.UNSUPPORTED_EXTENSIONS = { zip = true }
+
+-- unsupported_type(content_type, filename) -> true for a file Leads cannot read,
+-- by the uploaded content type or by the file name's extension.
+function M.unsupported_type(content_type: any, filename: any): boolean
+    if M.UNSUPPORTED_TYPES[trim(content_type):lower()] then return true end
+    local ext = trim(filename):lower():match("%.([%w]+)$")
+    return ext ~= nil and M.UNSUPPORTED_EXTENSIONS[ext] == true
+end
+
 -- fetch(crm_id, record_id, item, component_id, attempt) -> "downloaded" or
 -- "failed". The pending edge is written before the download, so a record's
 -- files show the upload id at once.
@@ -145,7 +158,16 @@ function M.fetch(crm_id: string, record_id: string, item: Item, component_id: st
             crm_files = { crm_id = crm_id, record_id = record_id, provider = item.provider, ref = item.ref },
         },
     })
-    if upload then return "downloaded", nil end
+    if upload then
+        local metadata = type(upload.metadata) == "table" and upload.metadata or {}
+        if not M.unsupported_type(upload.mime_type, metadata.filename) then return "downloaded", nil end
+        local _, type_err = M.link(crm_id, record_id, upload_id, copy(attrs, {
+            status = "failed", error = "unsupported_type", error_detail = "file type is not supported",
+            content_type = upload.mime_type, filename = trim(metadata.filename) ~= "" and trim(metadata.filename) or nil,
+        }))
+        if type_err then return nil, type_err end
+        return "failed", nil
+    end
     local code, why = M.error_code(tostring(ingest_err))
     local _, fail_err = M.link(crm_id, record_id, upload_id,
         copy(attrs, { status = "failed", error = code, error_detail = detail(why) }))
