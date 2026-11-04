@@ -60,8 +60,10 @@ local SINK = "kickside.crm.files:attachments_write"
 local ON_COMPLETE = "kickside.crm.files:on_upload_complete"
 local BACKFILL = "kickside.crm.files:backfill"
 
-local function deliver(execute: Executor, crm_id: string, record_id: string): Map
-    local raw, err = execute:call(SINK, { config = { crm_id = crm_id }, sink_op = "download",
+-- deliver(...) -- as kickside.sync delivers: sink_op is the source item's op,
+-- upsert or delete (kickside/platform/sync/src/round/consumer.lua).
+local function deliver(execute: Executor, crm_id: string, record_id: string, sink_op: string?): Map
+    local raw, err = execute:call(SINK, { config = { crm_id = crm_id }, sink_op = sink_op or "upsert",
         input = { record_id = "crm:" .. record_id } })
     test.is_nil(err, tostring(err))
     return map(raw)
@@ -88,6 +90,8 @@ local function define_tests()
             test.eq(pending[1].status, "pending")
             test.not_nil(pending[1].upload_id)
             test.eq(deliver(execute, crm_id, record_id).result, "noop")
+            test.eq(deliver(execute, crm_id, record_id, "delete").result, "noop")
+            test.eq(#files_of(execute, crm_id, record_id), 2)
 
             local settled, err = execute:call(ON_COMPLETE, {
                 upload_id = pending[1].upload_id, status = "completed", mime_type = "text/plain", size = 7,

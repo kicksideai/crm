@@ -21,7 +21,8 @@ local function refusal(err: any): Map
 end
 
 -- write(req) -- kickside.data:writable.write of the record attachments port:
--- download the files the delivered record's attachment fields promise.
+-- download the files the delivered record's attachment fields promise on
+-- upsert; delete downloads nothing.
 local function write(req: any): Map
     local request = type(req) == "table" and req or {}
     local config = type(request.config) == "table" and request.config or {}
@@ -30,13 +31,20 @@ local function write(req: any): Map
     local component_id = trim(config.component_id)
     local record_id = (trim(input.record_id):gsub("^crm:", ""))
     local slot = trim(request.map_slot) ~= "" and trim(request.map_slot) or "default"
+    local sink_op = trim(request.sink_op)
     if crm_id == "" then return failure("invalid_request", "config.crm_id is required", false, "item") end
-    if trim(request.sink_op) ~= "download" then return failure("invalid_request", "the record attachments sink supports download only", false, "item") end
+    if sink_op ~= "upsert" and sink_op ~= "delete" then
+        return failure("invalid_request", "unsupported sink operation: " .. sink_op, false, "item")
+    end
     if record_id == "" then return failure("invalid_request", "input.record_id is required", false, "item") end
+    local dest_ref = { crm_id = crm_id, record_id = record_id }
+    -- A deleted source item downloads nothing; the record's edges stay as they are.
+    if sink_op == "delete" then
+        return { success = true, result = "noop", dest_ref = dest_ref, dest_refs = { [slot] = { dest_ref = dest_ref } } }
+    end
 
     local counts, err = download.download_record(crm_id, record_id, component_id)
     if not counts then return refusal(err) end
-    local dest_ref = { crm_id = crm_id, record_id = record_id }
     local result = (counts.downloaded + counts.failed) > 0 and "updated" or "noop"
     return { success = true, result = result, dest_ref = dest_ref, dest_refs = { [slot] = { dest_ref = dest_ref } } }
 end

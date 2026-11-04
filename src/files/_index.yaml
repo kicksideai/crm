@@ -78,8 +78,11 @@ entries:
       class: kickside.crm
     binding: kickside.crm.files:attachments_sink
     input_mode: transform_output
+    # kickside.sync delivers the source item's op (upsert or delete), never a
+    # port-specific name: upsert downloads, delete is a noop.
     operations:
-      download: {}
+      upsert: {}
+      delete: {}
     config_schema:
       crm_id:
         type: string
