@@ -6,6 +6,7 @@ local function parse_refs(args: any): any
 end
 
 local function fetch_attachment(args: any): any
+    if tostring(args.ref) == "403" then return { error = "no_access: file access denied" } end
     return { bytes = "file " .. tostring(args.ref), filename = tostring(args.ref) .. ".txt", content_type = "text/plain" }
 end
 

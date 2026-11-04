@@ -56,7 +56,95 @@ local function fixture(): (Executor, string, string)
     return execute, crm_id, tostring(person.record_id)
 end
 
+local SINK = "kickside.crm.files:attachments_write"
+local ON_COMPLETE = "kickside.crm.files:on_upload_complete"
+local BACKFILL = "kickside.crm.files:backfill"
+
+local function deliver(execute: Executor, crm_id: string, record_id: string): Map
+    local raw, err = execute:call(SINK, { config = { crm_id = crm_id }, sink_op = "download",
+        input = { record_id = "crm:" .. record_id } })
+    test.is_nil(err, tostring(err))
+    return map(raw)
+end
+
+local function files_of(execute: Executor, crm_id: string, record_id: string): { Map }
+    local answer = call(execute, "record.files", { crm_id = crm_id, record_ref = record_id })
+    test.eq(answer.success, true, tostring(answer.error))
+    local out: { Map } = {}
+    for _, file in ipairs(list(answer.files)) do out[#out + 1] = map(file) end
+    return out
+end
+
 local function define_tests()
+    test.describe("CRM record file downloads", function()
+        test.it("downloads each promised file once and settles it from the upload callback", function()
+            local execute, crm_id, record_id = fixture()
+            local first = deliver(execute, crm_id, record_id)
+            test.eq(first.success, true, tostring(map(first.error).message))
+            test.eq(first.result, "updated")
+
+            local pending = files_of(execute, crm_id, record_id)
+            test.eq(#pending, 2)
+            test.eq(pending[1].status, "pending")
+            test.not_nil(pending[1].upload_id)
+            test.eq(deliver(execute, crm_id, record_id).result, "noop")
+
+            local settled, err = execute:call(ON_COMPLETE, {
+                upload_id = pending[1].upload_id, status = "completed", mime_type = "text/plain", size = 7,
+                metadata = { filename = "11.txt" },
+                params = { crm_id = crm_id, record_id = record_id, attrs = { provider = "test", ref = "11", attempt = 1 } },
+            })
+            test.is_nil(err, tostring(err))
+            test.eq(map(settled).changed, true)
+
+            local ready = files_of(execute, crm_id, record_id)
+            test.eq(ready[1].status, "ready")
+            test.eq(ready[1].filename, "11.txt")
+            test.eq(ready[1].content_type, "text/plain")
+            test.is_nil(ready[1].error, tostring(ready[1].error_detail))
+
+            local again = map(execute:call(ON_COMPLETE, {
+                upload_id = pending[1].upload_id, status = "completed", mime_type = "text/plain", size = 7,
+                params = { crm_id = crm_id, record_id = record_id, attrs = { provider = "test", ref = "11", attempt = 1 } },
+            }))
+            test.eq(again.changed, false)
+        end)
+
+        test.it("records a provider refusal on the edge", function()
+            local execute, crm_id, record_id = fixture()
+            call(execute, "update_record", { crm_id = crm_id, object_type = "person", record_id = record_id,
+                set = { file_url = "403" } })
+            deliver(execute, crm_id, record_id)
+            local out = files_of(execute, crm_id, record_id)
+            test.eq(#out, 1)
+            test.eq(out[1].status, "failed")
+            test.eq(out[1].error, "no_access")
+            test.eq(out[1].error_detail, "file access denied")
+        end)
+
+        test.it("ignores a callback for an upload the record does not hold", function()
+            local execute, crm_id, record_id = fixture()
+            local answer = map(execute:call(ON_COMPLETE, {
+                upload_id = uuid.v4(), status = "completed",
+                params = { crm_id = crm_id, record_id = record_id, attrs = { provider = "test", ref = "11" } },
+            }))
+            test.eq(answer.changed, false)
+            test.eq(files_of(execute, crm_id, record_id)[1].status, "pending")
+        end)
+
+        test.it("backfills every record with an attachment field", function()
+            local execute, crm_id = fixture()
+            call(execute, "create_record", { crm_id = crm_id, object_type = "person", values = { name = "Bo", file_url = "33" } })
+            call(execute, "create_record", { crm_id = crm_id, object_type = "person", values = { name = "Cy" } })
+            local raw, err = execute:call(BACKFILL, { crm_id = crm_id })
+            test.is_nil(err, tostring(err))
+            local counts = map(raw)
+            test.eq(counts.records, 3)
+            test.eq(counts.downloaded, 3)
+            test.eq(counts.failed, 0)
+        end)
+    end)
+
     test.describe("CRM record files surface", function()
         test.it("lists the files the record's marked field promises as pending", function()
             local execute, crm_id, record_id = fixture()
