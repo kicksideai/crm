@@ -332,4 +332,29 @@ function M.unlink_reference(args: unknown): (UnknownMap?, error?)
     end)
 end
 
+-- Record files for a caller that does not depend on this module (Leads): the
+-- same answer as crm.record_files, refusals as { success = false, error }.
+local function answer(name: string, value: unknown, err: unknown): UnknownMap
+    if err ~= nil then return { success = false, error = tostring(err) } end
+    return { success = true, [name] = value }
+end
+
+function M.record_files(args: unknown): (UnknownMap?, error?)
+    local input: UnknownMap = type(args) == "table" and (args :: UnknownMap) or {}
+    local component_id, locate_err = crm_id(input)
+    if not component_id then return answer("files", nil, locate_err) end
+    local found, err = reader.record_files(component_id, input.record_ref, { max_chars = input.max_chars })
+    return answer("files", found, err), nil
+end
+
+function M.record_file_image(args: unknown): (UnknownMap?, error?)
+    local input: UnknownMap = type(args) == "table" and (args :: UnknownMap) or {}
+    local component_id, locate_err = crm_id(input)
+    if not component_id then return answer("image", nil, locate_err) end
+    local image, err = reader.record_file_image(component_id, input.record_ref, input.upload_id)
+    if err then return answer("image", nil, err), nil end
+    local out = image :: UnknownMap
+    return { success = true, content_base64 = out.content_base64, content_type = out.content_type, size = out.size }, nil
+end
+
 return M

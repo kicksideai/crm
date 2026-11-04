@@ -1131,3 +1131,47 @@ entries:
       writer: kickside.crm.command:writer
       resolve: kickside.crm.resolution:resolve_lib
       merge_arm: kickside.crm.resolution:merge_arm_lib
+
+  - name: crm_record_files_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_record_files_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      files: kickside.crm.files:files
+
+  - name: test_parse_refs
+    kind: function.lua
+    meta: { comment: Test provider parse function -- ids separated by ";". }
+    source: file://files_fetcher_stub.lua
+    method: parse_refs
+
+  - name: test_fetch_attachment
+    kind: function.lua
+    meta: { comment: Test provider fetch function -- a small text file per ref. }
+    source: file://files_fetcher_stub.lua
+    method: fetch_attachment
+
+  - name: test_attachment_fetcher
+    kind: registry.entry
+    meta:
+      type: attachment.fetcher
+      comment: The test provider the record files suites mark fields with.
+    provider: test
+    fetch_func: app:test_fetch_attachment
+    parse_func: app:test_parse_refs
+
+  - name: crm_record_files_surface_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: record.files and record.file_image through the registered functions, on a real CRM, uploads store and provider declaration.
+    source: file://crm_record_files_surface_test.lua
+    method: run
+    modules: [funcs, security, uuid]
+    imports:
+      actors: app:actors
+      test: wippy.test:test

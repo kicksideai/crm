@@ -28,6 +28,11 @@ function M.run(value: unknown): Result
         local result, err = writer.catch_up_read_model(tostring(input.crm_id or ""))
         return { ok = result ~= nil, error = err, result = result }
     end
+    if input.link_ref == true then
+        local ok, err = writer.link_ref(tostring(input.crm_id or ""), tostring(input.from_ref or ""),
+            tostring(input.edge_type or ""), tostring(input.to_ref or ""), input.attrs, input.active ~= false)
+        return { ok = ok == true, error = err }
+    end
     if input.delete_activity == true then
         local ok, err = writer.delete_activity(tostring(input.crm_id or ""), input.identity)
         return { ok = ok == true, error = err }

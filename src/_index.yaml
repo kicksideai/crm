@@ -143,3 +143,4 @@ entries:
     imports:
       component: kickside.component:component
       reader_internal: kickside.crm.persist:read_model
+      files: kickside.crm.files:files

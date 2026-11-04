@@ -1,0 +1,13 @@
+version: "1.0"
+namespace: kickside.crm.files
+
+entries:
+  - name: files
+    kind: library.lua
+    meta:
+      comment: A record's files (ATN-98) -- attachment fields marked in the schema, attachment edges, and uploads read back after a provenance check. Checks no access itself.
+    source: file://files.lua
+    modules: [base64, funcs, registry]
+    imports:
+      reader_internal: kickside.crm.persist:read_model
+      trusted_reader: kickside.uploads:trusted_reader

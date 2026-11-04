@@ -1340,3 +1340,23 @@ entries:
     method: unlink_reference
     modules: [ctx, security, uuid]
     imports: *crm_tool_imports
+
+  # Record files for a module that does not depend on CRM (Leads, ATN-98). Not
+  # agent tools: they are absent from crm_trait.
+  - name: record.files
+    kind: function.lua
+    meta:
+      comment: "{ crm_id, record_ref, max_chars? } -> { success, files } -- the record's files with their status, text and original image; READ on the CRM."
+    source: file://crm_tool.lua
+    method: record_files
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
+
+  - name: record.file_image
+    kind: function.lua
+    meta:
+      comment: "{ crm_id, record_ref, upload_id } -> { success, content_base64, content_type, size } -- the original image of one of the record's image files; READ on the CRM."
+    source: file://crm_tool.lua
+    method: record_file_image
+    modules: [ctx, security, uuid]
+    imports: *crm_tool_imports
