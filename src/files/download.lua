@@ -86,7 +86,7 @@ M.FETCH_CODES = {
 function M.error_code(message: string): (string, string)
     local provider_code, provider_detail = message:match("^fetch failed: ([%w_]+): (.*)$")
     if provider_code then
-        if M.FETCH_CODES[provider_code] then return provider_code, provider_detail end
+        if M.FETCH_CODES[provider_code] then return provider_code, provider_detail or "" end
         return "download_failed", message
     end
     if message == "too large" then return "too_large", message end

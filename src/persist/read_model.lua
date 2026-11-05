@@ -371,8 +371,14 @@ function M.internal_timeline(crm_id: string, record_id: string?, limit: number?,
 end
 
 type ReferenceRow = {
+    ref_id: unknown,
+    from_ref: unknown,
+    edge_type: unknown,
+    to_ref: unknown,
     attrs: unknown,
     active: unknown,
+    source: unknown,
+    updated_at: unknown,
 }
 
 local function decode_reference_rows(rows: unknown): { ReferenceRow }

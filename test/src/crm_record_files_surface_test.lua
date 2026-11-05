@@ -402,7 +402,8 @@ local function define_tests()
             for _, edge in ipairs(edges_of(execute, crm_id, record_id)) do
                 if edge.upload_id == gone_id then test.eq(edge.active, false) end
             end
-            test.not_nil(trusted_reader.provenance(gone_id :: string))
+            local kept = trusted_reader.provenance(gone_id :: string)
+            test.not_nil(kept)
             test.eq(deliver(execute, crm_id, record_id).result, "noop")
         end)
 

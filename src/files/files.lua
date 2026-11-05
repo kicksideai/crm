@@ -277,7 +277,7 @@ end
 
 -- record_files(crm_id, record_ref, opts) -> the record's files: every
 -- expected file (pending until its edge exists), then edges linked otherwise.
-function M.record_files(crm_id: string, record_ref: any, opts: any): ({ Map }?, error?)
+function M.record_files(crm_id: string, record_ref: any, opts: any?): ({ Map }?, error?)
     local record_id = M.record_id(record_ref)
     if record_id == "" then return nil, invalid("record_ref is required") end
     local options = type(opts) == "table" and opts or {}
