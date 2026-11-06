@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- record_files / record_file_image (ATN-98) on stubbed read model, registry,
 -- provider parse function and trusted reader.
 local test = require("test")
@@ -50,9 +51,15 @@ local function stub(world: any)
             return { refs = refs }, nil
         end },
         trusted = {
+            info = function(upload_id)
+                if not (world.origins or {})[upload_id] then
+                    return nil, errors.new({ kind = errors.NOT_FOUND, message = "Upload not found" })
+                end
+                return { status = "completed" }, nil
+            end,
             provenance = function(upload_id)
                 local o = (world.origins or {})[upload_id]
-                if not o then return nil, "not found" end
+                if not o then return nil, errors.new({ kind = errors.NOT_FOUND, message = "Upload not found" }) end
                 return { source = "hubspot", crm_files = o }, nil
             end,
             primary_text = function(upload_id, max_chars)
@@ -142,6 +149,24 @@ local function define_tests()
             test.eq(out[1].upload_id, "u-1"); test.eq(out[1].error, "too_large")
             test.eq(out[2].upload_id, "u-2"); test.eq(out[2].status, "pending")
             test.eq(out[3].upload_id, "u-old"); test.is_nil(out[3].field); test.eq(out[3].text_available, false)
+        end)
+
+        test.it("hides an older active upload when the newest attempt is inactive", function()
+            stub({ file_url = "11", edges = {
+                edge("old", { provider = "hubspot", ref = "11", attempt = 1, status = "ready" }),
+                edge("new", { provider = "hubspot", ref = "11", attempt = 2 }, { active = false }),
+            }, origins = { old = origin("11"), new = origin("11") }, texts = { old = "older file" } })
+            local out, err = files.record_files(CRM, RECORD)
+            test.is_nil(err, tostring(err))
+            test.eq(#out, 1)
+            test.eq(out[1].status, "pending")
+            test.is_nil(out[1].upload_id)
+            test.is_nil(out[1].text)
+            for _, read in ipairs({ files.record_file_image, files.record_file_url }) do
+                local content, read_err = read(CRM, RECORD, "old")
+                test.is_nil(content)
+                test.eq(errors.is(read_err, errors.PERMISSION_DENIED), true)
+            end
         end)
 
         test.it("answers an empty list for a record without marked values or edges", function()

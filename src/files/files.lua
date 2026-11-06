@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- A record's files (ATN-98): what its attachment fields promise and what the
 -- attachment edges hold.
 --
@@ -5,7 +6,7 @@
 -- provider's attachment.fetcher declaration names parse_func, which turns a
 -- value into file refs without downloading. Each downloaded file is an active
 -- attachment edge crm:<record_id> -> file:<upload_id> whose attrs carry
--- provider, ref and status. A file is read only when its upload's provenance
+-- provider, ref and attempt. A file is read only when its upload's provenance
 -- (metadata.crm_files) names this CRM, record, provider and ref: an edge alone
 -- can be written by anyone with WRITE on the CRM.
 --
@@ -21,7 +22,7 @@ local M = {}
 
 M.FETCHER_META = "attachment.fetcher"
 M.EDGE_TYPE = "attachment"
-M.MAX_EDGES = 500
+M.EDGE_PAGE = 500
 M.DEFAULT_MAX_CHARS = 200000
 M.MAX_IMAGE_BYTES = 25 * 1024 * 1024
 -- How long a link record_file_url hands out stays good, in seconds (#1115).
@@ -85,16 +86,22 @@ end
 function M.fetcher(provider: string): (Fetcher?, error?)
     local entries, err = M.deps.registry.find({ [".kind"] = "registry.entry", ["meta.type"] = M.FETCHER_META })
     if err then return nil, err end
-    for _, entry in ipairs(type(entries) == "table" and entries or {}) do
+    if type(entries) ~= "table" then return nil, errors.new({ kind = errors.INTERNAL, message = "attachment fetcher registry returned invalid data" }) end
+    local found: Fetcher? = nil
+    for _, entry in ipairs(entries) do
         local data = (entry :: any).data or entry
         if trim(data.provider) == provider then
-            local found = { fetch_func = trim(data.fetch_func), parse_func = trim(data.parse_func) }
-            if found.parse_func == "" or found.fetch_func == "" then
+            local candidate = { fetch_func = trim(data.fetch_func), parse_func = trim(data.parse_func) }
+            if candidate.parse_func == "" or candidate.fetch_func == "" then
                 return nil, invalid("attachment fetcher of " .. provider .. " declares no fetch_func or parse_func")
             end
-            return found, nil
+            if found and (found.fetch_func ~= candidate.fetch_func or found.parse_func ~= candidate.parse_func) then
+                return nil, invalid("multiple attachment fetchers declared for provider " .. provider)
+            end
+            found = candidate
         end
     end
+    if found then return found, nil end
     return nil, errors.new({ kind = errors.NOT_FOUND, message = "no attachment fetcher for provider " .. provider })
 end
 
@@ -139,23 +146,32 @@ end
 
 -- edges(crm_id, record_id) -> the record's active attachment edges to files,
 -- newest first.
-function M.edges(crm_id: string, record_id: string): ({ Map }?, error?)
-    local rows, err = M.deps.reader.internal_references(crm_id, "crm:" .. record_id, false, M.MAX_EDGES, 0)
-    if err then return nil, err end
+function M.edges(crm_id: string, record_id: string, include_inactive: boolean?): ({ Map }?, error?)
     local out: { Map } = {}
-    for _, row in ipairs(type(rows) == "table" and rows or {}) do
-        local to_ref = trim(row.to_ref)
-        if row.edge_type == M.EDGE_TYPE and row.active == true and to_ref:sub(1, 5) == "file:" then
-            out[#out + 1] = row
+    local offset = 0
+    while true do
+        local rows, err = M.deps.reader.internal_references(crm_id, "crm:" .. record_id, include_inactive == true, M.EDGE_PAGE, offset)
+        if err then return nil, err end
+        for _, row in ipairs(rows or {}) do
+            local to_ref = trim(row.to_ref)
+            if row.edge_type == M.EDGE_TYPE and (include_inactive == true or row.active == true) and to_ref:sub(1, 5) == "file:" then
+                out[#out + 1] = row
+            end
         end
+        if #(rows or {}) < M.EDGE_PAGE then break end
+        offset = offset + #rows
     end
     return out, nil
 end
 
 -- authentic(crm_id, record_id, upload_id, attrs) -> true when the upload was
 -- written by this CRM's download for this record and file.
-function M.authentic(crm_id: string, record_id: string, upload_id: string, attrs: Map): boolean
-    local provenance = M.deps.trusted.provenance(upload_id)
+function M.authentic(crm_id: string, record_id: string, upload_id: string, attrs: Map): (boolean, error?)
+    local provenance, err = M.deps.trusted.provenance(upload_id)
+    if err then
+        if errors.is(err, errors.NOT_FOUND) then return false, nil end
+        return false, err
+    end
     local origin = provenance and type(provenance.crm_files) == "table" and provenance.crm_files or nil
     return origin ~= nil
         and trim(origin.crm_id) == crm_id
@@ -169,24 +185,50 @@ local function pending_file(item: Expected): Map
         text_truncated = false, text_available = false }
 end
 
--- edge_file(...) -> the file of one edge. A ready upload without a text
--- artifact (NOT_FOUND) has no text; any other read failure is an error, so a
--- caller never reads a storage fault as a file with no text or no image.
-local function edge_file(crm_id: string, record_id: string, edge: Map, field: string?, max_chars: number): (Map?, error?)
+-- Uploads owns lifecycle state. Edge errors apply only before an upload exists.
+function M.state(crm_id: string, record_id: string, edge: Map): (Map?, error?)
     local attrs = type(edge.attrs) == "table" and edge.attrs or {}
     local upload_id = trim(edge.to_ref):sub(6)
-    local file: Map = {
-        upload_id = upload_id, provider = trim(attrs.provider), ref = trim(attrs.ref), field = field,
-        filename = attrs.filename, content_type = attrs.content_type, size = attrs.size,
-        status = trim(attrs.status) ~= "" and trim(attrs.status) or "pending",
-        error = attrs.error, error_detail = attrs.error_detail, updated_at = attrs.updated_at,
-        text_truncated = false, text_available = false,
-    }
-    if file.status ~= "ready" then return file, nil end
-    if not M.authentic(crm_id, record_id, upload_id, attrs) then
+    local file: Map = { upload_id = upload_id, provider = trim(attrs.provider), ref = trim(attrs.ref),
+        status = "pending", updated_at = attrs.updated_at }
+    local info, info_err = M.deps.trusted.info(upload_id)
+    if info_err and not errors.is(info_err, errors.NOT_FOUND) then return nil, info_err end
+    if not info then
+        if trim(attrs.error) ~= "" then
+            file.status, file.error, file.error_detail = "failed", attrs.error, attrs.error_detail
+        end
+        return file, nil
+    end
+    local authentic, provenance_err = M.authentic(crm_id, record_id, upload_id, attrs)
+    if provenance_err then return nil, provenance_err end
+    if not authentic then
         file.status, file.error, file.error_detail = "failed", "no_access", "upload provenance does not match this record"
         return file, nil
     end
+    file.filename, file.content_type, file.size = info.filename, info.mime_type, info.size
+    file.updated_at = info.created_at
+    if M.unsupported_type(info.mime_type, info.filename) then
+        file.status, file.error, file.error_detail = "failed", "unsupported_type", "file type is not supported"
+    elseif info.status == "completed" then
+        file.status = "ready"
+    elseif info.status == "failed" then
+        file.status, file.error, file.error_detail = "failed", "conversion_failed", "file processing failed"
+    end
+    return file, nil
+end
+
+function M.unsupported_type(content_type: any, filename: any): boolean
+    local mime = trim(content_type):lower()
+    return mime == "application/zip" or mime == "application/x-zip-compressed"
+        or trim(filename):lower():match("%.zip$") ~= nil
+end
+
+local function edge_file(crm_id: string, record_id: string, edge: Map, field: string?, max_chars: number): (Map?, error?)
+    local file, state_err = M.state(crm_id, record_id, edge)
+    if not file then return nil, state_err end
+    local upload_id = file.upload_id
+    file.field, file.text_truncated, file.text_available = field, false, false
+    if file.status ~= "ready" then return file, nil end
     local text, text_err = M.deps.trusted.primary_text(upload_id, max_chars)
     if text_err and not errors.is(text_err, errors.NOT_FOUND) then
         return nil, errors.new({ kind = errors.INTERNAL, message = "file text of upload " .. upload_id .. ": " .. tostring(text_err) })
@@ -204,8 +246,7 @@ local function edge_file(crm_id: string, record_id: string, edge: Map, field: st
     return file, nil
 end
 
--- A record holds one file per (provider, ref); when two downloads raced and
--- left two live edges for it, the one that got furthest stands for both.
+-- Status breaks ties between legacy edges of the same attempt.
 M.STATUS_RANK = { ready = 3, pending = 2, failed = 1 }
 
 -- edge_key(edge) -> "provider\0ref" of an attachment edge.
@@ -215,12 +256,12 @@ function M.edge_key(edge: Map): string
 end
 
 -- best_edges(edges) -> { [edge_key]: edge }, the edge of each key with the
--- best status (ready, pending, failed), the later one on a tie.
+-- newest attempt. Live edges, legacy status and time break equal-attempt ties.
 function M.best_edges(edges: { Map }): { [string]: Map }
     local best: { [string]: Map } = {}
-    local function rank(edge: Map): (number, string)
+    local function rank(edge: Map): (number, number, number, string)
         local attrs = type(edge.attrs) == "table" and edge.attrs or {}
-        return M.STATUS_RANK[trim(attrs.status)] or 0, trim(attrs.updated_at)
+        return tonumber(attrs.attempt) or 1, edge.active == false and 0 or 1, M.STATUS_RANK[trim(attrs.status)] or 0, trim(attrs.updated_at)
     end
     for _, edge in ipairs(edges) do
         local key = M.edge_key(edge)
@@ -228,9 +269,11 @@ function M.best_edges(edges: { Map }): { [string]: Map }
         if not held then
             best[key] = edge
         else
-            local r, at = rank(edge)
-            local held_r, held_at = rank(held)
-            if r > held_r or (r == held_r and at > held_at) then best[key] = edge end
+            local attempt, active, r, at = rank(edge)
+            local held_attempt, held_active, held_r, held_at = rank(held)
+            if attempt > held_attempt or (attempt == held_attempt and
+                (active > held_active or (active == held_active and
+                    (r > held_r or (r == held_r and at > held_at))))) then best[key] = edge end
         end
     end
     return best
@@ -250,7 +293,7 @@ function M.unnamed(crm_id: string, record: Map, expected: { Expected }, edges: {
     local out: { Map } = {}
     for _, edge in ipairs(edges) do
         local attrs = type(edge.attrs) == "table" and edge.attrs or {}
-        if providers[trim(attrs.provider)] and not named[M.edge_key(edge)] then out[#out + 1] = edge end
+        if edge.active ~= false and providers[trim(attrs.provider)] and not named[M.edge_key(edge)] then out[#out + 1] = edge end
     end
     return out, nil
 end
@@ -258,9 +301,15 @@ end
 -- named_edges(crm_id, record_id) -> the record, what its fields promise and
 -- its active edges without those unnamed() drops. No record: no promise, every edge.
 local function named_edges(crm_id: string, record_id: string): (Map?, { Expected }?, { Map }?, error?)
-    local record = M.deps.reader.internal_get_record(crm_id, record_id)
-    local edges, edge_err = M.edges(crm_id, record_id)
-    if not edges then return nil, nil, nil, edge_err end
+    local record, record_err = M.deps.reader.internal_get_record(crm_id, record_id)
+    if record_err then return nil, nil, nil, record_err end
+    local history, edge_err = M.edges(crm_id, record_id, true)
+    if not history then return nil, nil, nil, edge_err end
+    local newest = M.best_edges(history)
+    local edges: { Map } = {}
+    for _, edge in ipairs(history) do
+        if edge.active ~= false and newest[M.edge_key(edge)] == edge then edges[#edges + 1] = edge end
+    end
     if not record then return nil, {}, edges, nil end
     local expected, err = M.expected(crm_id, record :: Map)
     if not expected then return nil, nil, nil, err end
@@ -327,10 +376,15 @@ local function owned_file(crm_id: string, record_ref: any, upload_id: any): (str
         if trim(candidate.to_ref) == "file:" .. id then edge = candidate; break end
     end
     local attrs = edge and type(edge.attrs) == "table" and edge.attrs or {}
-    if not edge or not M.authentic(crm_id, record_id, id, attrs) then
+    local authentic, provenance_err = false, nil
+    if edge then authentic, provenance_err = M.authentic(crm_id, record_id, id, attrs) end
+    if provenance_err then return nil, nil, provenance_err end
+    if not edge or not authentic then
         return nil, nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "the upload is not a file of this record" })
     end
-    return id, attrs, nil
+    local state, state_err = M.state(crm_id, record_id, edge :: Map)
+    if not state then return nil, nil, state_err end
+    return id, state, nil
 end
 
 -- record_file_url(crm_id, record_ref, upload_id) -> { url, expires_in,
@@ -354,7 +408,8 @@ end
 function M.record_file_image(crm_id: string, record_ref: any, upload_id: any): (Map?, error?)
     local id, _, err = owned_file(crm_id, record_ref, upload_id)
     if not id then return nil, err end
-    local image = M.deps.trusted.source_image(id)
+    local image, image_err = M.deps.trusted.source_image(id)
+    if image_err then return nil, image_err end
     if not image then
         return nil, errors.new({ kind = errors.INVALID, message = "the file is not an image", details = { code = "not_an_image" } })
     end

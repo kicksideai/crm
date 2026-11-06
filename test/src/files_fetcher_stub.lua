@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Test attachment fetcher (provider "test"): a value is ids separated by ";".
 -- parse_refs({value}) -> refs split on ";" and spaces; "bad" is refused the
 -- way HubSpot refuses a value over 64 KB, "crash" raises.

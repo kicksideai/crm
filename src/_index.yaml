@@ -39,7 +39,7 @@ entries:
     component: kickside/widgets
 
   - name: dep.kickside.uploads
-    version: '*'
+    version: '>=0.3.9'
     kind: ns.dependency
     meta:
       comment: Downloads record attachments into uploads and reads them back for the record's files (attachment_ingest, upload tokens, trusted_reader).

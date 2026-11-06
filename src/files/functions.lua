@@ -1,5 +1,6 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Entry points of record file downloads (ATN-98): the automation sink, the
--- upload completion callback, the one-off backfill and the hourly sweep.
+-- upload completion callback, the caller-invoked backfill.
 local download = require("download")
 
 type Map = { [string]: any }
@@ -61,21 +62,4 @@ local function backfill(args: any): (Map?, error?)
     return download.backfill(crm_id, trim(input.component_id), { object_type = input.object_type })
 end
 
--- sweep(req) -- kickside.data:writable.write of the record files sweep port,
--- run by a recurring task: retries failed downloads, expires stuck pending
--- ones and downloads files the automation missed, leaving records younger
--- than download.SWEEP_FRESH_MS to the automation.
-local function sweep(req: any): Map
-    local request = type(req) == "table" and req or {}
-    local config = type(request.config) == "table" and request.config or {}
-    local crm_id = trim(config.crm_id)
-    if crm_id == "" then return failure("invalid_request", "config.crm_id is required", false, "item") end
-    local total, err = download.backfill(crm_id, trim(config.component_id), { fresh_ms = download.SWEEP_FRESH_MS })
-    if not total then return refusal(err) end
-    local counts = { records = total.records, downloaded = total.downloaded, failed = total.failed,
-        skipped = total.skipped, unlinked = total.unlinked, errors = total.errors, error_records = total.error_records }
-    local result = (total.downloaded + total.failed + total.unlinked) > 0 and "updated" or "noop"
-    return { success = true, result = result, counts = counts }
-end
-
-return { write = write, on_upload_complete = on_upload_complete, backfill = backfill, sweep = sweep }
+return { write = write, on_upload_complete = on_upload_complete, backfill = backfill }

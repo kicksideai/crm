@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- kickside.crm.files download units (ATN-98): the attachment error code an
 -- ingest failure maps to (contract §1), the edge that stands for a file and
 -- how a failed upload read surfaces.
@@ -10,6 +11,162 @@ local function edge(upload_id: string, status: string, updated_at: string): { [s
 end
 
 local function define_tests()
+    test.describe("CRM attachment boundaries", function()
+        local original_files, original_download = files.deps, download.deps
+        test.after_each(function() files.deps, download.deps = original_files, original_download end)
+
+        test.it("links the same identity when completion precedes the delivery link", function()
+            local writes = {}
+            local token_args
+            download.deps = {
+                identity = {
+                    capture = function() return {}, nil end,
+                    to_row = function() return { actor_id = "actor", actor_context = {} }, nil end,
+                },
+                tokens = { pack = function(args) token_args = args; return "token", nil end },
+                writer = { link_ref = function(crm_id, from_ref, edge_type, to_ref, attrs)
+                    writes[#writes + 1] = { crm_id = crm_id, from_ref = from_ref, edge_type = edge_type, to_ref = to_ref, attrs = attrs }
+                    return true, nil
+                end },
+                ingest = { ingest = function()
+                    test.eq(token_args.on_error_id, download.ON_COMPLETE)
+                    local result, err = download.on_upload_complete({ upload_id = token_args.upload_id,
+                        status = "completed", params = token_args.params })
+                    test.is_nil(err, tostring(err))
+                    test.eq(result.success, true)
+                    test.eq(#writes, 1, "callback links before ingest returns")
+                    return { mime_type = "text/plain" }, nil
+                end },
+            }
+            local result, err = download.fetch("crm", "record", { provider = "test", ref = "11", field = "file_url" }, "", 2)
+            test.is_nil(err, tostring(err))
+            test.eq(result, "downloaded")
+            test.eq(#writes, 2)
+            for _, write in ipairs(writes) do
+                test.eq(write.crm_id, "crm")
+                test.eq(write.from_ref, "crm:record")
+                test.eq(write.edge_type, "attachment")
+                test.eq(write.to_ref, "file:" .. token_args.upload_id)
+                test.eq(write.attrs.provider, "test")
+                test.eq(write.attrs.ref, "11")
+                test.eq(write.attrs.attempt, 2)
+                test.is_nil(write.attrs.status)
+                test.is_nil(write.attrs.error)
+            end
+        end)
+
+        test.it("preserves callback reference append errors", function()
+            local fault = errors.new({ kind = errors.UNAVAILABLE, message = "reference storage unavailable" })
+            download.deps = { writer = { link_ref = function() return nil, fault end } }
+            local result, err = download.on_upload_complete({ upload_id = "upload", status = "error",
+                params = { crm_id = "crm", record_id = "record", attrs = { provider = "test", ref = "11", attempt = 1 } } })
+            test.is_nil(result)
+            test.eq(err, fault)
+        end)
+
+        test.it("reads attachment references beyond the first page", function()
+            files.deps = { reader = { internal_references = function(_, _, _, limit, offset)
+                local rows = {}
+                for i = offset + 1, math.min(offset + limit, 507) do
+                    rows[#rows + 1] = { edge_type = "attachment", active = true, to_ref = "file:" .. tostring(i) }
+                end
+                return rows, nil
+            end } }
+            local rows, err = files.edges("crm", "record")
+            test.is_nil(err, tostring(err))
+            test.eq(#(rows or {}), 507)
+        end)
+
+        test.it("preserves upload status storage faults", function()
+            local fault = errors.new({ kind = errors.UNAVAILABLE, message = "upload storage unavailable" })
+            files.deps = { trusted = { info = function() return nil, fault end } }
+            local state, err = files.state("crm", "record", edge("upload", "ready", ""))
+            test.is_nil(state)
+            test.eq(err, fault)
+        end)
+
+        test.it("reports the last pre-ingest error only while its upload is missing", function()
+            local missing = errors.new({ kind = errors.NOT_FOUND, message = "Upload not found" })
+            files.deps = { trusted = { info = function() return nil, missing end } }
+            local held = edge("upload", "ready", "")
+            held.attrs.error, held.attrs.error_detail = "no_access", "access denied"
+            local state = assert(files.state("crm", "record", held))
+            test.eq(state.status, "failed")
+            test.eq(state.error, "no_access")
+            held.attrs.error, held.attrs.error_detail = "not_found", "file removed"
+            state = assert(files.state("crm", "record", held))
+            test.eq(state.error, "not_found")
+            test.eq(state.error_detail, "file removed")
+        end)
+
+        test.it("preserves provenance storage faults", function()
+            local fault = errors.new({ kind = errors.UNAVAILABLE, message = "provenance storage unavailable" })
+            files.deps = { trusted = { provenance = function() return nil, fault end } }
+            local valid, err = files.authentic("crm", "record", "upload", {})
+            test.eq(valid, false)
+            test.eq(err, fault)
+        end)
+
+        test.it("rejects ambiguous attachment fetcher declarations", function()
+            files.deps = { registry = { find = function()
+                return {
+                    { data = { provider = "test", fetch_func = "test:a", parse_func = "test:parse" } },
+                    { data = { provider = "test", fetch_func = "test:b", parse_func = "test:parse" } },
+                }, nil
+            end } }
+            local found, err = files.fetcher("test")
+            test.is_nil(found)
+            test.not_nil(err)
+        end)
+
+        test.it("authorizes a backfill before reading records or schema", function()
+            local scanned = false
+            local denied = errors.new({ kind = errors.PERMISSION_DENIED, message = "write required" })
+            download.deps = {
+                writer = { require_access = function() return nil, denied end },
+                reader = { internal_objects = function() scanned = true; return {}, nil end },
+            }
+            local result, err = download.backfill("crm", "", {})
+            test.is_nil(result)
+            test.eq(err, denied)
+            test.eq(scanned, false)
+        end)
+
+        test.it("authorizes a delivery before reading its record", function()
+            local scanned = false
+            local denied = errors.new({ kind = errors.PERMISSION_DENIED, message = "write required" })
+            download.deps = {
+                writer = { require_access = function() return nil, denied end },
+                reader = { internal_get_record = function() scanned = true; return nil, nil end },
+            }
+            local result, err = download.download_record("crm", "record", "")
+            test.eq(scanned, false)
+            test.is_nil(result)
+            test.eq(err, denied)
+        end)
+
+        test.it("preserves image artifact faults on the image surface", function()
+            local fault = errors.new({ kind = errors.UNAVAILABLE, message = "image storage unavailable" })
+            files.deps = {
+                reader = {
+                    internal_get_record = function() return nil, nil end,
+                    internal_references = function() return {
+                        { edge_type = "attachment", active = true, to_ref = "file:upload",
+                            attrs = { provider = "test", ref = "ref", status = "ready" } },
+                    }, nil end,
+                },
+                trusted = {
+                    info = function() return { status = "completed" }, nil end,
+                    provenance = function() return { crm_files = { crm_id = "crm", record_id = "record", provider = "test", ref = "ref" } }, nil end,
+                    source_image = function() return nil, fault end,
+                },
+            }
+            local result, err = files.record_file_image("crm", "record", "upload")
+            test.is_nil(result)
+            test.eq(err, fault)
+        end)
+    end)
+
     test.describe("CRM record file download error codes", function()
         test.it("keeps a provider code from the contract vocabulary", function()
             local code, detail = download.error_code("fetch failed: no_access: file metadata HTTP 403")
@@ -55,6 +212,15 @@ local function define_tests()
     end)
 
     test.describe("CRM record file edge choice", function()
+        test.it("selects the newest attempt before its status", function()
+            local old = edge("old", "ready", "2026-11-04T12:00:00Z")
+            old.attrs.attempt = 1
+            local newest = edge("new", "pending", "2026-11-04T09:00:00Z")
+            newest.attrs.attempt = 2
+            test.eq(files.best_edges({ old, newest })["test\0" .. "11"], newest)
+            test.eq(files.best_edges({ newest, old })["test\0" .. "11"], newest)
+        end)
+
         test.it("lets the edge furthest along stand for a file, in either order", function()
             local failed = edge("a", "failed", "2026-11-04T12:00:00Z")
             local pending = edge("b", "pending", "2026-11-04T10:00:00Z")
@@ -85,6 +251,7 @@ local function define_tests()
                 end,
             }
             files.deps.trusted = {
+                info = function() return { status = "completed" }, nil end,
                 provenance = function()
                     return { crm_files = { crm_id = "c1", record_id = "r1", provider = "test", ref = "11" } }
                 end,

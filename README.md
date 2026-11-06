@@ -69,26 +69,30 @@ file refs without downloading; `fetch_func` downloads one ref.
 
 | Entry | What it does |
 | --- | --- |
-| [`kickside.crm.files:record_attachments`](src/files/_index.yaml) | Automation port: `upsert` downloads, `delete` is a noop (the ops `kickside.sync` delivers). Config `crm_id`, `component_id` (provider connection; empty uses the single one). Input `{ record_id }`. Downloads every file the record's marked fields promise into uploads and tracks each on an `attachment` edge `crm:<record>` → `file:<upload_id>` with `attrs.status` `pending`, `ready` or `failed`. |
-| [`kickside.crm.files:on_upload_complete`](src/files/_index.yaml) | Upload completion callback. Turns the live edge of the upload `ready` or `failed` (`conversion_failed`); a repeat with the same outcome writes nothing. |
+| [`kickside.crm.files:record_attachments`](src/files/_index.yaml) | Automation port: `upsert` downloads, `delete` is a noop (the ops `kickside.sync` delivers). Config `crm_id`, `component_id` (provider connection; empty uses the single one). Input `{ record_id }`. Downloads every file the record's marked fields promise into uploads and tracks each identity on an `attachment` edge `crm:<record>` → `file:<upload_id>` with provider, ref and attempt attributes. |
+| [`kickside.crm.files:on_upload_complete`](src/files/_index.yaml) | Completion and failure target for upload tokens. Rewrites the identity edge to wake consumers; reads use the upload’s current state. |
 | [`kickside.crm.files:backfill`](src/files/_index.yaml) | `{ crm_id, component_id, object_type? }` → counts. Runs the same download for every existing record with a marked field, under the caller's WRITE. Safe to repeat. A record whose field value the provider cannot parse is counted in `errors` (the first 5 named in `error_records`) and the backfill goes on; an access, CRM or setup failure stops it. |
-| [`kickside.crm.files:record_files_sweep`](src/files/_index.yaml) | Automation port for a recurring task: `upsert` runs the backfill over the CRM. Config `crm_id`, `component_id`; input `{}`. Leaves the first download of a record younger than 15 min to `record_attachments`. Answers `{ success, result, counts }`; `counts` carries `unlinked`, `errors` and `error_records` as the backfill does. |
 | [`kickside.crm.traits:record.files`](src/traits/_index.yaml) | `{ crm_id, record_ref, max_chars? }` → `{ success, files }`. Expected and downloaded files with status, error and text; READ on the CRM. |
 | [`kickside.crm.traits:record.file_image`](src/traits/_index.yaml) | `{ crm_id, record_ref, upload_id }` → the original image of an `image/*` file, base64, up to 25 MB; READ on the CRM. |
 | [`kickside.crm.traits:record.file_url`](src/traits/_index.yaml) | `{ crm_id, record_ref, upload_id }` → `{ success, url, expires_in, filename, content_type }`: a link to the original of a `ready` file, good for 5 minutes (`kickside.uploads:uploads` `delivery_url`). READ on the CRM, the field must still name the file and its upload must be this CRM's for this record; anything else is refused. |
 
 Rules:
 
-- A file already `ready`, or `pending` for less than 24 h, is never downloaded
-  again. A `pending` edge older than 24 h becomes `failed` / `expired`.
-  `download_failed`, `no_access` and `expired` are retried up to 3 attempts,
-  each with a new upload; the old edge is deactivated.
-- Retries and expiry run only when a record is downloaded again: a new
-  delivery to `record_attachments`, a `backfill`, or the hourly sweep below.
-  An automation on `record_created` reaches each record once, so without the
-  sweep a failed file stays failed.
-- Two live edges for one file (two downloads that raced) read as one: the one
-  furthest along (`ready`, `pending`, `failed`; the later on a tie).
+- Status comes from uploads: completed uploads read `ready`, failed uploads read
+  `failed` / `conversion_failed`, and processing or missing uploads read `pending`.
+  An edge error applies only when the upload does not exist; competing fetch
+  failures may replace that error. Upload status always takes precedence.
+- A file already `ready`, or `pending` for less than 24 h, is not downloaded
+  again. An expired pending upload, `download_failed`, `no_access`,
+  `conversion_failed` or `expired` opens the next attempt, up to 3 attempts.
+  Retries and expiry run on an upsert delivery or a backfill with WRITE.
+- Each attempt binds a deterministic upload ID in its completion token.
+  Concurrent deliveries of that attempt create one upload and one edge;
+  an ingest conflict writes nothing. An edge is written after ingestion or
+  a pre-ingest failure, so a file without an edge still reads pending.
+- Reads and retries select the newest attempt per provider/ref. Older attempts
+  are ignored immediately and unlinked when the record is processed again.
+  Status and timestamp break ties between existing edges of the same attempt.
 - A file taken out of the field is no longer the record's: `record.files`
   leaves it out and `record.file_image` refuses it at once, and the next
   download of the record unlinks its edge (`reference.unlinked`). Its upload
@@ -97,11 +101,12 @@ Rules:
   any other provider was linked otherwise and stays.
 - A fault reading an uploaded file fails `record.files`; only an upload
   without a text artifact reads as a file with no text.
-- Error codes on the edge: `too_large` (over 50 MB), `no_access`, `not_found`,
-  `download_failed`, `unsupported_type`, `upload_failed`, `conversion_failed`,
-  `expired`.
-- Each edge write emits `kickside.crm.events:reference.linked` with the full
-  `attrs`; consumers wake on it and read the state from `record.files`.
+- Pre-ingest error codes on the edge: `too_large` (over 50 MB), `no_access`, `not_found`,
+  `download_failed`, `unsupported_type`, `upload_failed`. Archives are rejected
+  after ingest as `unsupported_type`; conversion failures come from uploads.
+- Identity edge writes, including completion and failure callbacks, emit
+  `kickside.crm.events:reference.linked`. Consumers wake on that event and read
+  the current upload state from `record.files`.
 - An upload is served only if its `metadata.crm_files` names this CRM, record,
   provider and ref. An edge to any other upload is reported `failed` /
   `no_access` and not read.
@@ -120,23 +125,6 @@ downloads at once and a removed one is unlinked at once:
 Use the object type and attribute of your marked field. `record_updated`
 carries only what changed: a set value (an emptied field from a sync arrives as
 `set.file_url = ""`) or a cleared one in `unset`.
-
-#### Install: the hourly sweep
-
-One recurring task per CRM, created by the owner of the download automation
-(the sweep downloads as its creator, who needs WRITE on the CRM):
-
-```
-RecurringTasks action=create
-  title:    CRM record files sweep
-  schedule: { type: interval, expression: 1h }
-  target:   { kind: action, port: kickside.crm.files:record_files_sweep,
-              config: { crm_id: <CRM>, component_id: <provider connection> },
-              input: {} }
-```
-
-The module cannot create it itself: it does not know the CRM, the connection
-or whose WRITE to use.
 
 ### Host requirements
 

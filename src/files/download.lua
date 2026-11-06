@@ -1,19 +1,11 @@
--- Downloading a record's files (ATN-98) and the upload completion hook.
---
--- For each (provider, ref) a record's attachment fields promise, the CRM picks
--- an upload id, writes a pending attachment edge crm:<record> -> file:<upload>,
--- and hands the provider ref to kickside.uploads:attachment_ingest with an
--- upload completion token and provenance metadata.crm_files. When uploads
--- finishes processing, on_upload_complete turns the edge ready or failed; the
--- edge write is the reference.linked event consumers wake on.
---
--- Writes need WRITE on the CRM from the running identity: the download
--- automation's owner, and the same identity frozen into the token.
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+-- Attachment identity is stable within an attempt; uploads owns its state.
 local security = require("security")
 local time = require("time")
 local uuid = require("uuid")
 local writer = require("writer")
 local files = require("files")
+local component = require("component")
 local reader = require("reader_internal")
 local attachment_ingest = require("attachment_ingest")
 local upload_tokens = require("upload_tokens")
@@ -28,12 +20,8 @@ M.DETAIL_MAX = 200
 M.BACKFILL_PAGE = 100
 -- How many record errors a backfill names in its answer.
 M.ERRORS_SHOWN = 5
--- The hourly sweep leaves a record's first downloads to the download
--- automation while the record is this young, so both never fetch one file.
-M.SWEEP_FRESH_MS = 15 * 60 * 1000
-
 -- Errors worth another download: the file may come later or access may return.
-M.RETRYABLE = { download_failed = true, no_access = true, expired = true }
+M.RETRYABLE = { download_failed = true, no_access = true, expired = true, conversion_failed = true }
 
 M.deps = {
     writer = writer, files = files, reader = reader, ingest = attachment_ingest,
@@ -61,17 +49,9 @@ local function detail(text: any): string
     return value
 end
 
-local function copy(source: Map?, extra: Map): Map
-    local out: Map = {}
-    for key, value in pairs(source or {}) do out[key] = value end
-    for key, value in pairs(extra) do out[key] = value end
-    return out
-end
-
 -- link(crm_id, record_id, upload_id, attrs, active) -> writes the whole edge;
 -- attrs replace the stored ones, so every write carries all of them.
 function M.link(crm_id: string, record_id: string, upload_id: string, attrs: Map, active: boolean?): (boolean?, error?)
-    attrs.updated_at = now()
     return M.deps.writer.link_ref(crm_id, "crm:" .. record_id, files.EDGE_TYPE, "file:" .. upload_id, attrs, active ~= false)
 end
 
@@ -103,31 +83,14 @@ local function age_ms(stamp: any): number?
     return time.now():sub(parsed):milliseconds()
 end
 
--- too_fresh(record, fresh_ms) -> true when fresh_ms is set and the record was
--- created less than fresh_ms ago; an unreadable created_at counts as fresh.
-function M.too_fresh(record: Map, fresh_ms: any): boolean
-    local limit = tonumber(fresh_ms)
-    if limit == nil then return false end
-    local age = age_ms(record.created_at)
-    return age == nil or age < limit
+M.unsupported_type = files.unsupported_type
+
+-- The token binds all deliveries of one attempt to the same upload identity.
+function M.upload_id(crm_id: string, record_id: string, provider: string, ref: string, attempt: integer): (string?, error?)
+    return uuid.v5("6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+        table.concat({ crm_id, record_id, provider, ref, tostring(attempt) }, "\0"))
 end
 
--- Files the uploads pipeline keeps but never converts nor reports back on: an
--- archive is unpacked into parts and its own completion callback never comes.
-M.UNSUPPORTED_TYPES = { ["application/zip"] = true, ["application/x-zip-compressed"] = true }
-M.UNSUPPORTED_EXTENSIONS = { zip = true }
-
--- unsupported_type(content_type, filename) -> true for a file Leads cannot read,
--- by the uploaded content type or by the file name's extension.
-function M.unsupported_type(content_type: any, filename: any): boolean
-    if M.UNSUPPORTED_TYPES[trim(content_type):lower()] then return true end
-    local ext = trim(filename):lower():match("%.([%w]+)$")
-    return ext ~= nil and M.UNSUPPORTED_EXTENSIONS[ext] == true
-end
-
--- fetch(crm_id, record_id, item, component_id, attempt) -> "downloaded" or
--- "failed". The pending edge is written before the download, so a record's
--- files show the upload id at once.
 function M.fetch(crm_id: string, record_id: string, item: Item, component_id: string, attempt: integer): (string?, error?)
     local actor = security.actor()
     if not actor then return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "no actor to download as" }) end
@@ -136,7 +99,8 @@ function M.fetch(crm_id: string, record_id: string, item: Item, component_id: st
     local row, row_err = M.deps.identity.to_row(identity)
     if not row then return nil, row_err end
 
-    local upload_id = uuid.v4()
+    local upload_id, id_err = M.upload_id(crm_id, record_id, item.provider, item.ref, attempt)
+    if not upload_id then return nil, id_err end
     local attrs: Map = { provider = item.provider, ref = item.ref, attempt = attempt }
     local token, token_err = M.deps.tokens.pack({
         upload_id = upload_id,
@@ -144,12 +108,9 @@ function M.fetch(crm_id: string, record_id: string, item: Item, component_id: st
         on_error_id = M.ON_COMPLETE,
         actor_id = row.actor_id,
         actor_context = row.actor_context,
-        params = { crm_id = crm_id, record_id = record_id, upload_id = upload_id, attrs = attrs },
+        params = { crm_id = crm_id, record_id = record_id, attrs = attrs },
     })
     if token_err then return nil, errors.new({ kind = errors.INTERNAL, message = "upload token: " .. tostring(token_err) }) end
-
-    local linked, link_err = M.link(crm_id, record_id, upload_id, copy(attrs, { status = "pending" }))
-    if not linked then return nil, link_err end
 
     local upload, ingest_err = M.deps.ingest.ingest({
         ref = item.ref, source = item.provider, component_id = component_id, actor_id = actor:id(),
@@ -159,74 +120,78 @@ function M.fetch(crm_id: string, record_id: string, item: Item, component_id: st
         },
     })
     if upload then
+        local linked, link_err = M.link(crm_id, record_id, upload_id, attrs)
+        if not linked then return nil, link_err end
         local metadata = type(upload.metadata) == "table" and upload.metadata or {}
-        if not M.unsupported_type(upload.mime_type, metadata.filename) then return "downloaded", nil end
-        local _, type_err = M.link(crm_id, record_id, upload_id, copy(attrs, {
-            status = "failed", error = "unsupported_type", error_detail = "file type is not supported",
-            content_type = upload.mime_type, filename = trim(metadata.filename) ~= "" and trim(metadata.filename) or nil,
-        }))
-        if type_err then return nil, type_err end
-        return "failed", nil
+        return M.unsupported_type(upload.mime_type, metadata.filename) and "failed" or "downloaded", nil
     end
+    if errors.is(ingest_err, errors.CONFLICT) then return "skipped", nil end
     local code, why = M.error_code(tostring(ingest_err))
-    local _, fail_err = M.link(crm_id, record_id, upload_id,
-        copy(attrs, { status = "failed", error = code, error_detail = detail(why) }))
-    if fail_err then return nil, fail_err end
+    attrs.error, attrs.error_detail, attrs.updated_at = code, detail(why), now()
+    local linked, fail_err = M.link(crm_id, record_id, upload_id, attrs)
+    if not linked then return nil, fail_err end
     return "failed", nil
 end
 
--- download_record(crm_id, record_id, component_id, opts) -> counts. Per
--- expected file: no edge -> download, unless opts.fresh_ms is set and the
--- record is younger; ready or young pending -> skip; pending older than the
--- token lifetime -> failed/expired; failed with a retryable code and attempts
--- left -> the old edge is cleared and the file downloaded again.
-function M.download_record(crm_id: string, record_id: string, component_id: string, opts: Map?): (Counts?, error?)
+-- download_record(crm_id, record_id, component_id) -> counts. Per expected
+-- file: no edge -> download; ready or young pending -> skip; pending older than
+-- the token lifetime or a retryable failure opens the next attempt.
+function M.download_record(crm_id: string, record_id: string, component_id: string): (Counts?, error?)
+    local allowed, access_err = M.deps.writer.require_access(crm_id, component.ACCESS.WRITE)
+    if not allowed then return nil, access_err end
     local counts: Counts = { downloaded = 0, failed = 0, skipped = 0, unlinked = 0 }
     local record, read_err = M.deps.reader.internal_get_record(crm_id, record_id)
     if read_err then return nil, read_err end
     if not record then return counts, nil end
-    local too_fresh = M.too_fresh(record :: Map, (opts or {}).fresh_ms)
     local expected, expected_err = M.deps.files.expected(crm_id, record :: Map)
     if not expected then return nil, expected_err end
-    local edges, edge_err = M.deps.files.edges(crm_id, record_id)
+    local edges, edge_err = M.deps.files.edges(crm_id, record_id, true)
     if not edges then return nil, edge_err end
     local by_key = M.deps.files.best_edges(edges)
 
     for _, item in ipairs(expected) do
         local edge = by_key[item.provider .. "\0" .. item.ref]
         local attempt = 1
-        local go = edge == nil and not too_fresh
+        local go = edge == nil
         if edge then
             local attrs = type(edge.attrs) == "table" and edge.attrs or {}
-            local upload_id = trim(edge.to_ref):sub(6)
-            local status = trim(attrs.status)
             local tries = math.floor(tonumber(attrs.attempt) or 1)
-            if status == "pending" then
-                local age = age_ms(attrs.updated_at)
-                if age and age > M.PENDING_TTL_MS then
-                    local _, err = M.link(crm_id, record_id, upload_id,
-                        copy(attrs, { status = "failed", error = "expired", error_detail = "no completion within 24 h" }))
-                    if err then return nil, err end
-                    status, attrs = "failed", copy(attrs, { status = "failed", error = "expired" })
-                end
-            end
-            if status == "failed" and M.RETRYABLE[trim(attrs.error)] and tries < M.MAX_ATTEMPTS then
-                local _, err = M.link(crm_id, record_id, upload_id, copy(attrs, {}), false)
-                if err then return nil, err end
+            if edge.active == false then
                 go, attempt = true, tries + 1
+            else
+                local state, state_err = M.deps.files.state(crm_id, record_id, edge)
+                if not state then return nil, state_err end
+                local expired = state.status == "pending" and (age_ms(state.updated_at) or 0) > M.PENDING_TTL_MS
+                if (expired or (state.status == "failed" and M.RETRYABLE[trim(state.error)])) and tries < M.MAX_ATTEMPTS then
+                    go, attempt = true, tries + 1
+                end
             end
         end
         if go then
             local outcome, err = M.fetch(crm_id, record_id, item, component_id, attempt)
             if not outcome then return nil, err end
-            if outcome == "downloaded" then counts.downloaded = counts.downloaded + 1 else counts.failed = counts.failed + 1 end
+            counts[outcome] = counts[outcome] + 1
         else
             counts.skipped = counts.skipped + 1
         end
     end
-    local unlinked, unlink_err = M.unlink_unnamed(crm_id, record_id, record :: Map, expected, edges)
+    local current, current_err = M.deps.files.edges(crm_id, record_id, true)
+    if not current then return nil, current_err end
+    local newest = M.deps.files.best_edges(current)
+    for _, edge in ipairs(current) do
+        local attrs = type(edge.attrs) == "table" and edge.attrs or {}
+        local selected = newest[M.deps.files.edge_key(edge)]
+        local selected_attrs = selected and type(selected.attrs) == "table" and selected.attrs or {}
+        if edge.active ~= false and (tonumber(attrs.attempt) or 1) < (tonumber(selected_attrs.attempt) or 1) then
+            local _, err = M.deps.writer.unlink_ref(crm_id, "crm:" .. record_id, files.EDGE_TYPE, trim(edge.to_ref))
+            if err then return nil, err end
+            counts.unlinked = counts.unlinked + 1
+            edge.active = false
+        end
+    end
+    local unlinked, unlink_err = M.unlink_unnamed(crm_id, record_id, record :: Map, expected, current)
     if not unlinked then return nil, unlink_err end
-    counts.unlinked = unlinked
+    counts.unlinked = counts.unlinked + unlinked
     return counts, nil
 end
 
@@ -244,43 +209,17 @@ function M.unlink_unnamed(crm_id: string, record_id: string, record: Map, expect
     return #dropped, nil
 end
 
--- on_upload_complete(args) -- the uploads completion callback, run as the
--- download's identity: the edge turns ready, or failed/conversion_failed.
--- A repeat with the edge already in that final state, or a callback for an
--- edge a retry cleared, writes nothing.
+-- Wake reference consumers after either upload outcome; state stays in uploads.
 function M.on_upload_complete(args: any): (Map?, error?)
     local input = type(args) == "table" and args or {}
     local params = type(input.params) == "table" and input.params or {}
-    local crm_id, record_id = trim(params.crm_id), trim(params.record_id)
-    local upload_id = trim(input.upload_id)
-    if crm_id == "" or record_id == "" or upload_id == "" then
+    if trim(params.crm_id) == "" or trim(params.record_id) == "" or trim(input.upload_id) == "" then
         return nil, errors.new({ kind = errors.INVALID, message = "upload callback without crm_id, record_id or upload_id" })
     end
-    local ok = input.status == "completed"
-    local metadata = type(input.metadata) == "table" and input.metadata or {}
-    local attrs = copy(type(params.attrs) == "table" and params.attrs or {}, {
-        status = ok and "ready" or "failed",
-        content_type = input.mime_type,
-        size = tonumber(input.size),
-        filename = trim(metadata.filename) ~= "" and trim(metadata.filename) or nil,
+    local attrs = type(params.attrs) == "table" and params.attrs or {}
+    local linked, err = M.link(trim(params.crm_id), trim(params.record_id), trim(input.upload_id), {
+        provider = attrs.provider, ref = attrs.ref, attempt = attrs.attempt,
     })
-    if not ok then
-        attrs.error = "conversion_failed"
-        attrs.error_detail = detail(input.error)
-    end
-
-    -- Only the live edge of this upload is written: a late callback for an
-    -- upload a retry already replaced must not bring its edge back.
-    local edges, edge_err = M.deps.files.edges(crm_id, record_id)
-    if not edges then return nil, edge_err end
-    local live: Map? = nil
-    for _, edge in ipairs(edges) do
-        if trim(edge.to_ref) == "file:" .. upload_id then live = edge; break end
-    end
-    if not live then return { success = true, changed = false }, nil end
-    local current = type(live.attrs) == "table" and live.attrs or {}
-    if trim(current.status) == attrs.status then return { success = true, changed = false }, nil end
-    local linked, err = M.link(crm_id, record_id, upload_id, attrs)
     if not linked then return nil, err end
     return { success = true, changed = true }, nil
 end
@@ -290,6 +229,8 @@ end
 -- value the provider cannot parse is counted in errors (the first few named)
 -- and the backfill goes on; any other error stops it.
 function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, error?)
+    local allowed, access_err = M.deps.writer.require_access(crm_id, component.ACCESS.WRITE)
+    if not allowed then return nil, access_err end
     local options = type(opts) == "table" and opts or {}
     local types: { string } = {}
     local objects, objects_err = M.deps.reader.internal_objects(crm_id)
@@ -312,8 +253,7 @@ function M.backfill(crm_id: string, component_id: string, opts: any): (Map?, err
             local rows = type(page.rows) == "table" and page.rows or {}
             for _, record in ipairs(rows) do
                 local record_id = trim(record.record_id)
-                local counts, download_err = M.download_record(crm_id, record_id, component_id,
-                    { fresh_ms = options.fresh_ms })
+                local counts, download_err = M.download_record(crm_id, record_id, component_id)
                 total.records = total.records + 1
                 if counts then
                     total.downloaded = total.downloaded + counts.downloaded

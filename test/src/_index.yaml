@@ -523,7 +523,7 @@ entries:
       comment: Actor-scoped CRM create idempotency and normalized replay contract.
     source: file://crm_create_contract_test.lua
     method: run
-    modules: [contract, funcs, security, uuid]
+    modules: [contract, funcs, security, uuid, sql, time]
     imports:
       actors: app:actors
       test: wippy.test:test
@@ -1185,10 +1185,8 @@ entries:
       comment: record.files and record.file_image through the registered functions, on a real CRM, uploads store and provider declaration.
     source: file://crm_record_files_surface_test.lua
     method: run
-    modules: [funcs, security, time, uuid]
+    modules: [funcs, security, time, uuid, channel, sql, json]
     imports:
       actors: app:actors
       test: wippy.test:test
-      download: kickside.crm.files:download
-      read_model: kickside.crm.persist:read_model
       trusted_reader: kickside.uploads:trusted_reader
