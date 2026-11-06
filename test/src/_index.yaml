@@ -503,8 +503,9 @@ entries:
       comment: Actor-scoped CRM create idempotency and normalized replay contract.
     source: file://crm_create_contract_test.lua
     method: run
-    modules: [contract, funcs, security, uuid]
+    modules: [contract, funcs, security, uuid, sql]
     imports:
+      deletion_worker: app:deletion_test_worker
       actors: app:actors
       test: wippy.test:test
       types: kickside.crm:types
@@ -1111,3 +1112,8 @@ entries:
       writer: kickside.crm.command:writer
       resolve: kickside.crm.resolution:resolve_lib
       merge_arm: kickside.crm.resolution:merge_arm_lib
+
+  - name: deletion_test_worker
+    kind: library.lua
+    source: file://deletion_test_worker.lua
+    modules: [sql, time]

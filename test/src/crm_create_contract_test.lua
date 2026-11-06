@@ -1,3 +1,4 @@
+local deletion_worker = require("deletion_worker")
 local actors = require("actors")
 local contract = require("contract")
 local funcs = require("funcs")
@@ -108,7 +109,19 @@ local function define_tests()
             local deleted, delete_err = threads:delete({ thread_id = workspace.component_id })
             test.is_nil(delete_err)
             test.not_nil(deleted)
-            test.eq(map(deleted).deleted, true)
+            test.eq(map(deleted).deleted, false)
+            test.eq(map(deleted).in_progress, true)
+            local finished, finish_err = deletion_worker.await(workspace.component_id)
+            test.is_nil(finish_err, tostring(finish_err))
+            test.is_true(finished)
+            local db = assert(sql.get("app:db"))
+            for _, spec in ipairs({ {"kickside_components", "component_id"}, {"kickside_thread", "id"},
+                {"kickside_crm_schema_revision", "crm_id"}, {"kickside_crm_schema_object", "crm_id"} }) do
+                local rows, read_err = db:query("SELECT COUNT(*) AS n FROM " .. spec[1] .. " WHERE " .. spec[2] .. "=$1", {workspace.component_id})
+                test.is_nil(read_err, tostring(read_err))
+                test.eq(tonumber(rows[1].n), 0, spec[1])
+            end
+            assert(db:release())
         end)
 
         test.it("replays the same normalized title and parent for the same actor and key", function()
