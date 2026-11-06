@@ -1,6 +1,7 @@
-import { WippyVueElement, define } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
 import { crmStyles } from './crmStyles'
+import { lazyControl } from './lazy'
 
 interface Props {
   parentId?: string
@@ -22,13 +23,19 @@ const propsSchema: WippyPropsSchema = {
   },
 }
 
+const Root = lazyControl(
+  () => import('./app/CrmCreate.vue'),
+  { loading: 'Loading the CRM creation form…', failed: 'Could not load the CRM creation form. Reload the page to try again.' },
+  useEvents,
+)
+
 class kicksideCrmCreateElement extends WippyVueElement<Props, Events> {
   static get wippyConfig(): WippyElementConfig<Props> {
     return { propsSchema, hostCssKeys: ['themeConfigUrl'] as const, inlineCss: crmStyles }
   }
 
   static get vueConfig() {
-    return { lazyConfig: () => import('./app/CrmCreate.vue').then((module) => ({ rootComponent: module.default })) }
+    return { rootComponent: Root }
   }
 }
 
