@@ -23,6 +23,7 @@ entries:
     - kickside.crm.command:*
     - kickside.crm.domain:*
     - kickside.crm.events:*
+    - kickside.crm.files:*
     - kickside.crm.migrations:*
     - kickside.crm.persist:*
     - kickside.crm.ports:*

@@ -2,7 +2,9 @@ local actors = require("actors")
 local contract = require("contract")
 local funcs = require("funcs")
 local security = require("security")
+local sql = require("sql")
 local test = require("test")
+local time = require("time")
 local types = require("types")
 local uuid = require("uuid")
 
@@ -108,7 +110,18 @@ local function define_tests()
             local deleted, delete_err = threads:delete({ thread_id = workspace.component_id })
             test.is_nil(delete_err)
             test.not_nil(deleted)
-            test.eq(map(deleted).deleted, true)
+            test.eq(map(deleted).deleted == true or map(deleted).in_progress == true, true)
+            for _ = 1, 100 do
+                local db = assert(sql.get("app:db"))
+                local remaining, read_err = db:query(
+                    "SELECT component_id FROM kickside_components WHERE component_id = $1 UNION ALL SELECT id FROM kickside_thread WHERE id = $1",
+                    { workspace.component_id })
+                db:release()
+                test.is_nil(read_err, tostring(read_err))
+                if #(remaining or {}) == 0 then return end
+                time.sleep("50ms")
+            end
+            error("CRM component and thread remain after deletion")
         end)
 
         test.it("replays the same normalized title and parent for the same actor and key", function()

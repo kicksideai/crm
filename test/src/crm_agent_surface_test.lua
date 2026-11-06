@@ -230,6 +230,44 @@ local function define_tests()
             test.contains(tostring(err), "unsupported alias type: website")
         end)
 
+        test.it("refuses an attachment mark without a provider or on a non-text field", function()
+            for _, case in ipairs({
+                { data_type = "text", mark = {}, message = "config.attachment requires a provider" },
+                { data_type = "number", mark = { provider = "hubspot" }, message = "config.attachment needs a text or url attribute" },
+            }) do
+                local execute = fixture()
+                local artifact = map(call(execute, "schema.get", {}).schema)
+                local attributes = list(map(artifact.spec).attributes)
+                attributes[#attributes + 1] = {
+                    portableKey = "attribute/company/files", object_type = "company", attr = "files",
+                    data_type = case.data_type, label = "Files", config = { attachment = case.mark },
+                }
+                local applied, err = execute:call(TOOLS .. "schema.apply", { artifact = artifact })
+                test.is_nil(applied)
+                test.contains(tostring(err), case.message)
+            end
+        end)
+
+        test.it("keeps an attachment mark on a text field", function()
+            local execute = fixture()
+            local artifact = map(call(execute, "schema.get", {}).schema)
+            local metadata = map(artifact.metadata)
+            metadata.sourceHash = nil
+            artifact.serialized = nil
+            local attributes = list(map(artifact.spec).attributes)
+            attributes[#attributes + 1] = {
+                portableKey = "attribute/company/files", object_type = "company", attr = "files",
+                data_type = "text", label = "Files", config = { attachment = { provider = "hubspot" } },
+            }
+            call(execute, "schema.apply", { artifact = artifact, expected_revision = metadata.revision })
+            local again = map(call(execute, "schema.get", {}).schema)
+            local provider = nil
+            for _, raw in ipairs(list(map(again.spec).attributes)) do
+                if map(raw).attr == "files" then provider = map(map(map(raw).config).attachment).provider end
+            end
+            test.eq(provider, "hubspot")
+        end)
+
         test.it("accepts each alias type the CRM matches on", function()
             local execute = fixture()
             local artifact = map(call(execute, "schema.get", {}).schema)

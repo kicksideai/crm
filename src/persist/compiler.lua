@@ -416,6 +416,18 @@ local function normalize(declaration: unknown): Normalized
             refuse(errors.INVALID, "duplicate attribute identity: " .. field.object_type .. "." .. field.attr)
         end
         field_ids[ikey], logical_fields[lkey] = true, true
+        -- config.attachment marks a field whose value holds provider file links;
+        -- the provider named here parses and downloads them.
+        if field.config.attachment ~= nil then
+            local mark = field.config.attachment
+            local provider = type(mark) == "table" and trim((mark :: any).provider) or ""
+            if provider == "" then
+                refuse(errors.INVALID, "config.attachment requires a provider: " .. field.object_type .. "." .. field.attr)
+            end
+            if field.data_type ~= "text" and field.data_type ~= "url" then
+                refuse(errors.INVALID, "config.attachment needs a text or url attribute: " .. field.object_type .. "." .. field.attr)
+            end
+        end
         if field.config.alias ~= nil and not consts.is_alias_type(field.config.alias) then
             refuse(errors.INVALID, "unsupported alias type: " .. tostring(field.config.alias)
                 .. " (" .. field.object_type .. "." .. field.attr .. "); use email, domain, phone, linkedin or external:<system>")

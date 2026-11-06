@@ -22,6 +22,9 @@ workspace:
     kickside/users: ../../kickside/platform/users
     kickside/widgets: ../../kickside/platform/widgets
     kickside/security: ../../kickside/platform/security
+    kickside/uploads: ../../kickside/platform/uploads
+    kickside/realtime: ../../kickside/platform/realtime
+    kickside/realtime-dispatch: ../../kickside/core/realtime-dispatch
 override:
   app:db:file: ${sqlite_path}
   app:shared_fixture_db:file: ${sqlite_path}

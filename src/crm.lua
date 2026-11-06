@@ -1,6 +1,7 @@
 -- Public, access-checked CRM read surface.
 local component = require("component")
 local internal = require("reader_internal")
+local files = require("files")
 
 local M = {}
 
@@ -94,6 +95,31 @@ function M.inbound_references(crm_id: string, to_ref: string, include_inactive: 
     local err = read_access_error(crm_id)
     if err then return nil, err end
     return internal.internal_inbound_references(crm_id, to_ref, include_inactive, limit, offset)
+end
+
+-- record_files(crm_id, record_ref, opts) -> the record's files (ATN-98): each
+-- file its attachment fields promise, pending until downloaded, with the text
+-- and the original image of a ready file whose upload this CRM wrote.
+function M.record_files(crm_id: string, record_ref: unknown, opts: unknown): (unknown?, error?)
+    local err = read_access_error(crm_id)
+    if err then return nil, err end
+    return files.record_files(crm_id, record_ref, opts)
+end
+
+-- record_file_image(crm_id, record_ref, upload_id) -> the original image of one
+-- of the record's image files as base64.
+function M.record_file_image(crm_id: string, record_ref: unknown, upload_id: unknown): (unknown?, error?)
+    local err = read_access_error(crm_id)
+    if err then return nil, err end
+    return files.record_file_image(crm_id, record_ref, upload_id)
+end
+
+-- record_file_url(crm_id, record_ref, upload_id) -> a short-lived link to the
+-- original of one of the record's ready files (#1115).
+function M.record_file_url(crm_id: string, record_ref: unknown, upload_id: unknown): (unknown?, error?)
+    local err = read_access_error(crm_id)
+    if err then return nil, err end
+    return files.record_file_url(crm_id, record_ref, upload_id)
 end
 
 function M.attributes(crm_id: string, object_type: string?): (unknown?, error?)

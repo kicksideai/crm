@@ -38,6 +38,20 @@ entries:
     kind: ns.dependency
     component: kickside/widgets
 
+  - name: dep.kickside.uploads
+    version: '>=0.3.9'
+    kind: ns.dependency
+    meta:
+      comment: Downloads record attachments into uploads and reads them back for the record's files (attachment_ingest, upload tokens, trusted_reader).
+    component: kickside/uploads
+
+  - name: dep.kickside.execution
+    version: '*'
+    kind: ns.dependency
+    meta:
+      comment: Captures the download's identity for the upload completion token.
+    component: kickside/execution
+
   - name: dep.wippy.migration
     version: '>=v0.3.24'
     kind: ns.dependency
@@ -129,3 +143,4 @@ entries:
     imports:
       component: kickside.component:component
       reader_internal: kickside.crm.persist:read_model
+      files: kickside.crm.files:files

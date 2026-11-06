@@ -1,0 +1,155 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.crm.files
+
+entries:
+  - name: files
+    kind: library.lua
+    meta:
+      comment: A record's files (ATN-98) -- attachment fields marked in the schema, attachment edges, and uploads read back after a provenance check. Checks no access itself.
+    source: file://files.lua
+    modules: [base64, funcs, registry]
+    imports:
+      reader_internal: kickside.crm.persist:read_model
+      trusted_reader: kickside.uploads:trusted_reader
+      uploads: kickside.uploads:uploads
+
+  - name: download
+    kind: library.lua
+    meta:
+      comment: Downloads the files a record's attachment fields promise into uploads, tracks their identity on attachment edges, and reads their state from uploads.
+    source: file://download.lua
+    modules: [security, time, uuid]
+    imports:
+      component: kickside.component:component
+      writer: kickside.crm.command:writer
+      files: kickside.crm.files:files
+      reader_internal: kickside.crm.persist:read_model
+      attachment_ingest: kickside.uploads:attachment_ingest
+      upload_tokens: kickside.uploads.persist:upload_tokens
+      execution_identity: kickside.execution:execution_identity
+
+  - name: on_upload_complete
+    kind: function.lua
+    meta:
+      comment: Upload completion target for record file tokens; state is read directly from uploads.
+    source: file://functions.lua
+    method: on_upload_complete
+    imports: &download_imports
+      download: kickside.crm.files:download
+
+  - name: backfill
+    kind: function.lua
+    meta:
+      comment: "{ crm_id, component_id, object_type? } -> counts -- download the files of every existing record with an attachment field, once, under the caller's WRITE."
+    source: file://functions.lua
+    method: backfill
+    imports: *download_imports
+
+  - name: attachments_write
+    kind: function.lua
+    meta:
+      comment: kickside.data:writable.write -- download the files the delivered record's attachment fields promise.
+    source: file://functions.lua
+    method: write
+    imports: *download_imports
+
+  - name: attachments_sink
+    kind: contract.binding
+    meta:
+      title: CRM record attachments
+      icon: tabler:paperclip
+      comment: Download the files a CRM record's attachment fields promise into uploads, as the automation's identity.
+      group: CRM
+      class: kickside.crm
+      # Each expected file is skipped once its edge exists, so a redelivery
+      # downloads nothing twice.
+      delivery: at_least_once
+      input_shape: record
+    contracts:
+      - contract: kickside.data:writable
+        methods:
+          write: kickside.crm.files:attachments_write
+
+  - name: record_attachments
+    kind: registry.entry
+    meta:
+      type: kickside.automation.port
+      title: CRM record attachments
+      icon: tabler:paperclip
+      group: CRM
+      class: kickside.crm
+    binding: kickside.crm.files:attachments_sink
+    input_mode: transform_output
+    # kickside.sync delivers the source item's op (upsert or delete), never a
+    # port-specific name: upsert downloads, delete is a noop.
+    operations:
+      upsert: {}
+      delete: {}
+    config_schema:
+      crm_id:
+        type: string
+        picker: wc-component-picker
+        class: crm
+        required: true
+        role: primary
+        title: CRM
+        description: The CRM whose record files are downloaded.
+      component_id:
+        type: string
+        picker: wc-component-picker
+        class: connection
+        required: false
+        title: Provider connection
+        description: The provider connection the files are fetched through; empty uses the provider's single connection.
+    input_schema: |
+      { "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["record_id"],
+        "description": "The CRM record whose attachment fields are downloaded.",
+        "properties": {
+          "record_id": { "type": "string", "description": "CRM record id, with or without crm:." }
+        } }
+    output_schema: |
+      { "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "success": { "type": "boolean" },
+          "result": { "type": "string", "enum": ["updated", "noop"] },
+          "dest_ref": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "crm_id": { "type": "string" }, "record_id": { "type": "string" } },
+            "required": ["crm_id", "record_id"]
+          },
+          "dest_refs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dest_ref": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": { "crm_id": { "type": "string" }, "record_id": { "type": "string" } },
+                  "required": ["crm_id", "record_id"]
+                }
+              },
+              "required": ["dest_ref"]
+            }
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "retriable": { "type": "boolean" },
+              "scope": { "type": "string" }
+            },
+            "required": ["code", "message", "retriable", "scope"]
+          }
+        },
+        "required": ["success"] }
