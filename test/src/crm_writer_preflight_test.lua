@@ -156,6 +156,30 @@ local function define_tests()
             test.eq(count_events(crm_id), 0)
         end)
 
+        test.it("rejects a batch value a merge earlier in the batch handed to the winner", function()
+            local crm_id = uuid.v7()
+            local active_actor, active_scope = actor(uuid.v4()), scope()
+            provision(crm_id, active_actor, active_scope)
+            local execute = funcs.new():with_actor(active_actor):with_scope(active_scope) :: Executor
+            test.eq(call(execute, crm_id, {
+                created("entity:winner"),
+                created("entity:loser", nil, { email = "kept@example.test" }),
+            }).ok, true)
+            catch_up(execute, crm_id)
+            local baseline = count_events(crm_id)
+
+            local rejected = call(execute, crm_id, {
+                { type = types.EVENTS.MERGE_DECIDED, body = {
+                    resolution_id = "resolution:inherit", left_id = "entity:winner", right_id = "entity:loser",
+                    object_type = "entity", decision = "merged", winner_id = "entity:winner", loser_id = "entity:loser",
+                } },
+                created("entity:third", nil, { email = "kept@example.test" }),
+            })
+            test.eq(rejected.ok, false)
+            test.is_true(error_text(rejected.error):find("must be unique", 1, true) ~= nil)
+            test.eq(count_events(crm_id), baseline)
+        end)
+
         test.it("delete_activity refuses an empty identity and appends an addressed one", function()
             local crm_id = uuid.v7()
             local active_actor, active_scope = actor(uuid.v4()), scope()

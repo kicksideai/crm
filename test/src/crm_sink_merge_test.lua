@@ -304,6 +304,38 @@ local function define()
             test.eq(resolutions[2].loser_id, "o")
         end)
 
+        test.it("merges a predecessor recreated after an earlier merge into the same survivor again", function()
+            local crm_id, execute = f.crm(PEOPLE_SCHEMA)
+            for round = 1, 2 do
+                local seeded = call_sink(execute, request(crm_id, "person:1:" .. round, person("person:1", { name = "Pat" })))
+                test.eq(seeded.success, true, error_text(seeded))
+                local survivor = call_sink(execute, request(crm_id, "person:3:" .. round,
+                    person("person:3", { name = "Pat Lee" }, { "person:1" })))
+                test.eq(survivor.success, true, error_text(survivor))
+                test.is_nil(stored(crm_id, "person", "person:1"))
+            end
+            test.eq(#query("SELECT 1 FROM kickside_crm_merge_resolution WHERE crm_id = $1 AND loser_id = $2",
+                { crm_id, "person:1" }), 2)
+        end)
+
+        test.it("keeps a predecessor's email after the survivor's email changes", function()
+            local crm_id, execute = f.crm(PEOPLE_SCHEMA)
+            local first = call_sink(execute, request(crm_id, "person:1",
+                person("person:1", { name = "Pat", email = "a@example.com" })))
+            test.eq(first.success, true, error_text(first))
+            local survivor = call_sink(execute, request(crm_id, "person:3:v1",
+                person("person:3", { name = "Pat", email = "a@example.com" }, { "person:1" })))
+            test.eq(survivor.success, true, error_text(survivor))
+            local changed = call_sink(execute, request(crm_id, "person:3:v2",
+                person("person:3", { name = "Pat", email = "b@example.com" })))
+            test.eq(changed.success, true, error_text(changed))
+            test.eq(map(stored(crm_id, "person", "person:3")).email, "b@example.com")
+            test.eq(table.concat(emails_owned(crm_id), ","), "person:3,person:3")
+            local reservations = query("SELECT record_id FROM kickside_crm_alias_reservation WHERE crm_id = $1 AND object_scope = 'person'",
+                { crm_id })
+            test.eq(#reservations, 2)
+        end)
+
         test.it("accepts merged_record_ids only as a string array on a record upsert", function()
             local crm_id, execute = f.crm(PEOPLE_SCHEMA)
             local scalar = call_sink(execute, request(crm_id, "person:4", {

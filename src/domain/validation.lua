@@ -35,6 +35,8 @@ type ValidationContext = {
     -- order: a later write or merge in the batch may fill them.
     unfilled: { [string]: { UnmetRequirement } },
     unfilled_order: { string },
+    -- Unique fields each record holds a value for within this batch.
+    unique_held: { [string]: StringSet },
 }
 type UnmetRequirement = { attr: string, reason: string }
 type ObjectSchema = {
@@ -454,17 +456,25 @@ local function duplicate_unique(context: ValidationContext, object_type: string,
     return false, nil
 end
 
+local function unique_key(object_type: string, attr: string, value: unknown): (string?, error?)
+    local encoded, encode_err = json.encode(value)
+    if encode_err then return nil, errors.wrap(encode_err, "unique value could not be encoded") end
+    return object_type .. "\0" .. attr .. "\0" .. tostring(encoded), nil
+end
+
 local function reserve_unique(context: ValidationContext, object_type: string, record_id: string,
     def: UnknownMap, value: unknown): (string?, error?)
     if is_empty(value) then return nil, nil end
     local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
     if cfg.unique ~= true then return nil, nil end
-    local encoded, encode_err = json.encode(value)
-    if encode_err then return nil, errors.wrap(encode_err, "unique value could not be encoded") end
-    local key = object_type .. "\0" .. tostring(def.attr) .. "\0" .. tostring(encoded)
+    local key, key_err = unique_key(object_type, tostring(def.attr), value)
+    if not key then return nil, key_err end
     local owner = context.unique_values[key]
     if owner ~= nil and owner ~= record_id then return "must be unique", nil end
     context.unique_values[key] = record_id
+    local held = context.unique_held[record_id] or {}
+    held[tostring(def.attr)] = true
+    context.unique_held[record_id] = held
     return nil, nil
 end
 
@@ -691,6 +701,11 @@ local function membership_event(context: ValidationContext, body: UnknownMap, pr
     return nil
 end
 
+local function stored_values(row: unknown): UnknownMap
+    if type(row) ~= "table" or type((row :: UnknownMap).values) ~= "table" then return {} end
+    return (row :: UnknownMap).values :: UnknownMap
+end
+
 local function merge_event(context: ValidationContext, body: UnknownMap, decided: boolean): error?
     local object_type = trim(body.object_type)
     local _, schema_err = object_schema(context, object_type)
@@ -708,18 +723,49 @@ local function merge_event(context: ValidationContext, body: UnknownMap, decided
             return invalid("winner and loser must be the reviewed pair")
         end
         context.records[loser] = false
-        -- The winner takes every value it lacks from the loser.
-        if context.unfilled[winner] ~= nil then
-            local db, db_err = open_db()
-            if not db then return db_err end
-            local stored, stored_err = storage.get(db, context.crm_id, object_type, loser)
-            db:release()
-            if stored_err then return stored_err end
-            local loser_values = type(stored) == "table" and type((stored :: UnknownMap).values) == "table"
-                and (stored :: UnknownMap).values :: UnknownMap or {}
-            fill(context, winner, loser_values)
-        end
+        -- The winner takes every value it lacks from the loser: unmet required
+        -- fields fill, and the loser's unique values become the winner's.
+        local db, db_err = open_db()
+        if not db then return db_err end
+        local loser_row, loser_err = storage.get(db, context.crm_id, object_type, loser)
+        local winner_row, winner_err = storage.get(db, context.crm_id, object_type, winner)
+        db:release()
+        if loser_err then return loser_err end
+        if winner_err then return winner_err end
+        local loser_values = stored_values(loser_row)
+        local winner_values = stored_values(winner_row)
+        fill(context, winner, loser_values)
         context.unfilled[loser] = nil
+        local schema = object_schema(context, object_type) :: ObjectSchema
+        local held = context.unique_held[winner] or {}
+        local loser_held = context.unique_held[loser] or {}
+        for key, owner in pairs(context.unique_values) do
+            if owner == loser then
+                local first = key:find("\0", 1, true) or 0
+                local second = key:find("\0", first + 1, true) or first
+                local attr = key:sub(first + 1, second - 1)
+                if not held[attr] and is_empty(winner_values[attr]) then
+                    context.unique_values[key] = winner
+                    held[attr] = true
+                else
+                    context.unique_values[key] = nil
+                end
+            end
+        end
+        for _, def in ipairs(schema.ordered) do
+            local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
+            local attr = tostring(def.attr)
+            local value = loser_values[attr]
+            if cfg.unique == true and not loser_held[attr] and not is_empty(value)
+                and not held[attr] and is_empty(winner_values[attr]) then
+                local key, key_err = unique_key(object_type, attr, value)
+                if not key then return key_err end
+                context.unique_values[key] = winner
+                held[attr] = true
+            end
+        end
+        context.unique_held[winner] = held
+        context.unique_held[loser] = nil
     end
     return nil
 end
@@ -787,6 +833,7 @@ function M.validate_commands(crm_id: string, commands: unknown): (boolean?, erro
         pipelines = pipeline_index(typed_schema),
         unfilled = {},
         unfilled_order = {},
+        unique_held = {},
     }
     for _, value in ipairs(commands :: { unknown }) do
         local cmd: Command = type(value) == "table" and (value :: Command) or {}

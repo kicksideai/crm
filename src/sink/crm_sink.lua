@@ -249,12 +249,6 @@ local function identity_fields(crm_id: string, object_type: string): ({ [string]
     return identity, nil
 end
 
--- The resolution a merge at source records, keyed by its exact record pair: the
--- winner's length prefixes it, which gives every pair its own key.
-local function source_merge_resolution(winner_id: string, loser_id: string): string
-    return "source-merge:" .. tostring(#winner_id) .. ":" .. winner_id .. ":" .. loser_id
-end
-
 type Absorption = { commands: { Command }, creates: boolean }
 
 -- A source that merged records names the ones it folded into this record. Each
@@ -305,12 +299,16 @@ local function absorption(crm_id: string, object_type: string, record_id: string
             external = writer.sink_step_external(origin, operation, idempotency_key, "create") }
         plan.creates = true
     end
+    -- Each merge is decided by this delivery for this loser: the step's external
+    -- identity names exactly that decision, so it keys the resolution too, and a
+    -- loser recreated and absorbed again by a later delivery gets its own.
     for _, loser_id in ipairs(absorbed) do
+        local external = writer.sink_step_external(origin, operation, idempotency_key, tostring(hash.sha256(loser_id)))
         plan.commands[#plan.commands + 1] = { type = types.EVENTS.MERGE_DECIDED, body = {
             left_id = record_id, right_id = loser_id, object_type = object_type,
             decision = "merged", winner_id = record_id, loser_id = loser_id,
-            reason = "merged at source", resolution_id = source_merge_resolution(record_id, loser_id),
-        }, external = writer.sink_step_external(origin, operation, idempotency_key, tostring(hash.sha256(loser_id))) }
+            reason = "merged at source", resolution_id = "source-merge:" .. tostring(external.external_id),
+        }, external = external }
     end
     return plan, nil
 end

@@ -331,7 +331,8 @@ function M.reserve_for_commands(crm_id: string, commands: unknown): ({Claim}?, e
 end
 
 -- A changed field value retires the alias the field held. An alias a merge
--- carried over names a record the winner absorbed, so it stays with the winner.
+-- carried over names a record the winner absorbed, so it stays with the winner;
+-- the field's own commit keeps that source when it holds the same value.
 local function retire(db: Executor, crm_id: string, object_type: string, alias_type: string, value: unknown, record_id: string): error?
     if is_empty(value) then return nil end
     local _, alias_hash, err = normalized_key(alias_type, value, crm_id, db)
@@ -413,11 +414,12 @@ local function commit(db: Executor, crm_id: string, object_type: string, alias_t
         VALUES ($1, $2, $3, $4, $5, $6, 'schema', $7, $8)
         ON CONFLICT (crm_id, object_scope, alias_type, alias_hash) DO UPDATE SET
             alias_display = excluded.alias_display,
-            source = excluded.source,
+            source = CASE WHEN kickside_crm_alias.source = $9 THEN kickside_crm_alias.source ELSE excluded.source END,
             is_primary = excluded.is_primary,
             updated_at = excluded.updated_at
         WHERE kickside_crm_alias.record_id = excluded.record_id
-    ]], { crm_id, object_type, alias_type, alias_hash, normalize.display(alias_type, normalized), record_id, true, at })
+    ]], { crm_id, object_type, alias_type, alias_hash, normalize.display(alias_type, normalized), record_id, true, at,
+        M.MERGED_SOURCE })
     if insert_err then return insert_err end
     existing, err = alias(db, crm_id, object_type, alias_type, alias_hash)
     if err then return err end
