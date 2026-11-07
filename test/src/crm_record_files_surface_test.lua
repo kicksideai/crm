@@ -6,6 +6,7 @@ local channel = require("channel")
 local actors = require("actors")
 local funcs = require("funcs")
 local json = require("json")
+local registry = require("registry")
 local security = require("security")
 local sql = require("sql")
 local test = require("test")
@@ -70,9 +71,10 @@ local READ_REFERENCES = "kickside.crm.read:references"
 
 -- deliver(...) -- as kickside.sync delivers: sink_op is the source item's op,
 -- upsert or delete (kickside/platform/sync/src/round/consumer.lua).
-local function deliver(execute: Executor, crm_id: string, record_id: string, sink_op: string?): Map
-    local raw, err = execute:call(SINK, { config = { crm_id = crm_id }, sink_op = sink_op or "upsert",
-        input = { record_id = "crm:" .. record_id } })
+-- component_id names the provider connection the files are fetched through.
+local function deliver(execute: Executor, crm_id: string, record_id: string, sink_op: string?, component_id: string?): Map
+    local raw, err = execute:call(SINK, { config = { crm_id = crm_id, component_id = component_id },
+        sink_op = sink_op or "upsert", input = { record_id = "crm:" .. record_id } })
     test.is_nil(err, tostring(err))
     return map(raw)
 end
@@ -197,6 +199,21 @@ local function define_tests()
                 time.sleep("50ms")
             end
             error("the stale delivery hides the completed upload")
+        end)
+
+        test.it("fetches every file through the provider connection the destination names", function()
+            local execute, crm_id, record_id = fixture()
+            test.eq(deliver(execute, crm_id, record_id, "upsert", "connection-a").result, "updated")
+            for _ = 1, 100 do
+                local downloaded = files_of(execute, crm_id, record_id)
+                if downloaded[1].status == "ready" and downloaded[2].status == "ready" then
+                    test.eq(downloaded[1].text, "file 11 via connection-a")
+                    test.eq(downloaded[2].text, "file 22 via connection-a")
+                    return
+                end
+                time.sleep("50ms")
+            end
+            error("the files never became ready")
         end)
 
         test.it("admits one upload per ref under concurrent deliveries", function()
@@ -618,6 +635,31 @@ local function define_tests()
                 provider = "test", ref = "11", attempt = 1, updated_at = "2026-11-04T09:00:00Z" })
             local link = call(execute, "record.file_url", { crm_id = crm_id, record_ref = record_id, upload_id = pending_id })
             test.eq(link.success, false)
+        end)
+    end)
+
+    test.describe("CRM record attachments port", function()
+        -- A port config declares one picker field, its primary selector; every
+        -- other field is a schema-form field.
+        test.it("selects the CRM with its one picker and takes the provider connection as a form field", function()
+            local port = map(map(assert(registry.get("kickside.crm.files:record_attachments"))).data)
+            local fields = map(port.config_schema)
+            local pickers: { string } = {}
+            for key, field in pairs(fields) do
+                local picker = map(field).picker
+                if type(picker) == "string" and picker ~= "" and picker ~= "wc-schema-form" then pickers[#pickers + 1] = key end
+            end
+            test.eq(table.concat(pickers, ","), "crm_id")
+            local crm_field = map(fields.crm_id)
+            test.eq(crm_field.picker, "wc-component-picker")
+            test.eq(crm_field.class, "crm")
+            test.eq(crm_field.role, "primary")
+            test.eq(crm_field.required, true)
+            local connection = map(fields.component_id)
+            test.eq(connection.picker, "wc-schema-form")
+            test.eq(connection.type, "string")
+            test.eq(connection.required, false)
+            test.is_nil(connection.role)
         end)
     end)
 

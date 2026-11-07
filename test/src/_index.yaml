@@ -295,6 +295,7 @@ entries:
     meta:
       comment: Local file storage for record attachment tests.
     directory: ./.wippy/uploads
+    auto_init: true
 
   - name: dep.kickside.uploads
     kind: ns.dependency
@@ -1201,7 +1202,7 @@ entries:
       comment: record.files and record.file_image through the registered functions, on a real CRM, uploads store and provider declaration.
     source: file://crm_record_files_surface_test.lua
     method: run
-    modules: [funcs, security, time, uuid, channel, sql, json]
+    modules: [funcs, security, time, uuid, channel, sql, json, registry]
     imports:
       actors: app:actors
       test: wippy.test:test

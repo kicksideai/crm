@@ -2,6 +2,8 @@
 -- Test attachment fetcher (provider "test"): a value is ids separated by ";".
 -- parse_refs({value}) -> refs split on ";" and spaces; "bad" is refused the
 -- way HubSpot refuses a value over 64 KB, "crash" raises.
+-- fetch_attachment({ref, component_id}) -> a text file "file <ref>", naming the
+-- connection it was fetched through when one is given.
 local function parse_refs(args: any): any
     local value = tostring(type(args) == "table" and args.value or "")
     if value == "bad" then return { error = "value is too long" } end
@@ -16,7 +18,9 @@ local function fetch_attachment(args: any): any
     if tostring(args.ref) == "zip" then
         return { bytes = "PK\3\4 archive", filename = "bundle.zip", content_type = "application/zip" }
     end
-    return { bytes = "file " .. tostring(args.ref), filename = tostring(args.ref) .. ".txt", content_type = "text/plain" }
+    local via = tostring(args.component_id or "")
+    local bytes = "file " .. tostring(args.ref) .. (via ~= "" and " via " .. via or "")
+    return { bytes = bytes, filename = tostring(args.ref) .. ".txt", content_type = "text/plain" }
 end
 
 return { parse_refs = parse_refs, fetch_attachment = fetch_attachment }
