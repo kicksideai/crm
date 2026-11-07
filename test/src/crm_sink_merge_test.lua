@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: MIT
 local sql = require("sql")
 local storage = require("storage")
 local test = require("test")
