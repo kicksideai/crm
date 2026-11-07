@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Counts reads of the applied CRM schema catalog. A schema load starts with the
 -- revision row, so each statement over kickside_crm_schema_revision is one load.
 -- executor(db) wraps a handle a caller passes in; instrument(storage) routes the

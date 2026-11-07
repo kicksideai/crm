@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- The applied schema is loaded once per unit of work: once for a write batch,
 -- once for a projection batch, once for a read request, whatever the number of
 -- items the unit carries.

@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Test-only actor-scoped adapter: runs one CRM write batch or read request with the
 -- storage facade instrumented and answers how many schema loads it made.
 local counter = require("counter")
