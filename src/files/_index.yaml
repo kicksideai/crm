@@ -97,11 +97,10 @@ entries:
         description: The CRM whose record files are downloaded.
       component_id:
         type: string
-        picker: wc-component-picker
-        class: connection
+        picker: wc-schema-form
         required: false
         title: Provider connection
-        description: The provider connection the files are fetched through; empty uses the provider's single connection.
+        description: Component id of the provider connection the files are fetched through; empty uses the provider's single connection.
     input_schema: |
       { "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
