@@ -48,7 +48,7 @@ end
 local COMMON_INPUT = { kind = true, provenance = true }
 local KIND_INPUT = {
     record = { object_type = true, record_id = true, values = true, set = true,
-        set_if_absent = true, append_unique = true, unset = true },
+        set_if_absent = true, append_unique = true, unset = true, merged_record_ids = true },
     relation = { object_type = true, record_id = true, attr = true, reference = true, relation = true },
     activity = { activity_id = true, record_id = true, participant_record_id = true, activity_type = true, occurred_at = true,
         due_at = true, done = true, payload = true, source = true, external_id = true, correlation_key = true,
@@ -68,6 +68,31 @@ function M.validate_shape(config: UnknownMap, input: UnknownMap): string?
         if not COMMON_INPUT[key] and not allowed[key] then return "unknown input field for " .. kind .. ": " .. tostring(key) end
     end
     return nil
+end
+
+-- The records an upserted record absorbs: ids of records its source merged into
+-- it, in the order named, without repeats or the record itself.
+function M.merged_record_ids(operation: string, input: UnknownMap): ({ string }?, string?)
+    local raw = input.merged_record_ids
+    if raw == nil then return {}, nil end
+    if operation ~= "upsert" then return nil, "input.merged_record_ids is only valid on a record upsert" end
+    local count = 0
+    if type(raw) == "table" then for _ in pairs(raw :: UnknownMap) do count = count + 1 end end
+    if type(raw) ~= "table" or count ~= #(raw :: { unknown }) then
+        return nil, "input.merged_record_ids must be an array of record ids"
+    end
+    local record_id = trim(input.record_id)
+    local ids: { string } = {}
+    local seen: { [string]: boolean } = {}
+    for _, value in ipairs(raw :: { unknown }) do
+        local id = trim(value)
+        if id == "" then return nil, "input.merged_record_ids entries must be non-empty strings" end
+        if id ~= record_id and not seen[id] then
+            seen[id] = true
+            ids[#ids + 1] = id
+        end
+    end
+    return ids, nil
 end
 
 function M.mapped_fields(config: UnknownMap, fields: unknown, field_name: string): (UnknownMap?, string?)

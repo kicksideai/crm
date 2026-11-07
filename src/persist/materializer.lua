@@ -322,8 +322,8 @@ local function transfer_merge_support(db: Executor, crm_id: string, winner_id: s
     err = execute(db, "UPDATE kickside_crm_activity SET participant_record_id = $1 WHERE crm_id = $2 AND participant_record_id = $3",
         { winner_id, crm_id, loser_id })
     if err then return err end
-    err = execute(db, "UPDATE kickside_crm_alias SET record_id = $1, updated_at = $2 WHERE crm_id = $3 AND record_id = $4",
-        { winner_id, at, crm_id, loser_id })
+    err = execute(db, "UPDATE kickside_crm_alias SET record_id = $1, updated_at = $2, source = $3 WHERE crm_id = $4 AND record_id = $5",
+        { winner_id, at, aliases.MERGED_SOURCE, crm_id, loser_id })
     if err then return err end
     err = execute(db, "UPDATE kickside_crm_alias_reservation SET record_id = $1 WHERE crm_id = $2 AND record_id = $3",
         { winner_id, crm_id, loser_id })

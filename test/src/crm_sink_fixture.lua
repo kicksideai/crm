@@ -108,7 +108,27 @@ function M.machine_execute(active_actor: security.Actor, active_scope: security.
     }) :: Executor
 end
 
-function M.provision(crm_id: string, active_actor: security.Actor, active_scope: security.Scope)
+-- The schema every sink suite writes against unless a case names its own.
+local ENTITY_SCHEMA: Map = {
+    version = "sink-test-v1",
+    objects = { { id = "entity", type = "entity", label = "Entity", plural = "Entities" } },
+    attributes = {
+        { id = "name", object_type = "entity", attr = "name", data_type = "text", config = { required = true } },
+        { id = "note", object_type = "entity", attr = "note", data_type = "text", config = {} },
+        { id = "status", object_type = "entity", attr = "status", data_type = "text", config = { default = "new" } },
+        { id = "owner", object_type = "entity", attr = "owner", data_type = "text", config = { policy = { human_protected = true } } },
+        { id = "related", object_type = "entity", attr = "related", data_type = "relation",
+            config = { cardinality = "many", target = { kind = "record", object_type = "entity" } } },
+        { id = "tags", object_type = "entity", attr = "tags", data_type = "multi_select",
+            config = { choices = { "alpha", "beta", "gamma" } } },
+    },
+    pipelines = { {
+        collection_id = "entities", object_type = "entity", label = "Entities",
+        stages = { { stage_id = "new", label = "New" }, { stage_id = "done", label = "Done" } },
+    } },
+}
+
+function M.provision(crm_id: string, active_actor: security.Actor, active_scope: security.Scope, schema: Map?)
     local definition = assert(contract.get(types.THREADS)) :: ThreadDefinition
     local threads = assert(definition:with_actor(active_actor):with_scope(active_scope):open())
     local _, thread_err = threads:ensure_thread({
@@ -119,33 +139,16 @@ function M.provision(crm_id: string, active_actor: security.Actor, active_scope:
     test.is_nil(thread_err)
     local db = assert(sql.get(types.db_id())) :: sql.DB
     local dialect = db:type() :: string
-    local _, schema_err = storage.ensure(db, dialect, crm_id, {
-        version = "sink-test-v1",
-        objects = { { id = "entity", type = "entity", label = "Entity", plural = "Entities" } },
-        attributes = {
-            { id = "name", object_type = "entity", attr = "name", data_type = "text", config = { required = true } },
-            { id = "note", object_type = "entity", attr = "note", data_type = "text", config = {} },
-            { id = "status", object_type = "entity", attr = "status", data_type = "text", config = { default = "new" } },
-            { id = "owner", object_type = "entity", attr = "owner", data_type = "text", config = { policy = { human_protected = true } } },
-            { id = "related", object_type = "entity", attr = "related", data_type = "relation",
-                config = { cardinality = "many", target = { kind = "record", object_type = "entity" } } },
-            { id = "tags", object_type = "entity", attr = "tags", data_type = "multi_select",
-                config = { choices = { "alpha", "beta", "gamma" } } },
-        },
-        pipelines = { {
-            collection_id = "entities", object_type = "entity", label = "Entities",
-            stages = { { stage_id = "new", label = "New" }, { stage_id = "done", label = "Done" } },
-        } },
-    })
+    local _, schema_err = storage.ensure(db, dialect, crm_id, schema or ENTITY_SCHEMA)
     db:release()
     test.is_nil(schema_err)
 end
 
 -- One provisioned CRM and the executor a sync delivers to it with.
-function M.crm(): (string, Executor)
+function M.crm(schema: Map?): (string, Executor)
     local crm_id = uuid.v7()
     local active_actor, active_scope = M.actor(uuid.v4()), M.scope()
-    M.provision(crm_id, active_actor, active_scope)
+    M.provision(crm_id, active_actor, active_scope, schema)
     return crm_id, M.machine_execute(active_actor, active_scope)
 end
 
@@ -239,5 +242,7 @@ function M.key_ids(page: KeyPage): { string }
     table.sort(ids)
     return ids
 end
+
+M.Executor = Executor
 
 return M
