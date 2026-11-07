@@ -35,8 +35,13 @@ type ValidationContext = {
     -- order: a later write or merge in the batch may fill them.
     unfilled: { [string]: { UnmetRequirement } },
     unfilled_order: { string },
-    -- Unique fields each record holds a value for within this batch.
-    unique_held: { [string]: StringSet },
+    -- The unique key each record currently holds per unique field within this
+    -- batch, false when it holds none; a field the batch has not written
+    -- answers with the record's stored value.
+    unique_current: { [string]: { [string]: string | false } },
+    -- Stored values per record, read once per batch; empty for a record the
+    -- batch creates.
+    stored: { [string]: UnknownMap },
 }
 type UnmetRequirement = { attr: string, reason: string }
 type ObjectSchema = {
@@ -432,6 +437,90 @@ local function validate_value(crm_id: string, def: UnknownMap, value: unknown,
     return value_reason(def, value), nil
 end
 
+local function unique_key(object_type: string, attr: string, value: unknown): (string?, error?)
+    local encoded, encode_err = json.encode(value)
+    if encode_err then return nil, errors.wrap(encode_err, "unique value could not be encoded") end
+    return object_type .. "\0" .. attr .. "\0" .. tostring(encoded), nil
+end
+
+local function stored_values(row: unknown): UnknownMap
+    if type(row) ~= "table" or type((row :: UnknownMap).values) ~= "table" then return {} end
+    return (row :: UnknownMap).values :: UnknownMap
+end
+
+-- The values a record holds in storage, read once per record and batch.
+local function stored_record(context: ValidationContext, object_type: string, record_id: string): (UnknownMap?, error?)
+    local stored = context.stored[record_id]
+    if stored ~= nil then return stored, nil end
+    local db, db_err = open_db()
+    if not db then return nil, db_err end
+    local row, row_err = storage.get(db, context.crm_id, object_type, record_id)
+    db:release()
+    if row_err then return nil, row_err end
+    local values = stored_values(row)
+    context.stored[record_id] = values
+    return values, nil
+end
+
+-- The unique key a record holds for a field at this point of the batch: the
+-- batch's last write to it, else its stored value.
+local function current_unique(context: ValidationContext, object_type: string, record_id: string,
+    attr: string): (string?, error?)
+    local touched = context.unique_current[record_id]
+    if touched ~= nil and touched[attr] ~= nil then
+        local current = touched[attr]
+        if current == false then return nil, nil end
+        return current :: string, nil
+    end
+    local stored, stored_err = stored_record(context, object_type, record_id)
+    if not stored then return nil, stored_err end
+    local value = stored[attr]
+    if is_empty(value) then return nil, nil end
+    return unique_key(object_type, attr, value)
+end
+
+-- Makes key (or none) the record's current unique key for a field, releasing
+-- the key it held before.
+local function hold_unique(context: ValidationContext, object_type: string, record_id: string,
+    attr: string, key: string?): error?
+    local previous, previous_err = current_unique(context, object_type, record_id, attr)
+    if previous_err then return previous_err end
+    if previous ~= nil and previous ~= key and context.unique_values[previous] == record_id then
+        context.unique_values[previous] = nil
+    end
+    if key ~= nil then context.unique_values[key] = record_id end
+    local touched = context.unique_current[record_id] or {}
+    touched[attr] = key or false
+    context.unique_current[record_id] = touched
+    return nil
+end
+
+local function reserve_unique(context: ValidationContext, object_type: string, record_id: string,
+    def: UnknownMap, value: unknown): (string?, error?)
+    local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
+    if cfg.unique ~= true then return nil, nil end
+    local attr = tostring(def.attr)
+    if is_empty(value) then return nil, hold_unique(context, object_type, record_id, attr, nil) end
+    local key, key_err = unique_key(object_type, attr, value)
+    if not key then return nil, key_err end
+    local owner = context.unique_values[key]
+    if owner ~= nil and owner ~= record_id then return "must be unique", nil end
+    return nil, hold_unique(context, object_type, record_id, attr, key)
+end
+
+-- Releases every unique key a record leaving the batch holds.
+local function release_unique(context: ValidationContext, object_type: string, record_id: string): error?
+    local schema = object_schema(context, object_type)
+    for _, def in ipairs(schema and schema.ordered or {}) do
+        local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
+        if cfg.unique == true then
+            local err = hold_unique(context, object_type, record_id, tostring(def.attr), nil)
+            if err then return err end
+        end
+    end
+    return nil
+end
+
 local function duplicate_unique(context: ValidationContext, object_type: string, record_id: string,
     def: UnknownMap, value: unknown): (boolean?, error?)
     local crm_id = context.crm_id
@@ -447,35 +536,19 @@ local function duplicate_unique(context: ValidationContext, object_type: string,
     if not page then return nil, query_err end
     local typed_page = page :: UnknownMap
     local rows = type(typed_page.rows) == "table" and (typed_page.rows :: { UnknownMap }) or {}
-    -- A holder an earlier command of this batch merged away or deleted has
-    -- released the value by the time this command applies.
-    for _, row in ipairs(rows) do
-        local holder = tostring(row.record_id)
-        if holder ~= record_id and context.records[holder] ~= false then return true, nil end
-    end
-    return false, nil
-end
-
-local function unique_key(object_type: string, attr: string, value: unknown): (string?, error?)
-    local encoded, encode_err = json.encode(value)
-    if encode_err then return nil, errors.wrap(encode_err, "unique value could not be encoded") end
-    return object_type .. "\0" .. attr .. "\0" .. tostring(encoded), nil
-end
-
-local function reserve_unique(context: ValidationContext, object_type: string, record_id: string,
-    def: UnknownMap, value: unknown): (string?, error?)
-    if is_empty(value) then return nil, nil end
-    local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
-    if cfg.unique ~= true then return nil, nil end
+    -- A stored holder counts only while the batch leaves it holding the value:
+    -- an earlier command may have merged it away, deleted it, or changed it.
     local key, key_err = unique_key(object_type, tostring(def.attr), value)
     if not key then return nil, key_err end
-    local owner = context.unique_values[key]
-    if owner ~= nil and owner ~= record_id then return "must be unique", nil end
-    context.unique_values[key] = record_id
-    local held = context.unique_held[record_id] or {}
-    held[tostring(def.attr)] = true
-    context.unique_held[record_id] = held
-    return nil, nil
+    for _, row in ipairs(rows) do
+        local holder = tostring(row.record_id)
+        if holder ~= record_id and context.records[holder] ~= false then
+            local touched = context.unique_current[holder]
+            local current = touched and touched[tostring(def.attr)]
+            if current == nil or current == key then return true, nil end
+        end
+    end
+    return false, nil
 end
 
 -- check_value collects the reasons one written value fails its declaration and
@@ -537,6 +610,8 @@ local function validate_record(context: ValidationContext, etype: string, value:
         local existing, exists_err = record_type(context, record_id)
         if exists_err then return nil, exists_err end
         if existing then return nil, errors.new({ kind = errors.CONFLICT, message = "record already exists" }) end
+        context.stored[record_id] = {}
+        context.unique_current[record_id] = nil
         local values = apply_create_defaults(schema, body)
         for _, def in ipairs(schema.ordered) do
             local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
@@ -586,6 +661,9 @@ local function validate_record(context: ValidationContext, etype: string, value:
             if not def then reasons[#reasons + 1] = attr .. ": undeclared field"
             elseif type(def.config) == "table" and (def.config :: UnknownMap).required == true then
                 reasons[#reasons + 1] = label_for(def) .. ": required"
+            elseif type(def.config) == "table" and (def.config :: UnknownMap).unique == true then
+                local err = hold_unique(context, object_type, record_id, attr, nil)
+                if err then return nil, err end
             end
         end
         -- Conditional writes validate declaration and type here; whether they
@@ -701,11 +779,6 @@ local function membership_event(context: ValidationContext, body: UnknownMap, pr
     return nil
 end
 
-local function stored_values(row: unknown): UnknownMap
-    if type(row) ~= "table" or type((row :: UnknownMap).values) ~= "table" then return {} end
-    return (row :: UnknownMap).values :: UnknownMap
-end
-
 local function merge_event(context: ValidationContext, body: UnknownMap, decided: boolean): error?
     local object_type = trim(body.object_type)
     local _, schema_err = object_schema(context, object_type)
@@ -722,50 +795,33 @@ local function merge_event(context: ValidationContext, body: UnknownMap, decided
         if (winner ~= left and winner ~= right) or (loser ~= left and loser ~= right) then
             return invalid("winner and loser must be the reviewed pair")
         end
-        context.records[loser] = false
         -- The winner takes every value it lacks from the loser: unmet required
-        -- fields fill, and the loser's unique values become the winner's.
-        local db, db_err = open_db()
-        if not db then return db_err end
-        local loser_row, loser_err = storage.get(db, context.crm_id, object_type, loser)
-        local winner_row, winner_err = storage.get(db, context.crm_id, object_type, winner)
-        db:release()
-        if loser_err then return loser_err end
-        if winner_err then return winner_err end
-        local loser_values = stored_values(loser_row)
-        local winner_values = stored_values(winner_row)
-        fill(context, winner, loser_values)
-        context.unfilled[loser] = nil
+        -- fields fill, and the loser's current unique keys move to the winner
+        -- where it holds none for that field.
         local schema = object_schema(context, object_type) :: ObjectSchema
-        local held = context.unique_held[winner] or {}
-        local loser_held = context.unique_held[loser] or {}
-        for key, owner in pairs(context.unique_values) do
-            if owner == loser then
-                local first = key:find("\0", 1, true) or 0
-                local second = key:find("\0", first + 1, true) or first
-                local attr = key:sub(first + 1, second - 1)
-                if not held[attr] and is_empty(winner_values[attr]) then
-                    context.unique_values[key] = winner
-                    held[attr] = true
-                else
-                    context.unique_values[key] = nil
+        for _, def in ipairs(schema.ordered) do
+            local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
+            if cfg.unique == true then
+                local attr = tostring(def.attr)
+                local loser_key, loser_err = current_unique(context, object_type, loser, attr)
+                if loser_err then return loser_err end
+                local winner_key, winner_err = current_unique(context, object_type, winner, attr)
+                if winner_err then return winner_err end
+                local release_err = hold_unique(context, object_type, loser, attr, nil)
+                if release_err then return release_err end
+                if loser_key ~= nil and winner_key == nil then
+                    local hold_err = hold_unique(context, object_type, winner, attr, loser_key)
+                    if hold_err then return hold_err end
                 end
             end
         end
-        for _, def in ipairs(schema.ordered) do
-            local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
-            local attr = tostring(def.attr)
-            local value = loser_values[attr]
-            if cfg.unique == true and not loser_held[attr] and not is_empty(value)
-                and not held[attr] and is_empty(winner_values[attr]) then
-                local key, key_err = unique_key(object_type, attr, value)
-                if not key then return key_err end
-                context.unique_values[key] = winner
-                held[attr] = true
-            end
+        context.records[loser] = false
+        if context.unfilled[winner] ~= nil then
+            local loser_values, loser_values_err = stored_record(context, object_type, loser)
+            if not loser_values then return loser_values_err end
+            fill(context, winner, loser_values)
         end
-        context.unique_held[winner] = held
-        context.unique_held[loser] = nil
+        context.unfilled[loser] = nil
     end
     return nil
 end
@@ -781,6 +837,8 @@ local function validate_command(context: ValidationContext, etype: unknown,
         if schema_err then return nil, schema_err end
         local record_id = trim(body.record_id)
         local err = required(context, record_id, object_type)
+        if err then return nil, err end
+        err = release_unique(context, object_type, record_id)
         if err then return nil, err end
         context.records[record_id] = false
     elseif etype == types.EVENTS.RELATION_LINKED or etype == types.EVENTS.RELATION_UNLINKED then
@@ -833,7 +891,8 @@ function M.validate_commands(crm_id: string, commands: unknown): (boolean?, erro
         pipelines = pipeline_index(typed_schema),
         unfilled = {},
         unfilled_order = {},
-        unique_held = {},
+        unique_current = {},
+        stored = {},
     }
     for _, value in ipairs(commands :: { unknown }) do
         local cmd: Command = type(value) == "table" and (value :: Command) or {}

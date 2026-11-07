@@ -180,6 +180,70 @@ local function define_tests()
             test.eq(count_events(crm_id), baseline)
         end)
 
+        for _, case in ipairs({
+            {
+                name = "rejects a value a merge hands to a winner whose own value the batch unset",
+                seed = { winner = "b@example.test", loser = "a@example.test" },
+                steps = { { unset = "entity:winner" }, { merge = true }, { create = "a@example.test" } },
+                accepted = false,
+            },
+            {
+                name = "rejects the loser's latest value after the batch changed it twice before the merge",
+                seed = {},
+                steps = { { set = "entity:loser", email = "a@example.test" }, { set = "entity:loser", email = "b@example.test" },
+                    { merge = true }, { create = "b@example.test" } },
+                accepted = false,
+            },
+            {
+                name = "accepts an inherited value once the winner's later write replaces it",
+                seed = { loser = "a@example.test" },
+                steps = { { merge = true }, { set = "entity:winner", email = "b@example.test" }, { create = "a@example.test" } },
+                accepted = true,
+            },
+        }) do
+            test.it(case.name, function()
+                local crm_id = uuid.v7()
+                local active_actor, active_scope = actor(uuid.v4()), scope()
+                provision(crm_id, active_actor, active_scope)
+                local execute = funcs.new():with_actor(active_actor):with_scope(active_scope) :: Executor
+                local seed = case.seed :: { [string]: string }
+                test.eq(call(execute, crm_id, {
+                    created("entity:winner", nil, seed.winner and { email = seed.winner } or nil),
+                    created("entity:loser", nil, seed.loser and { email = seed.loser } or nil),
+                }).ok, true)
+                catch_up(execute, crm_id)
+                local baseline = count_events(crm_id)
+
+                local batch: { Map } = {}
+                for _, raw in ipairs(case.steps :: { Map }) do
+                    if raw.merge then
+                        batch[#batch + 1] = { type = types.EVENTS.MERGE_DECIDED, body = {
+                            resolution_id = "resolution:" .. tostring(#batch), left_id = "entity:winner", right_id = "entity:loser",
+                            object_type = "entity", decision = "merged", winner_id = "entity:winner", loser_id = "entity:loser",
+                        } }
+                    elseif raw.unset then
+                        batch[#batch + 1] = { type = types.EVENTS.RECORD_UPDATED, body = {
+                            record_id = raw.unset, object_type = "entity", unset = { "email" } } }
+                    elseif raw.set then
+                        batch[#batch + 1] = { type = types.EVENTS.RECORD_UPDATED, body = {
+                            record_id = raw.set, object_type = "entity", set = { email = raw.email } } }
+                    else
+                        batch[#batch + 1] = created("entity:third", nil, { email = raw.create })
+                    end
+                end
+                local result = call(execute, crm_id, batch)
+                if case.accepted then
+                    test.eq(result.ok, true, error_text(result.error))
+                    catch_up(execute, crm_id)
+                    test.eq(count_events(crm_id), baseline + #batch)
+                else
+                    test.eq(result.ok, false)
+                    test.is_true(error_text(result.error):find("must be unique", 1, true) ~= nil, error_text(result.error))
+                    test.eq(count_events(crm_id), baseline)
+                end
+            end)
+        end
+
         test.it("delete_activity refuses an empty identity and appends an addressed one", function()
             local crm_id = uuid.v7()
             local active_actor, active_scope = actor(uuid.v4()), scope()
