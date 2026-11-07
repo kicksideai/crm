@@ -232,6 +232,83 @@ local function delete_target_absent(crm_id: string, input: UnknownMap): (boolean
     return existing == nil, nil
 end
 
+-- The fields that carry a record's identity keys: aliases and unique values.
+local function identity_fields(crm_id: string, object_type: string): ({ [string]: boolean }?, ErrorResponse?)
+    local db, db_err = open_db()
+    if not db then return nil, response_error("provider_unavailable", db_err, true, "provider") end
+    local object, object_err = storage.object(db, crm_id, object_type)
+    db:release()
+    if object_err then return nil, append_failure(object_err) end
+    local fields = type(object) == "table" and type((object :: UnknownMap).fields) == "table"
+        and (object :: UnknownMap).fields :: { [string]: UnknownMap } or {}
+    local identity: { [string]: boolean } = {}
+    for attr, field in pairs(fields) do
+        local config = type(field.config) == "table" and field.config :: UnknownMap or {}
+        if trim(config.alias) ~= "" or config.unique == true then identity[attr] = true end
+    end
+    return identity, nil
+end
+
+-- A source that merged records names the ones it folded into this record. Each
+-- that still exists is merged into it by a CRM merge decision, which carries its
+-- values, relations, activities, memberships and identity keys over and keeps the
+-- decision on record. A record created to absorb others is created without its
+-- identity fields: the absorbed records hold those keys until their merge moves
+-- them, and the delivery's own write sets them afterwards. An absorbed record
+-- that is already gone has nothing left to merge.
+local function absorb(crm_id: string, object_type: string, record_id: string, values: UnknownMap,
+    provenance: unknown, merged_ids: { string }): ErrorResponse?
+    local db, db_err = open_db()
+    if not db then return response_error("provider_unavailable", db_err, true, "provider") end
+    local absorbed: { string } = {}
+    for _, id in ipairs(merged_ids) do
+        local located, locate_err = storage.locate(db, crm_id, id)
+        if locate_err then
+            db:release()
+            return response_error("provider_unavailable", locate_err, true, "provider")
+        end
+        if located ~= nil then
+            if trim((located :: UnknownMap).object_type) ~= object_type then
+                db:release()
+                return validation_error("merged record " .. id .. " is not a " .. object_type)
+            end
+            absorbed[#absorbed + 1] = id
+        end
+    end
+    db:release()
+    if #absorbed == 0 then return nil end
+
+    local exists, exists_err = record_exists(crm_id, record_id)
+    if exists_err then return exists_err end
+    local batch: { Command } = {}
+    if not exists then
+        local identity, identity_err = identity_fields(crm_id, object_type)
+        if not identity then return identity_err end
+        local initial: UnknownMap = {}
+        for attr, value in pairs(values) do
+            if not identity[attr] then initial[attr] = value end
+        end
+        local body: UnknownMap = { object_type = object_type, record_id = record_id, values = initial }
+        if provenance ~= nil then body.provenance = provenance end
+        batch[1] = { type = types.EVENTS.RECORD_CREATED, body = body }
+    end
+    for _, loser_id in ipairs(absorbed) do
+        batch[#batch + 1] = { type = types.EVENTS.MERGE_DECIDED, body = {
+            left_id = record_id, right_id = loser_id, object_type = object_type,
+            decision = "merged", winner_id = record_id, loser_id = loser_id,
+            reason = "merged at source", resolution_id = "source-merge:" .. record_id .. ":" .. loser_id,
+        } }
+    end
+    local _, append_err, append_result = writer.append(crm_id, batch)
+    if append_err then return append_failure(append_err) end
+    local append_seq: number? = nil
+    if type(append_result) == "table" then append_seq = tonumber((append_result :: UnknownMap).max_seq) end
+    local deadline = trim(ctx.get("deadline"))
+    local projected, projection_err = writer.catch_up_read_model(crm_id, append_seq, deadline ~= "" and deadline or nil)
+    if not projected then return response_error("provider_unavailable", projection_err, true, "provider") end
+    return nil
+end
+
 function M.write(req: unknown): UnknownMap
     if type(req) ~= "table" then return validation_error("request must be an object") end
     local request = req :: UnknownMap
@@ -261,6 +338,8 @@ function M.write(req: unknown): UnknownMap
     if shape_err then return validation_error(shape_err) end
     local provenance, provenance_err = commands.validate_provenance(input)
     if provenance_err then return validation_error(provenance_err) end
+    local merged_ids, merged_err = commands.merged_record_ids(operation, input)
+    if not merged_ids then return validation_error(merged_err :: string) end
     local allowed, access_err = writer.require_access(crm_id, component.ACCESS.WRITE)
     if not allowed then return response_error("permission_denied", access_err, false, "item") end
     local digest, digest_err = payload_hash(config, input, operation, request.dest_ref)
@@ -318,6 +397,11 @@ function M.write(req: unknown): UnknownMap
         local unset, unset_err = commands.mapped_unset(config, input.unset)
         if not unset then return validation_error(unset_err :: string) end
         command_input.unset = unset
+    end
+    if #merged_ids > 0 then
+        local absorb_err = absorb(crm_id, trim(input.object_type), trim(input.record_id),
+            command_input.values :: UnknownMap, provenance, merged_ids)
+        if absorb_err then return absorb_err end
     end
     if operation == "upsert" and trim(input.kind) == "record"
         and request.dest_ref == nil and trim(input.record_id) ~= "" then

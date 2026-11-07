@@ -683,6 +683,22 @@ entries:
       storage: kickside.crm.persist:repo
       fixture: app:crm_sink_fixture
 
+  - name: crm_sink_merge_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM writable sink merges the records a delivered record absorbed into it.
+    source: file://crm_sink_merge_test.lua
+    method: run
+    modules: [sql]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      fixture: app:crm_sink_fixture
+
   - name: crm_sink_fixture
     kind: library.lua
     meta:
