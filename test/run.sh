@@ -12,7 +12,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 "$HERE/prepare.sh"
 cd "$HERE"
-mkdir -p "$HERE/.wippy/uploads"
+mkdir -p "$HERE/.wippy"
 SQLITE_PATH="$(mktemp "$HERE/.wippy/crm-test.XXXXXX.sqlite")"
 OUTPUT="$(mktemp "$HERE/.wippy/crm-suite.XXXXXX.log")"
 cleanup_sqlite() {

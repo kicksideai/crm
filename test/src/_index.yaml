@@ -295,6 +295,7 @@ entries:
     meta:
       comment: Local file storage for record attachment tests.
     directory: ./.wippy/uploads
+    auto_init: true
 
   - name: dep.kickside.uploads
     kind: ns.dependency
