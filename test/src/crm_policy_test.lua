@@ -9,6 +9,18 @@ local uuid = require("uuid")
 
 type Map = { [string]: unknown }
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
+local function loaded(crm_id: string): storage.Schema
+    local db = assert(sql.get(types.db_id()))
+    local schema = applied(db, crm_id)
+    db:release()
+    return schema
+end
+
 local function map(value: unknown): Map
     return type(value) == "table" and value :: Map or {}
 end
@@ -39,7 +51,7 @@ local function define_tests()
                 type = types.EVENTS.RECORD_CREATED,
                 body = { object_type = "entity", record_id = "entity:1", values = { name = "Primary Record" } },
             } }
-            local accepted, outcomes, err = policy.enforce(crm_id, commands, { actor_id = "user:ada" })
+            local accepted, outcomes, err = policy.enforce(loaded(crm_id), commands, { actor_id = "user:ada" })
             test.is_nil(err)
             test.eq(#(accepted :: {unknown}), 1)
             test.eq(map((outcomes :: {unknown})[1]).outcome, "applied")
@@ -51,7 +63,7 @@ local function define_tests()
                 type = types.EVENTS.RECORD_CREATED,
                 body = { object_type = "entity", record_id = "entity:2", values = { name = "Secondary Record" } },
             }
-            local accepted, _, err = policy.enforce(crm_id, { command }, { actor_context = { run_id = "run:1" } })
+            local accepted, _, err = policy.enforce(loaded(crm_id), { command }, { actor_context = { run_id = "run:1" } })
             test.is_nil(err)
             test.eq(#(accepted :: {unknown}), 1)
         end)
@@ -59,21 +71,21 @@ local function define_tests()
         test.it("rejects protected machine fields without writing review or outcome state", function()
             local crm_id = schema(tostring(uuid.v7()))
             local db = assert(sql.get(types.db_id()))
-            local _, seed_err = storage.upsert(db, crm_id, "entity", {
+            local _, seed_err = storage.upsert(db, applied(db, crm_id), "entity", {
                 record_id = "entity:3",
                 values = { owner = "Primary Owner", summary = "Initial" },
             })
             db:release()
             test.is_nil(seed_err)
 
-            local protected, _, protected_err = policy.enforce(crm_id, { {
+            local protected, _, protected_err = policy.enforce(loaded(crm_id), { {
                 type = types.EVENTS.RECORD_UPDATED,
                 body = { object_type = "entity", record_id = "entity:3", set = { owner = "Bot" } },
             } }, { actor_context = { run_id = "run:2" } })
             test.is_nil(protected)
             test.is_true(tostring(protected_err):find("human%-protected") ~= nil)
 
-            local reviewed, _, review_err = policy.enforce(crm_id, { {
+            local reviewed, _, review_err = policy.enforce(loaded(crm_id), { {
                 type = types.EVENTS.RECORD_UPDATED,
                 body = { object_type = "entity", record_id = "entity:3", set = { summary = "Proposal" } },
             } }, { actor_context = { run_id = "run:2" } })
@@ -81,7 +93,7 @@ local function define_tests()
             test.is_true(tostring(review_err):find("requires human review", 1, true) ~= nil)
 
             db = assert(sql.get(types.db_id()))
-            local record, read_err = storage.get(db, crm_id, "entity", "entity:3")
+            local record, read_err = storage.get(db, applied(db, crm_id), "entity", "entity:3")
             db:release()
             test.is_nil(read_err)
             local values = map(map(record).values)
@@ -92,7 +104,7 @@ local function define_tests()
         test.it("rejects an AI field event before append when its value is missing or invalid", function()
             local crm_id = schema(tostring(uuid.v7()))
             local db = assert(sql.get(types.db_id()))
-            local _, seed_err = storage.upsert(db, crm_id, "entity", {
+            local _, seed_err = storage.upsert(db, applied(db, crm_id), "entity", {
                 record_id = "entity:ai",
                 values = { name = "Primary Record" },
             })
@@ -101,7 +113,7 @@ local function define_tests()
 
             local body = { object_type = "entity", record_id = "entity:ai", attr = "name" }
             test.eq(constraints.check(types.EVENTS.AI_ATTRIBUTE_FILLED, body), "ai attribute fill value required")
-            local valid, missing_err = validation.validate_commands(crm_id, { {
+            local valid, missing_err = validation.validate_commands(loaded(crm_id), { {
                 type = types.EVENTS.AI_ATTRIBUTE_FILLED,
                 body = body,
             } })
@@ -110,7 +122,7 @@ local function define_tests()
             test.is_true(errors.is(missing_err, errors.INVALID))
 
             body.value = { invalid = true }
-            valid, missing_err = validation.validate_commands(crm_id, { {
+            valid, missing_err = validation.validate_commands(loaded(crm_id), { {
                 type = types.EVENTS.AI_ATTRIBUTE_FILLED,
                 body = body,
             } })

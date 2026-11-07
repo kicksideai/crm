@@ -29,6 +29,11 @@ local PEOPLE_SCHEMA: Map = {
 }
 
 -- The people schema with the email field configured as each case needs it.
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function people_schema(email_config: Map): Map
     local schema: Map = {
         version = PEOPLE_SCHEMA.version, objects = PEOPLE_SCHEMA.objects, attributes = {},
@@ -57,7 +62,7 @@ end
 
 local function stored(crm_id: string, object_type: string, record_id: string): Map?
     local db = assert(sql.get(types.db_id())) :: sql.DB
-    local row, err = storage.get(db, crm_id, object_type, record_id)
+    local row, err = storage.get(db, applied(db, crm_id), object_type, record_id)
     db:release()
     test.is_nil(err)
     if row == nil then return nil end
@@ -66,7 +71,7 @@ end
 
 local function relation_table(crm_id: string): string
     local db = assert(sql.get(types.db_id())) :: sql.DB
-    local relation, err = storage.reference(db, crm_id, "person", "company")
+    local relation, err = storage.reference(applied(db, crm_id), "person", "company")
     db:release()
     test.is_nil(err)
     return tostring(map(relation).relation_table)

@@ -11,6 +11,11 @@ local uuid = require("uuid")
 
 type Map = { [string]: any }
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function setup(): (string, any)
     local crm_id = uuid.v7()
     local actor = actors.make(uuid.v4())
@@ -77,7 +82,7 @@ local function define()
                 test.is_nil(second_err)
                 test.eq((second :: Map).created, true)
                 local db = assert(sql.get(types.db_id())) :: sql.DB
-                local record, read_err = storage.get(db, crm_id, "entity", next_id)
+                local record, read_err = storage.get(db, applied(db, crm_id), "entity", next_id)
                 db:release()
                 test.is_nil(read_err)
                 test.not_nil(record, "resolve reports creation without a stored record")

@@ -1,12 +1,10 @@
 -- Pure write policy over catalog definitions and current materialized values.
-local sql = require("sql")
 local storage = require("storage")
 local types = require("types")
 
 local M = {}
 
 type UnknownMap = { [string]: unknown }
-type Executor = sql.DB | sql.Transaction
 type Context = {
     actor_id: unknown?,
     actor_context: unknown?,
@@ -51,13 +49,6 @@ local FIELD_EVENTS = {
 local function trim(value: unknown): string
     if type(value) ~= "string" then return "" end
     return (value:gsub("^%s*(.-)%s*$", "%1"))
-end
-
-local function open_db(): (sql.DB?, error?)
-    local db, err = sql.get(types.db_id())
-    if err then return nil, err end
-    if not db then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "crm: app:db unavailable" }) end
-    return db, nil
 end
 
 local function actor_id(context: unknown): string
@@ -129,34 +120,32 @@ local function validate_field_policy(object: ObjectSchema, attr: string, machine
     return nil
 end
 
-function M.enforce(crm_id: string, commands: unknown, context: unknown): ({Command}?, {Outcome}?, error?)
+-- schema is the applied schema the caller loaded for this command batch.
+function M.enforce(schema: storage.Schema, commands: unknown, context: unknown): ({Command}?, {Outcome}?, error?)
     if type(commands) ~= "table" then return nil, nil, errors.new({ kind = errors.INVALID, message = "commands must be an array" }) end
-    local db, db_err = open_db()
-    if not db then return nil, nil, db_err end
 
     local filtered: {Command} = {}
     local outcomes: {Outcome} = {}
     local machine = is_machine_context(context)
     if not machine and actor_id(context) == "" then
-        db:release()
         return nil, nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "interactive CRM writes require an authenticated actor" })
     end
     for index, raw_cmd in ipairs(commands :: {unknown}) do
-        if type(raw_cmd) ~= "table" then db:release(); return nil, nil, errors.new({ kind = errors.INVALID, message = "command at index " .. tostring(index) .. " must be an object" }) end
+        if type(raw_cmd) ~= "table" then return nil, nil, errors.new({ kind = errors.INVALID, message = "command at index " .. tostring(index) .. " must be an object" }) end
         local cmd = raw_cmd :: Command
         local event_type = trim(cmd.type)
         local body: RecordBody = type(cmd.body) == "table" and cmd.body :: RecordBody or {}
         if FIELD_EVENTS[event_type] then
             local object_type = trim(body.object_type)
-            if object_type == "" then db:release(); return nil, nil, errors.new({ kind = errors.INVALID, message = event_type .. " requires object_type" }) end
-            local loaded_object, object_err = storage.object(db, crm_id, object_type)
-            if type(loaded_object) ~= "table" then db:release(); return nil, nil, object_err end
+            if object_type == "" then return nil, nil, errors.new({ kind = errors.INVALID, message = event_type .. " requires object_type" }) end
+            local loaded_object, object_err = storage.object(schema, object_type)
+            if type(loaded_object) ~= "table" then return nil, nil, object_err end
             local object = loaded_object :: ObjectSchema
             local fields, fields_err = command_fields(event_type, body)
-            if not fields then db:release(); return nil, nil, fields_err end
+            if not fields then return nil, nil, fields_err end
             for attr in pairs(fields) do
                 local policy_err = validate_field_policy(object, tostring(attr), machine)
-                if policy_err then db:release(); return nil, nil, policy_err end
+                if policy_err then return nil, nil, policy_err end
             end
         end
         filtered[#filtered + 1] = cmd
@@ -168,7 +157,6 @@ function M.enforce(crm_id: string, commands: unknown, context: unknown): ({Comma
             object_type = body.object_type,
         }
     end
-    db:release()
     return filtered, outcomes, nil
 end
 

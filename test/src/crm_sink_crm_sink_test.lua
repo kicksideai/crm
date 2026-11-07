@@ -17,6 +17,11 @@ local receipt_rows, receipt_identities = f.receipt_rows, f.receipt_identities
 local request, from_origin, call_sink = f.request, f.from_origin, f.call_sink
 local call_list_keys, key_ids = f.call_list_keys, f.key_ids
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function define_receipts()
     test.describe("CRM writable sink receipts", function()
         for _, corrupt in ipairs({ "{", "null", "false", '"scalar"', "[]", '[{"record_id":"entity:1"}]' }) do
@@ -124,7 +129,7 @@ local function define_receipts()
             test.eq(updated.result, "updated")
 
             local db = assert(sql.get(types.db_id())) :: sql.DB
-            local row, row_err = storage.get(db, crm_id, "entity", "entity:authority")
+            local row, row_err = storage.get(db, applied(db, crm_id), "entity", "entity:authority")
             db:release()
             test.is_nil(row_err)
             local values = map(map(row).values)
@@ -172,8 +177,8 @@ local function define_receipts()
             local active_actor, active_scope = actor(uuid.v4()), scope()
             provision(crm_id, active_actor, active_scope)
             local db = assert(sql.get(types.db_id())) :: sql.DB
-            local _, source_err = storage.upsert(db, crm_id, "entity", { record_id = "entity:3", values = { name = "Before" } })
-            local _, target_err = storage.upsert(db, crm_id, "entity", { record_id = "entity:4", values = { name = "Target" } })
+            local _, source_err = storage.upsert(db, applied(db, crm_id), "entity", { record_id = "entity:3", values = { name = "Before" } })
+            local _, target_err = storage.upsert(db, applied(db, crm_id), "entity", { record_id = "entity:4", values = { name = "Target" } })
             db:release()
             test.is_nil(source_err)
             test.is_nil(target_err)

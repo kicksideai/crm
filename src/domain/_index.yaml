@@ -26,7 +26,6 @@ entries:
     meta:
       comment: Write-policy enforcement at the CRM command boundary.
     source: file://policy.lua
-    modules: [sql]
     imports:
       types: kickside.crm:types
       storage: kickside.crm.persist:repo
