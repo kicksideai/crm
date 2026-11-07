@@ -28,6 +28,29 @@ local PEOPLE_SCHEMA: Map = {
     },
 }
 
+-- The people schema with the email field configured as each case needs it.
+local function people_schema(email_config: Map): Map
+    local schema: Map = {
+        version = PEOPLE_SCHEMA.version, objects = PEOPLE_SCHEMA.objects, attributes = {},
+    }
+    local attributes = schema.attributes :: { Map }
+    for _, raw in ipairs(PEOPLE_SCHEMA.attributes :: { Map }) do
+        local attribute: Map = {}
+        for key, value in pairs(raw) do attribute[key] = value end
+        if attribute.attr == "email" and attribute.object_type == "person" then attribute.config = email_config end
+        attributes[#attributes + 1] = attribute
+    end
+    return schema
+end
+
+local function emails_owned(crm_id: string): { string }
+    local rows = query("SELECT record_id FROM kickside_crm_alias WHERE crm_id = $1 AND object_scope = 'person' AND alias_type = 'email'"
+        .. " ORDER BY record_id", { crm_id })
+    local owners: { string } = {}
+    for _, row in ipairs(rows) do owners[#owners + 1] = tostring(row.record_id) end
+    return owners
+end
+
 local function person(record_id: string, values: Map, merged: { string }?): Map
     return { kind = "record", object_type = "person", record_id = record_id, values = values, merged_record_ids = merged }
 end
@@ -175,6 +198,110 @@ local function define()
             test.eq(refused.success, false)
             test.eq(refused.error.code, "invalid_request")
             test.eq(f.event_count(crm_id), events)
+        end)
+
+        for _, case in ipairs({
+            { name = "a unique email", config = { alias = "email", unique = true } },
+            { name = "a required email", config = { alias = "email", required = true } },
+        }) do
+            test.it("takes over " .. case.name .. " a predecessor holds", function()
+                local crm_id, execute = f.crm(people_schema(case.config :: Map))
+                local first = call_sink(execute, request(crm_id, "person:1",
+                    person("person:1", { name = "Pat", email = "pat@example.com" })))
+                test.eq(first.success, true, error_text(first))
+                local survivor = call_sink(execute, request(crm_id, "person:3",
+                    person("person:3", { name = "Pat Lee", email = "pat@example.com" }, { "person:1" })))
+                test.eq(survivor.success, true, error_text(survivor))
+                test.eq(map(stored(crm_id, "person", "person:3")).email, "pat@example.com")
+                test.is_nil(stored(crm_id, "person", "person:1"))
+                test.eq(table.concat(emails_owned(crm_id), ","), "person:3")
+            end)
+        end
+
+        test.it("answers a delivery whose effect is durable but whose receipt is missing without merging again", function()
+            local crm_id, execute = f.crm(PEOPLE_SCHEMA)
+            seed_predecessors(crm_id, execute)
+            local delivery = request(crm_id, "person:3",
+                person("person:3", { name = "Pat Lee", email = "pat@example.com" }, { "person:1", "person:2" }))
+            local first = call_sink(execute, delivery)
+            test.eq(first.success, true, error_text(first))
+            local events = f.event_count(crm_id)
+            f.exec("DELETE FROM kickside_crm_sink_receipt WHERE crm_id = $1 AND idempotency_key = $2", { crm_id, "person:3" })
+
+            local retried = call_sink(execute, delivery)
+            test.eq(retried.success, true, error_text(retried))
+            test.eq(retried.result, first.result)
+            test.eq(f.event_count(crm_id), events)
+            test.eq(#query("SELECT 1 FROM kickside_crm_merge_resolution WHERE crm_id = $1", { crm_id }), 2)
+        end)
+
+        test.it("refuses a changed replay of a delivery before merging anything", function()
+            local crm_id, execute = f.crm(PEOPLE_SCHEMA)
+            seed_predecessors(crm_id, execute)
+            local first = call_sink(execute, request(crm_id, "person:3",
+                person("person:3", { name = "Pat Lee", email = "pat@example.com" }, { "person:1" })))
+            test.eq(first.success, true, error_text(first))
+            f.exec("DELETE FROM kickside_crm_sink_receipt WHERE crm_id = $1 AND idempotency_key = $2", { crm_id, "person:3" })
+            local events = f.event_count(crm_id)
+
+            local changed = call_sink(execute, request(crm_id, "person:3",
+                person("person:3", { name = "Pat Lee", email = "pat@example.com" }, { "person:1", "person:2" })))
+            test.eq(changed.success, false)
+            test.eq(changed.error.code, "idempotency_conflict")
+            test.eq(f.event_count(crm_id), events)
+            test.not_nil(stored(crm_id, "person", "person:2"))
+        end)
+
+        test.it("leaves every predecessor in place when a merged-away identity belongs to another record", function()
+            local crm_id, execute = f.crm(PEOPLE_SCHEMA)
+            seed_predecessors(crm_id, execute)
+            local elsewhere = call_sink(execute, request(crm_id, "person:9",
+                person("person:9", { name = "Pat Elsewhere" }, { "person:1" })))
+            test.eq(elsewhere.success, true, error_text(elsewhere))
+            local events = f.event_count(crm_id)
+
+            local survivor = call_sink(execute, request(crm_id, "person:3",
+                person("person:3", { name = "Pat Lee", email = "pat@example.com" }, { "person:1", "person:2" })))
+            test.eq(survivor.success, false)
+            test.eq(survivor.error.code, "invalid_request")
+            test.eq(f.event_count(crm_id), events)
+            test.not_nil(stored(crm_id, "person", "person:2"))
+            test.is_nil(stored(crm_id, "person", "person:3"))
+            test.eq(table.concat(emails_owned(crm_id), ","), "person:9")
+        end)
+
+        for _, order in ipairs({ { "person:a", "person:b" }, { "person:b", "person:a" } }) do
+            test.it("keeps the email of every predecessor when absorbing " .. table.concat(order, " then "), function()
+                local crm_id, execute = f.crm(PEOPLE_SCHEMA)
+                for id, email in pairs({ ["person:a"] = "a@example.com", ["person:b"] = "b@example.com" }) do
+                    local seeded = call_sink(execute, request(crm_id, id, person(id, { name = id, email = email })))
+                    test.eq(seeded.success, true, error_text(seeded))
+                end
+                local survivor = call_sink(execute, request(crm_id, "person:3",
+                    person("person:3", { name = "Pat", email = "b@example.com" }, order)))
+                test.eq(survivor.success, true, error_text(survivor))
+                test.eq(map(stored(crm_id, "person", "person:3")).email, "b@example.com")
+                test.eq(table.concat(emails_owned(crm_id), ","), "person:3,person:3")
+            end)
+        end
+
+        test.it("keeps the merges of record ids that share a separator apart", function()
+            local crm_id, execute = f.crm(PEOPLE_SCHEMA)
+            for _, id in ipairs({ "n:o", "o" }) do
+                local seeded = call_sink(execute, request(crm_id, id, person(id, { name = id })))
+                test.eq(seeded.success, true, error_text(seeded))
+            end
+            local first = call_sink(execute, request(crm_id, "m", person("m", { name = "M" }, { "n:o" })))
+            test.eq(first.success, true, error_text(first))
+            local second = call_sink(execute, request(crm_id, "m:n", person("m:n", { name = "MN" }, { "o" })))
+            test.eq(second.success, true, error_text(second))
+            local resolutions = query("SELECT winner_id, loser_id FROM kickside_crm_merge_resolution WHERE crm_id = $1 ORDER BY winner_id",
+                { crm_id })
+            test.eq(#resolutions, 2)
+            test.eq(resolutions[1].winner_id, "m")
+            test.eq(resolutions[1].loser_id, "n:o")
+            test.eq(resolutions[2].winner_id, "m:n")
+            test.eq(resolutions[2].loser_id, "o")
         end)
 
         test.it("accepts merged_record_ids only as a string array on a record upsert", function()

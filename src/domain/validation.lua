@@ -31,7 +31,12 @@ type ValidationContext = {
     unique_values: { [string]: string },
     pipelines: { [string]: Pipeline },
     missing: MissingRecord?,
+    -- Required fields a record created in this batch still lacks, in schema
+    -- order: a later write or merge in the batch may fill them.
+    unfilled: { [string]: { UnmetRequirement } },
+    unfilled_order: { string },
 }
+type UnmetRequirement = { attr: string, reason: string }
 type ObjectSchema = {
     object: UnknownMap,
     ordered: { UnknownMap },
@@ -425,8 +430,9 @@ local function validate_value(crm_id: string, def: UnknownMap, value: unknown,
     return value_reason(def, value), nil
 end
 
-local function duplicate_unique(crm_id: string, object_type: string, record_id: string,
+local function duplicate_unique(context: ValidationContext, object_type: string, record_id: string,
     def: UnknownMap, value: unknown): (boolean?, error?)
+    local crm_id = context.crm_id
     if is_empty(value) then return false, nil end
     local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
     if cfg.unique ~= true then return false, nil end
@@ -439,8 +445,11 @@ local function duplicate_unique(crm_id: string, object_type: string, record_id: 
     if not page then return nil, query_err end
     local typed_page = page :: UnknownMap
     local rows = type(typed_page.rows) == "table" and (typed_page.rows :: { UnknownMap }) or {}
+    -- A holder an earlier command of this batch merged away or deleted has
+    -- released the value by the time this command applies.
     for _, row in ipairs(rows) do
-        if tostring(row.record_id) ~= record_id then return true, nil end
+        local holder = tostring(row.record_id)
+        if holder ~= record_id and context.records[holder] ~= false then return true, nil end
     end
     return false, nil
 end
@@ -467,7 +476,7 @@ local function check_value(context: ValidationContext, object_type: string, reco
     if err then return err end
     if reason then reasons[#reasons + 1] = label_for(def) .. ": " .. reason end
     if not unique then return nil end
-    local duplicate, unique_err = duplicate_unique(context.crm_id, object_type, record_id, def, value)
+    local duplicate, unique_err = duplicate_unique(context, object_type, record_id, def, value)
     if unique_err then return unique_err end
     if duplicate then
         reasons[#reasons + 1] = label_for(def) .. ": must be unique"
@@ -493,6 +502,18 @@ local function apply_create_defaults(schema: ObjectSchema, body: UnknownMap): Un
     return values
 end
 
+-- Clears the unmet required fields of a record created in this batch that the
+-- given values fill.
+local function fill(context: ValidationContext, record_id: string, values: UnknownMap)
+    local unmet = context.unfilled[record_id]
+    if unmet == nil then return end
+    local remaining: { UnmetRequirement } = {}
+    for _, requirement in ipairs(unmet) do
+        if is_empty(values[requirement.attr]) then remaining[#remaining + 1] = requirement end
+    end
+    context.unfilled[record_id] = #remaining > 0 and remaining or nil
+end
+
 local function validate_record(context: ValidationContext, etype: string, value: unknown): (boolean?, error?)
     local body: UnknownMap = type(value) == "table" and (value :: UnknownMap) or {}
     local object_type = tostring(body.object_type or "")
@@ -501,6 +522,7 @@ local function validate_record(context: ValidationContext, etype: string, value:
 
     local reasons: { string } = {}
     local record_id = tostring(body.record_id or "")
+    local unmet: { UnmetRequirement } = {}
     if etype == types.EVENTS.RECORD_CREATED then
         local existing, exists_err = record_type(context, record_id)
         if exists_err then return nil, exists_err end
@@ -510,9 +532,10 @@ local function validate_record(context: ValidationContext, etype: string, value:
             local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
             local value = values[tostring(def.attr)]
             if cfg.required == true and is_empty(value) then
-                reasons[#reasons + 1] = label_for(def) .. ": required"
+                unmet[#unmet + 1] = { attr = tostring(def.attr), reason = label_for(def) .. ": required" }
             end
         end
+        for _, requirement in ipairs(unmet) do reasons[#reasons + 1] = requirement.reason end
         for attr, value in pairs(values) do
             local def = schema.by_attr[tostring(attr)]
             if not def then
@@ -588,6 +611,18 @@ local function validate_record(context: ValidationContext, etype: string, value:
         end
     end
 
+    if etype == types.EVENTS.RECORD_CREATED then
+        -- A create whose only failures are unmet required fields stands if the
+        -- batch fills them; the batch's final state decides.
+        if #reasons > 0 and #reasons == #unmet then
+            context.unfilled[record_id] = unmet
+            context.unfilled_order[#context.unfilled_order + 1] = record_id
+            reasons = {}
+        end
+    else
+        fill(context, record_id, type(body.set) == "table" and (body.set :: UnknownMap) or {})
+        fill(context, record_id, type(body.set_if_absent) == "table" and (body.set_if_absent :: UnknownMap) or {})
+    end
     if #reasons > 0 then return nil, invalid(table.concat(reasons, "; ")) end
     if etype == types.EVENTS.RECORD_CREATED then
         context.records[record_id] = object_type
@@ -673,6 +708,18 @@ local function merge_event(context: ValidationContext, body: UnknownMap, decided
             return invalid("winner and loser must be the reviewed pair")
         end
         context.records[loser] = false
+        -- The winner takes every value it lacks from the loser.
+        if context.unfilled[winner] ~= nil then
+            local db, db_err = open_db()
+            if not db then return db_err end
+            local stored, stored_err = storage.get(db, context.crm_id, object_type, loser)
+            db:release()
+            if stored_err then return stored_err end
+            local loser_values = type(stored) == "table" and type((stored :: UnknownMap).values) == "table"
+                and (stored :: UnknownMap).values :: UnknownMap or {}
+            fill(context, winner, loser_values)
+        end
+        context.unfilled[loser] = nil
     end
     return nil
 end
@@ -738,6 +785,8 @@ function M.validate_commands(crm_id: string, commands: unknown): (boolean?, erro
         records = {},
         unique_values = {},
         pipelines = pipeline_index(typed_schema),
+        unfilled = {},
+        unfilled_order = {},
     }
     for _, value in ipairs(commands :: { unknown }) do
         local cmd: Command = type(value) == "table" and (value :: Command) or {}
@@ -754,6 +803,14 @@ function M.validate_commands(crm_id: string, commands: unknown): (boolean?, erro
                 } })
             end
             return nil, failure
+        end
+    end
+    for _, record_id in ipairs(context.unfilled_order) do
+        local unmet = context.unfilled[record_id]
+        if unmet ~= nil and context.records[record_id] ~= false then
+            local reasons: { string } = {}
+            for _, requirement in ipairs(unmet) do reasons[#reasons + 1] = requirement.reason end
+            return nil, invalid(table.concat(reasons, "; "))
         end
     end
     return true, nil

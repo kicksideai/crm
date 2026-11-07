@@ -6,6 +6,9 @@ local sql = require("sql")
 
 local M = {}
 
+-- The alias source a merge stamps on the aliases it carries to the winner.
+M.MERGED_SOURCE = "merge"
+
 type UnknownMap = { [string]: unknown }
 type Executor = sql.DB | sql.Transaction
 type ReservationRow = { record_id: unknown?, state: unknown?, reserved_at: unknown?, create_id: unknown? }
@@ -278,10 +281,23 @@ function M.reserve_for_commands(crm_id: string, commands: unknown): ({Claim}?, e
     tx, err = db:begin()
     if err then db:release(); return nil, err end
     local reserved: {Claim} = {}
+    -- A record a merge earlier in the batch folded into another answers for its
+    -- winner: the merge hands its claims to the winner when it projects.
+    local merged_into: { [string]: string } = {}
+    local function holder(record_id: string): string
+        local current = record_id
+        while merged_into[current] ~= nil do current = merged_into[current] end
+        return current
+    end
 
     for _, raw_command in ipairs(command_list) do
         local command = type(raw_command) == "table" and raw_command :: Command or nil
         local event_type = command and command.type or nil
+        if event_type == types.EVENTS.MERGE_DECIDED then
+            local body: UnknownMap = type(command.body) == "table" and command.body :: UnknownMap or {}
+            local winner, loser = trim(body.winner_id), trim(body.loser_id)
+            if body.decision == "merged" and winner ~= "" and loser ~= "" then merged_into[loser] = winner end
+        end
         if event_type == types.EVENTS.RECORD_CREATED or event_type == types.EVENTS.RECORD_UPDATED then
             local body: RecordBody = type(command.body) == "table" and command.body :: RecordBody or {}
             local object_type = trim(body.object_type)
@@ -297,7 +313,7 @@ function M.reserve_for_commands(crm_id: string, commands: unknown): ({Claim}?, e
                     local claim
                     claim, err = M.internal_reserve(tx, crm_id, object_type, definition.alias_type, value, record_id)
                     if not claim then tx:rollback(); db:release(); return nil, err end
-                    if trim(claim.record_id) ~= record_id then
+                    if holder(trim(claim.record_id)) ~= record_id then
                         tx:rollback()
                         db:release()
                         return nil, errors.new({ kind = errors.CONFLICT, message = "alias conflict on " .. object_type .. "." .. tostring(attr) })
@@ -314,10 +330,20 @@ function M.reserve_for_commands(crm_id: string, commands: unknown): ({Claim}?, e
     return reserved, nil
 end
 
+-- A changed field value retires the alias the field held. An alias a merge
+-- carried over names a record the winner absorbed, so it stays with the winner.
 local function retire(db: Executor, crm_id: string, object_type: string, alias_type: string, value: unknown, record_id: string): error?
     if is_empty(value) then return nil end
     local _, alias_hash, err = normalized_key(alias_type, value, crm_id, db)
     if not alias_hash then return err end
+    local held, held_err = db:query([[
+        SELECT source FROM kickside_crm_alias
+        WHERE crm_id = $1 AND object_scope = $2 AND alias_type = $3 AND alias_hash = $4 AND record_id = $5
+    ]], { crm_id, object_type, alias_type, alias_hash, record_id })
+    if held_err then return held_err end
+    if type(held) == "table" and type(held[1]) == "table" and (held[1] :: UnknownMap).source == M.MERGED_SOURCE then
+        return nil
+    end
     local _, delete_err = db:execute([[
         DELETE FROM kickside_crm_alias
         WHERE crm_id = $1 AND object_scope = $2 AND alias_type = $3 AND alias_hash = $4 AND record_id = $5

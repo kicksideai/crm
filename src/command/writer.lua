@@ -341,6 +341,19 @@ function M.sink_external(origin: string, sink_op: string, idempotency_key: strin
     }
 end
 
+-- The external identity of one step a delivery appends ahead of its own write.
+-- Steps carry their own source, which keeps each step identity distinct from
+-- every delivery's own command; the step name is a fixed word or a fixed-length
+-- digest, which keeps the steps of distinct deliveries apart.
+function M.sink_step_external(origin: string, sink_op: string, idempotency_key: string, step: string): UnknownMap
+    local delivery = M.sink_external(origin, sink_op, idempotency_key)
+    return {
+        external_source = SINK_EXTERNAL_SOURCE .. ".step",
+        external_id = tostring(delivery.external_id) .. " " .. step,
+        external_version = SINK_EXTERNAL_VERSION,
+    }
+end
+
 -- The already-durable event carrying this external identity, { type, body, seq }, or nil
 -- when no candidate committed. A caller whose own receipt is missing reads the
 -- effect it already appended from here instead of re-deriving it from current state.
