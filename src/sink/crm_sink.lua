@@ -236,8 +236,10 @@ end
 local function identity_fields(crm_id: string, object_type: string): ({ [string]: boolean }?, ErrorResponse?)
     local db, db_err = open_db()
     if not db then return nil, response_error("provider_unavailable", db_err, true, "provider") end
-    local object, object_err = storage.object(db, crm_id, object_type)
+    local schema, schema_err = storage.load_schema(db, crm_id)
     db:release()
+    if not schema then return nil, append_failure(schema_err) end
+    local object, object_err = storage.object(schema, object_type)
     if object_err then return nil, append_failure(object_err) end
     local fields = type(object) == "table" and type((object :: UnknownMap).fields) == "table"
         and (object :: UnknownMap).fields :: { [string]: UnknownMap } or {}

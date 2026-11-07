@@ -13,6 +13,11 @@ local uuid = require("uuid")
 type UnknownMap = { [string]: unknown }
 type Event = { type: string, body: UnknownMap }
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function db(): (sql.DB, string)
     local handle, err = sql.get(types.db_id())
     if err then error(tostring(err), 0) end
@@ -54,7 +59,7 @@ end
 
 local function seed(crm_id: string, record_id: string, object_type: string)
     local handle = db()
-    local _, err = storage.upsert(handle, crm_id, object_type,
+    local _, err = storage.upsert(handle, applied(handle, crm_id), object_type,
         { record_id = record_id, values = { name = record_id } })
     handle:release()
     test.is_nil(err)

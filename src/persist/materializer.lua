@@ -143,7 +143,7 @@ local function record_conditional_outcomes(db: Executor, crm_id: string, envelop
     ]], { crm_id, source, identity, encoded, at })
 end
 
-local function project_record(db: Executor, crm_id: string, body: UnknownMap, update: boolean,
+local function project_record(db: Executor, crm_id: string, schema: storage.Schema, body: UnknownMap, update: boolean,
     envelope: UnknownMap?): error?
     local record_id, err = required_string(body.record_id, "record_id")
     if err then return err end
@@ -166,7 +166,7 @@ local function project_record(db: Executor, crm_id: string, body: UnknownMap, up
     end
 
     local before
-    before, err = storage.get(db, crm_id, object_type :: string, record_id :: string)
+    before, err = storage.get(db, schema, object_type :: string, record_id :: string)
     if err then return err end
     -- Conditional operations are decided HERE, against the record's state in
     -- this event's own fold order: replaying the event re-evaluates against the
@@ -206,7 +206,7 @@ local function project_record(db: Executor, crm_id: string, body: UnknownMap, up
         err = record_conditional_outcomes(db, crm_id, envelope, outcomes, at :: string)
         if err then return err end
     end
-    local after, storage_err = storage.upsert(db, crm_id, object_type :: string, {
+    local after, storage_err = storage.upsert(db, schema, object_type :: string, {
         record_id = record_id,
         values = values,
         unset = unset,
@@ -214,17 +214,17 @@ local function project_record(db: Executor, crm_id: string, body: UnknownMap, up
         updated_at = at,
     })
     if storage_err then return storage_err end
-    return aliases.project(db, crm_id, object_type :: string, record_id :: string,
+    return aliases.project(db, schema, object_type :: string, record_id :: string,
         before and (before :: StoredRecord).values or {}, after and (after :: StoredRecord).values or {}, at :: string)
 end
 
-local function project_delete(db: Executor, crm_id: string, body: UnknownMap): error?
+local function project_delete(db: Executor, crm_id: string, schema: storage.Schema, body: UnknownMap): error?
     local record_id, err = required_string(body.record_id, "record_id")
     if err then return err end
     local object_type
     object_type, err = required_string(body.object_type, "object_type")
     if err then return err end
-    local _, storage_err = storage.cleanup_record(db, crm_id, object_type :: string, record_id :: string)
+    local _, storage_err = storage.cleanup_record(db, schema, object_type :: string, record_id :: string)
     if storage_err then return storage_err end
     err = execute(db, "DELETE FROM kickside_crm_collection_membership WHERE crm_id = $1 AND record_id = $2", { crm_id, record_id })
     if err then return err end
@@ -334,7 +334,7 @@ local function transfer_merge_support(db: Executor, crm_id: string, winner_id: s
     return repoint_refs(db, crm_id, "to_ref", loser_ref, winner_ref, at)
 end
 
-local function project_merge_decision(db: Executor, crm_id: string, body: UnknownMap): error?
+local function project_merge_decision(db: Executor, crm_id: string, schema: storage.Schema, body: UnknownMap): error?
     local resolution_id, err = required_string(body.resolution_id, "resolution_id")
     if err then return err end
     local left
@@ -444,7 +444,7 @@ local function project_merge_decision(db: Executor, crm_id: string, body: Unknow
     if decision == "merged" then
         local _, merge_err = storage.merge(
             db,
-            crm_id,
+            schema,
             object_type :: string,
             winner_id :: string,
             loser_id :: string,
@@ -456,7 +456,7 @@ local function project_merge_decision(db: Executor, crm_id: string, body: Unknow
     return nil
 end
 
-local function project_relation(db: Executor, crm_id: string, body: UnknownMap, linked: boolean): error?
+local function project_relation(db: Executor, schema: storage.Schema, body: UnknownMap, linked: boolean): error?
     local record_id, err = required_string(body.record_id, "record_id")
     if err then return err end
     local object_type
@@ -468,9 +468,9 @@ local function project_relation(db: Executor, crm_id: string, body: UnknownMap, 
     if type(body.reference) ~= "table" then return errors.new({ kind = errors.INVALID, message = "reference is required" }) end
     local _, storage_err
     if linked then
-        _, storage_err = storage.link(db, crm_id, object_type :: string, record_id :: string, attr :: string, body.reference)
+        _, storage_err = storage.link(db, schema, object_type :: string, record_id :: string, attr :: string, body.reference)
     else
-        _, storage_err = storage.unlink(db, crm_id, object_type :: string, record_id :: string, attr :: string, body.reference)
+        _, storage_err = storage.unlink(db, schema, object_type :: string, record_id :: string, attr :: string, body.reference)
     end
     return storage_err
 end
@@ -838,7 +838,7 @@ local function project_reference(db: Executor, crm_id: string, body: UnknownMap,
     ]], { false, at, crm_id, from_ref, edge_type, to_ref })
 end
 
-local function project_ai_value(db: Executor, crm_id: string, body: UnknownMap): error?
+local function project_ai_value(db: Executor, crm_id: string, schema: storage.Schema, body: UnknownMap): error?
     local record_id, err = required_string(body.record_id, "record_id")
     if err then return err end
     local object_type
@@ -854,7 +854,7 @@ local function project_ai_value(db: Executor, crm_id: string, body: UnknownMap):
     at, err = occurred_at(body)
     if err then return err end
     local values = { [attr :: string] = body.value }
-    local _, storage_err = storage.upsert(db, crm_id, object_type :: string, {
+    local _, storage_err = storage.upsert(db, schema, object_type :: string, {
         record_id = record_id,
         values = values,
         updated_at = at,
@@ -905,40 +905,58 @@ local function project_external_write(db: Executor, crm_id: string, body: Unknow
     return nil
 end
 
-local function apply(db: Executor, crm_id: string, raw_event: unknown): error?
-    local event, err = body_for(raw_event)
-    if err then return err end
-    local typed_event = event :: ProjectionEvent
-    local body = typed_event.body
-    local event_type = typed_event.type
-    local envelope: UnknownMap = {
-        external_source = (raw_event :: UnknownMap).external_source,
-        external_id = (raw_event :: UnknownMap).external_id,
-    }
-    if event_type == EV.RECORD_CREATED then return project_record(db, crm_id, body, false, envelope) end
-    if event_type == EV.RECORD_UPDATED then return project_record(db, crm_id, body, true, envelope) end
-    if event_type == EV.RECORD_DELETED then return project_delete(db, crm_id, body) end
-    if event_type == EV.MERGE_SUGGESTED then return project_merge_suggestion(db, crm_id, body) end
-    if event_type == EV.MERGE_DECIDED then return project_merge_decision(db, crm_id, body) end
-    if event_type == EV.RELATION_LINKED then return project_relation(db, crm_id, body, true) end
-    if event_type == EV.RELATION_UNLINKED then return project_relation(db, crm_id, body, false) end
-    if event_type == EV.REFERENCE_LINKED then return project_reference(db, crm_id, body, true) end
-    if event_type == EV.REFERENCE_UNLINKED then return project_reference(db, crm_id, body, false) end
-    if event_type == EV.MEMBERSHIP_SET then return project_membership(db, crm_id, body, true) end
-    if event_type == EV.MEMBERSHIP_REMOVED then return project_membership(db, crm_id, body, false) end
-    if event_type == EV.ACTIVITY_LOGGED then return project_activity(db, crm_id, body) end
-    if event_type == EV.ACTIVITY_DELETED then return project_activity_delete(db, crm_id, body) end
-    if event_type == EV.AI_ATTRIBUTE_FILLED then return project_ai_value(db, crm_id, body) end
-    if event_type == EV.EXTERNAL_WRITE_SUCCEEDED then return project_external_write(db, crm_id, body) end
-    if event_type == EV.EXTERNAL_WRITE_REQUESTED or event_type == EV.EXTERNAL_WRITE_FAILED then return nil end
-    return errors.new({ kind = errors.INVALID, message = "unknown CRM event type: " .. tostring(event_type) })
-end
+type SchemaFold = (Executor, string, storage.Schema, UnknownMap, UnknownMap) -> error?
+type PlainFold = (Executor, string, UnknownMap) -> error?
+
+-- Events folded against the applied schema. A batch loads the schema at its
+-- first such event and folds every later one against that same load.
+local SCHEMA_FOLDS: { [string]: SchemaFold } = {
+    [EV.RECORD_CREATED] = function(db, crm_id, schema, body, envelope) return project_record(db, crm_id, schema, body, false, envelope) end,
+    [EV.RECORD_UPDATED] = function(db, crm_id, schema, body, envelope) return project_record(db, crm_id, schema, body, true, envelope) end,
+    [EV.RECORD_DELETED] = function(db, crm_id, schema, body) return project_delete(db, crm_id, schema, body) end,
+    [EV.MERGE_DECIDED] = function(db, crm_id, schema, body) return project_merge_decision(db, crm_id, schema, body) end,
+    [EV.RELATION_LINKED] = function(db, _, schema, body) return project_relation(db, schema, body, true) end,
+    [EV.RELATION_UNLINKED] = function(db, _, schema, body) return project_relation(db, schema, body, false) end,
+    [EV.AI_ATTRIBUTE_FILLED] = function(db, crm_id, schema, body) return project_ai_value(db, crm_id, schema, body) end,
+}
+
+local PLAIN_FOLDS: { [string]: PlainFold } = {
+    [EV.MERGE_SUGGESTED] = function(db, crm_id, body) return project_merge_suggestion(db, crm_id, body) end,
+    [EV.REFERENCE_LINKED] = function(db, crm_id, body) return project_reference(db, crm_id, body, true) end,
+    [EV.REFERENCE_UNLINKED] = function(db, crm_id, body) return project_reference(db, crm_id, body, false) end,
+    [EV.MEMBERSHIP_SET] = function(db, crm_id, body) return project_membership(db, crm_id, body, true) end,
+    [EV.MEMBERSHIP_REMOVED] = function(db, crm_id, body) return project_membership(db, crm_id, body, false) end,
+    [EV.ACTIVITY_LOGGED] = function(db, crm_id, body) return project_activity(db, crm_id, body) end,
+    [EV.ACTIVITY_DELETED] = function(db, crm_id, body) return project_activity_delete(db, crm_id, body) end,
+    [EV.EXTERNAL_WRITE_SUCCEEDED] = function(db, crm_id, body) return project_external_write(db, crm_id, body) end,
+    [EV.EXTERNAL_WRITE_REQUESTED] = function() return nil end,
+    [EV.EXTERNAL_WRITE_FAILED] = function() return nil end,
+}
 
 function M.project_events(db: Executor, crm_id: string, events: unknown): error?
     if type(crm_id) ~= "string" or crm_id == "" then return errors.new({ kind = errors.INVALID, message = "crm_id is required" }) end
     if type(events) ~= "table" then return errors.new({ kind = errors.INVALID, message = "events must be an array" }) end
-    for index, event in ipairs(events :: { unknown }) do
-        local err = apply(db, crm_id, event)
+    local schema: storage.Schema? = nil
+    for index, raw_event in ipairs(events :: { unknown }) do
+        local event, err = body_for(raw_event)
+        if event then
+            local typed_event = event :: ProjectionEvent
+            local schema_fold = SCHEMA_FOLDS[typed_event.type]
+            local plain_fold = PLAIN_FOLDS[typed_event.type]
+            if schema_fold then
+                if not schema then schema, err = storage.load_schema(db, crm_id) end
+                if schema then
+                    err = schema_fold(db, crm_id, schema, typed_event.body, {
+                        external_source = (raw_event :: UnknownMap).external_source,
+                        external_id = (raw_event :: UnknownMap).external_id,
+                    })
+                end
+            elseif plain_fold then
+                err = plain_fold(db, crm_id, typed_event.body)
+            else
+                err = errors.new({ kind = errors.INVALID, message = "unknown CRM event type: " .. tostring(typed_event.type) })
+            end
+        end
         if err then return errors.wrap(err, "CRM projection event " .. tostring(index) .. " failed") end
     end
     return nil

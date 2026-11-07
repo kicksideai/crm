@@ -9,6 +9,11 @@ local types = require("types")
 local M = {}
 type Map = { [string]: unknown }
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 function M.run(input: Map): Map
     local crm_id = tostring(input.crm_id)
     local db = assert(sql.get(types.db_id())) :: sql.DB
@@ -32,7 +37,7 @@ function M.run(input: Map): Map
             body = { record_id = record_id, object_type = "entity", set = { name = "updated" } },
         } })
         if not updated then db:release(); return { ok = false, error = update_err, iteration = iteration } end
-        local record, read_err = storage.get(db, crm_id, "entity", record_id)
+        local record, read_err = storage.get(db, applied(db, crm_id), "entity", record_id)
         if read_err or not record or ((record :: Map).values :: Map).name ~= "updated" then
             db:release()
             return { ok = false, error = read_err or "update returned before durable record was visible", iteration = iteration }

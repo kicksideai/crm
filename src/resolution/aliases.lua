@@ -214,8 +214,8 @@ function M.reserve(crm_id: string, object_scope: string, alias_type: string, val
     return result, nil
 end
 
-local function alias_definitions(db: Executor, crm_id: string, object_type: string): ({AliasDefinition}?, error?)
-    local loaded, err = storage.object(db, crm_id, object_type)
+local function alias_definitions(schema: storage.Schema, object_type: string): ({AliasDefinition}?, error?)
+    local loaded, err = storage.object(schema, object_type)
     if err then return nil, err end
     if type(loaded) ~= "table" then return nil, errors.new({ kind = errors.INTERNAL, message = "CRM object schema is unavailable" }) end
     local object = loaded :: ObjectSchema
@@ -243,9 +243,12 @@ function M.alias_attrs(crm_id: string, object_type: string, alias_type: string):
     local db
     db, err = open_db()
     if not db then return nil, err end
-    local definitions
-    definitions, err = alias_definitions(db, crm_id, object_type)
+    local schema
+    schema, err = storage.load_schema(db, crm_id)
     db:release()
+    if not schema then return nil, err end
+    local definitions
+    definitions, err = alias_definitions(schema, object_type)
     if not definitions then return nil, err end
     local result: {UnknownMap} = {}
     for _, definition in ipairs(definitions) do
@@ -260,7 +263,9 @@ local function is_empty(value: unknown): boolean
     return value == nil or type(value) == "string" and trim(value) == ""
 end
 
-function M.reserve_for_commands(crm_id: string, commands: unknown): ({Claim}?, error?)
+-- schema is the applied schema the caller loaded for this command batch.
+function M.reserve_for_commands(schema: storage.Schema, commands: unknown): ({Claim}?, error?)
+    local crm_id = schema.crm_id
     local ok, err = require_access(crm_id, component.ACCESS.WRITE)
     if not ok then return nil, err end
     local has_record_write = false
@@ -304,7 +309,7 @@ function M.reserve_for_commands(crm_id: string, commands: unknown): ({Claim}?, e
             local record_id = trim(body.record_id)
             local values = event_type == types.EVENTS.RECORD_UPDATED and body.set or body.values
             local definitions
-            definitions, err = alias_definitions(tx, crm_id, object_type)
+            definitions, err = alias_definitions(schema, object_type)
             if not definitions then tx:rollback(); db:release(); return nil, err end
             for _, definition in ipairs(definitions) do
                 local attr = definition.attr
@@ -427,8 +432,9 @@ local function commit(db: Executor, crm_id: string, object_type: string, alias_t
     return nil
 end
 
-function M.project(db: Executor, crm_id: string, object_type: string, record_id: string, before: unknown, after: unknown, at: string): error?
-    local definitions, err = alias_definitions(db, crm_id, object_type)
+function M.project(db: Executor, schema: storage.Schema, object_type: string, record_id: string, before: unknown, after: unknown, at: string): error?
+    local crm_id = schema.crm_id
+    local definitions, err = alias_definitions(schema, object_type)
     if not definitions then return err end
     local before_values: UnknownMap = type(before) == "table" and before :: UnknownMap or {}
     local after_values: UnknownMap = type(after) == "table" and after :: UnknownMap or {}

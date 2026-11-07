@@ -1207,3 +1207,40 @@ entries:
       actors: app:actors
       test: wippy.test:test
       trusted_reader: kickside.uploads:trusted_reader
+
+  - name: schema_load_counter
+    kind: library.lua
+    meta:
+      type: test_helper
+      comment: Counts applied-schema catalog loads through the executors a caller passes or the storage facade receives.
+    source: file://schema_load_counter.lua
+
+  - name: schema_load_probe
+    kind: function.lua
+    meta:
+      comment: Test-only actor-scoped adapter that counts schema loads of one write batch or read request.
+    source: file://schema_load_probe.lua
+    method: run
+    imports:
+      counter: app:schema_load_counter
+      read_model: kickside.crm.persist:read_model
+      storage: kickside.crm.persist:repo
+      writer: kickside.crm.command:writer
+
+  - name: crm_schema_load_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: The applied schema loads once per write batch, projection batch and read request.
+    source: file://crm_schema_load_test.lua
+    method: run
+    modules: [contract, funcs, security, sql, uuid]
+    imports:
+      actors: app:actors
+      counter: app:schema_load_counter
+      materializer: kickside.crm.persist:materializer
+      storage: kickside.crm.persist:repo
+      test: wippy.test:test
+      types: kickside.crm:types

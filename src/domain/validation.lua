@@ -26,7 +26,7 @@ type MissingRecord = {
 
 type ValidationContext = {
     crm_id: string,
-    schema: UnknownMap,
+    schema: storage.Schema,
     records: RecordCache,
     unique_values: { [string]: string },
     pipelines: { [string]: Pipeline },
@@ -153,16 +153,6 @@ local function relation_refs(v: unknown): { TypedReference }
     return out
 end
 
-local function load_applied_schema(crm_id: string): (UnknownMap?, error?)
-    local db, err = open_db()
-    if not db then return nil, err end
-    local schema, schema_err = storage.load_schema(db, crm_id)
-    db:release()
-    if schema_err then return nil, schema_err end
-    if type(schema) ~= "table" then return nil, errors.new({ kind = errors.INTERNAL, message = "CRM schema storage returned a non-object state" }) end
-    return schema :: UnknownMap, nil
-end
-
 local function object_schema(context: ValidationContext, object_type: string): (ObjectSchema?, error?)
     local objects = type(context.schema.objects) == "table"
         and (context.schema.objects :: { [string]: UnknownMap }) or {}
@@ -238,7 +228,9 @@ function M.exists(crm_id: string, record_id: string, object_type: string?): (boo
     if not db then return nil, err end
     local found, read_err
     if trim(object_type) ~= "" then
-        found, read_err = storage.exists(db, crm_id, object_type :: string, record_id)
+        local schema
+        schema, read_err = storage.load_schema(db, crm_id)
+        if schema then found, read_err = storage.exists(db, schema, object_type :: string, record_id) end
     else
         local locator
         locator, read_err = storage.locate(db, crm_id, record_id)
@@ -454,7 +446,7 @@ local function stored_record(context: ValidationContext, object_type: string, re
     if stored ~= nil then return stored, nil end
     local db, db_err = open_db()
     if not db then return nil, db_err end
-    local row, row_err = storage.get(db, context.crm_id, object_type, record_id)
+    local row, row_err = storage.get(db, context.schema, object_type, record_id)
     db:release()
     if row_err then return nil, row_err end
     local values = stored_values(row)
@@ -523,13 +515,12 @@ end
 
 local function duplicate_unique(context: ValidationContext, object_type: string, record_id: string,
     def: UnknownMap, value: unknown): (boolean?, error?)
-    local crm_id = context.crm_id
     if is_empty(value) then return false, nil end
     local cfg = type(def.config) == "table" and (def.config :: UnknownMap) or {}
     if cfg.unique ~= true then return false, nil end
     local db, err = open_db()
     if not db then return nil, err end
-    local page, query_err = storage.list(db, crm_id, object_type, {
+    local page, query_err = storage.list(db, context.schema, object_type, {
         filters = { { attr = def.attr, op = "eq", value = value } }, limit = 2, offset = 0,
     })
     db:release()
@@ -878,17 +869,16 @@ end
 
 -- A command blocked on a record that does not exist yet fails with details
 -- { code = "dependency_missing", dependency_key } naming the record it waits on.
-function M.validate_commands(crm_id: string, commands: unknown): (boolean?, error?)
+-- schema is the applied schema the caller loaded for this command batch.
+function M.validate_commands(schema: storage.Schema, commands: unknown): (boolean?, error?)
     if type(commands) ~= "table" then return true, nil end
-    local schema, schema_err = load_applied_schema(crm_id)
-    if not schema then return nil, schema_err end
-    local typed_schema = schema :: UnknownMap
+    local crm_id = schema.crm_id
     local context: ValidationContext = {
         crm_id = crm_id,
-        schema = typed_schema,
+        schema = schema,
         records = {},
         unique_values = {},
-        pipelines = pipeline_index(typed_schema),
+        pipelines = pipeline_index(schema :: UnknownMap),
         unfilled = {},
         unfilled_order = {},
         unique_current = {},
