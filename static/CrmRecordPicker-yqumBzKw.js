@@ -1,5 +1,5 @@
 import { defineComponent as p, computed as t, openBlock as s, createBlock as m } from "vue";
-import { u as d, a as i } from "./index-BzYkOw4T.js";
+import { a as d, u as i } from "./wc-runtime-CNDpK4lj.js";
 import { _ as v } from "./RecordPickerControl.vue_vue_type_script_setup_true_lang-DqL5RXQ_.js";
 const h = /* @__PURE__ */ p({
   __name: "CrmRecordPicker",
@@ -20,4 +20,4 @@ const h = /* @__PURE__ */ p({
 export {
   h as default
 };
-//# sourceMappingURL=CrmRecordPicker-BSqY765b.js.map
+//# sourceMappingURL=CrmRecordPicker-yqumBzKw.js.map
