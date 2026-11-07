@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.7](https://github.com/kicksideai/crm/compare/crm-v0.6.6...crm-v0.6.7) (2026-11-07)
+
+
+### Bug Fixes
+
+* **crm:** select the record attachments CRM with the port's one picker ([#31](https://github.com/kicksideai/crm/issues/31)) ([37299e9](https://github.com/kicksideai/crm/commit/37299e9237eb68740e7f7b843596f22949aea14d))
+
 ## [0.6.6](https://github.com/kicksideai/crm/compare/crm-v0.6.5...crm-v0.6.6) (2026-11-06)
 
 
