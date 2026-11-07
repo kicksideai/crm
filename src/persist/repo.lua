@@ -1123,12 +1123,6 @@ function M.merge(db: Executor, crm_id: string, object_type: string, winner_id: s
                 assignments[#assignments + 1] = field.column_name .. " = " .. value_sql[1]
             end
         end
-        params[#params + 1] = crm_id
-        local crm_slot = "$" .. tostring(#params)
-        params[#params + 1] = winner_id
-        local winner_slot = "$" .. tostring(#params)
-        execute(db, "UPDATE " .. object.table_name .. " SET " .. table.concat(assignments, ", ")
-            .. " WHERE crm_id = " .. crm_slot .. " AND record_id = " .. winner_slot, params)
 
         for _, relation in ipairs(relation_descriptors(schema)) do
             execute(db, "DELETE FROM " .. relation.relation_table
@@ -1199,9 +1193,17 @@ function M.merge(db: Executor, crm_id: string, object_type: string, winner_id: s
             end
         end
 
+        -- The loser leaves before the winner takes its values, so a unique
+        -- value the winner inherits has a single holder at every step.
         delete_record(db, schema, object, crm_id, loser_id)
         execute(db, "DELETE FROM kickside_crm_record_locator"
             .. " WHERE crm_id = $1 AND record_id = $2", { crm_id, loser_id })
+        params[#params + 1] = crm_id
+        local crm_slot = "$" .. tostring(#params)
+        params[#params + 1] = winner_id
+        local winner_slot = "$" .. tostring(#params)
+        execute(db, "UPDATE " .. object.table_name .. " SET " .. table.concat(assignments, ", ")
+            .. " WHERE crm_id = " .. crm_slot .. " AND record_id = " .. winner_slot, params)
         execute(db, "UPDATE kickside_crm_record_locator SET updated_at = $1"
             .. " WHERE crm_id = $2 AND record_id = $3", { at, crm_id, winner_id })
         if schema.dialect == "sqlite" then

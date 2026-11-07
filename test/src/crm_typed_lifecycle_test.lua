@@ -513,6 +513,29 @@ local function define_tests()
             test.eq(written.values.field_300, "last")
         end)
 
+        test.it("merges a loser's unique value into a winner that lacks it", function()
+            local crm_id = tostring(uuid.v7())
+            apply(crm_id, unique_declaration("unique-merge-v1", true))
+            local handle = db()
+            for _, row in ipairs({
+                { record_id = "entity:winner", values = { name = "Winner" } },
+                { record_id = "entity:loser", values = { name = "Loser", email = "loser@example.test" } },
+            }) do
+                local _, write_err = storage.upsert(handle, crm_id, "entity", row)
+                test.is_nil(write_err)
+            end
+            local _, merge_err = storage.merge(handle, crm_id, "entity", "entity:winner", "entity:loser",
+                "2026-07-24T12:00:00Z")
+            test.is_nil(merge_err)
+            local winner, winner_err = storage.get(handle, crm_id, "entity", "entity:winner")
+            local loser, loser_err = storage.get(handle, crm_id, "entity", "entity:loser")
+            handle:release()
+            test.is_nil(winner_err)
+            test.is_nil(loser_err)
+            test.eq(require_record(winner).values.email, "loser@example.test")
+            test.is_nil(loser)
+        end)
+
         test.it("enforces unique scalar fields through compile, write, update, and removal", function()
             local crm_id = tostring(uuid.v7())
             apply(crm_id, unique_declaration("unique-v1", false))
