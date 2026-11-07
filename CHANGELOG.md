@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.8](https://github.com/kicksideai/crm/compare/crm-v0.6.7...crm-v0.6.8) (2026-11-07)
+
+
+### Bug Fixes
+
+* **crm:** merge the records a source folded into an upserted record ([#28](https://github.com/kicksideai/crm/issues/28)) ([31e3fe2](https://github.com/kicksideai/crm/commit/31e3fe26155458bd0a16a28023d4bf99400f6d8b))
+
 ## [0.6.7](https://github.com/kicksideai/crm/compare/crm-v0.6.6...crm-v0.6.7) (2026-11-07)
 
 
