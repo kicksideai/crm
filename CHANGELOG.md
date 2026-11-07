@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.9](https://github.com/kicksideai/crm/compare/crm-v0.6.8...crm-v0.6.9) (2026-11-07)
+
+
+### Performance Improvements
+
+* **crm:** load the applied schema once per batch and request ([#29](https://github.com/kicksideai/crm/issues/29)) ([d8583eb](https://github.com/kicksideai/crm/commit/d8583eb1b7b969375416ca5e3151de4331e78dc3))
+
 ## [0.6.8](https://github.com/kicksideai/crm/compare/crm-v0.6.7...crm-v0.6.8) (2026-11-07)
 
 
