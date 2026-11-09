@@ -162,19 +162,35 @@ function M.matches(
     return nil, nil
 end
 
-function M.prune(db: Executor, cutoff: string, limit: integer): (integer?, string?)
-    local result, err = db:execute([[DELETE FROM kickside_crm_write_origin
-        WHERE completed_at < $1 AND (crm_id, provider, connection_id, object_type, target_ref, attr) IN (
-            SELECT crm_id, provider, connection_id, object_type, target_ref, attr FROM kickside_crm_write_origin
-            WHERE completed_at < $1 ORDER BY completed_at, crm_id, provider, connection_id, object_type, target_ref, attr LIMIT $2
-        )]], { cutoff, limit })
-    if err then return nil, tostring(err) end
-    return (result :: UnknownMap).rows_affected :: integer, nil
+function M.prune(db: sql.DB, cutoff: string, limit: integer): (integer?, string?)
+    local tx, begin_err = db:begin()
+    if begin_err or not tx then return nil, tostring(begin_err) end
+    local function abort(cause: unknown): (integer?, string?)
+        local _, rollback_err = tx:rollback()
+        if rollback_err then return nil, tostring(cause) .. "; rollback failed: " .. tostring(rollback_err) end
+        return nil, tostring(cause)
+    end
+    local rows, read_err = tx:query([[SELECT crm_id, provider, connection_id, object_type, target_ref, attr
+        FROM kickside_crm_write_origin WHERE completed_at < $1
+        ORDER BY completed_at, crm_id, provider, connection_id, object_type, target_ref, attr LIMIT $2]], { cutoff, limit })
+    if read_err then return abort(read_err) end
+    local deleted = 0
+    for _, row in ipairs(rows :: { UnknownMap }) do
+        local result, delete_err = tx:execute([[DELETE FROM kickside_crm_write_origin
+            WHERE crm_id = $1 AND provider = $2 AND connection_id = $3 AND object_type = $4
+                AND target_ref = $5 AND attr = $6 AND completed_at < $7]],
+            { row.crm_id, row.provider, row.connection_id, row.object_type, row.target_ref, row.attr, cutoff })
+        if delete_err then return abort(delete_err) end
+        deleted = deleted + ((result :: UnknownMap).rows_affected :: integer)
+    end
+    local _, commit_err = tx:commit()
+    if commit_err then return abort(commit_err) end
+    return deleted, nil
 end
 
-function M.next_completed_at(db: Executor): (string?, string?)
+function M.next_completed_at(db: Executor, cutoff: string): (string?, string?)
     local rows, err = db:query([[SELECT completed_at FROM kickside_crm_write_origin
-        ORDER BY completed_at, crm_id, provider, connection_id, object_type, target_ref, attr LIMIT 1]])
+        WHERE completed_at >= $1 ORDER BY completed_at, crm_id, provider, connection_id, object_type, target_ref, attr LIMIT 1]], { cutoff })
     if err then return nil, tostring(err) end
     local row = (rows :: { OriginRow })[1]
     return row and tostring(row.completed_at) or nil, nil

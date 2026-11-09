@@ -12,6 +12,8 @@ local storage = require("storage")
 local receipts = require("receipts")
 local origins = require("origins")
 local fixture = require("fixture")
+local json = require("json")
+local logger = require("logger")
 
 type Row = { [string]: any }
 local RECEIPTS = "kickside_crm_sink_receipt"
@@ -63,29 +65,45 @@ end
 
 local function define()
     test.describe("CRM retention", function()
-        test.it("notifies the idle sweeper after a sink receipt commits", function()
+        test.before_all(function() assert(funcs.call("app:wait_for_boot", {})) end)
+        test.it("schedules the receipt window after replay without a new Core event", function()
             local crm_id, execute = fixture.crm()
+            local request = fixture.request(crm_id, "retention:wake", {
+                kind = "record", object_type = "entity", record_id = "entity:wake", values = { name = "Wake" } })
+            local first = fixture.call_sink(execute, request)
+            test.eq(first.success, true, fixture.error_text(first))
+            -- Reproduce the durable state after the event commits but before its receipt does.
+            fixture.exec("DELETE FROM kickside_crm_sink_receipt WHERE crm_id = $1", { crm_id })
+            local event_count = fixture.event_count(crm_id)
+            local db = assert(sql.get(types.db_id())) :: sql.DB
+            local before, before_err = retention_runner.on_wake(db, tostring(process.pid()), { kind = "events_appended" })
+            db:release()
+            test.is_nil(before_err, tostring(before_err))
+            local receipt_expiry = math.floor(time.now():unix_nano() / 1000000) + 30 * 86400000 + 1000
+            test.is_true(before.deadline_ms == nil or before.deadline_ms > receipt_expiry,
+                "Core's event wake precedes the receipt and does not schedule its window")
             local mailbox = process.listen("kickside.core.retention.changed")
             local registered, register_err = process.registry.register("kickside.core.retention.service:sweeper_process", nil, process.registry.CONSISTENT)
             test.is_nil(register_err); test.is_true(registered)
             local ok, failure = pcall(function()
-                local result = fixture.call_sink(execute, fixture.request(crm_id, "retention:wake", {
-                    kind = "record", object_type = "entity", record_id = "entity:wake", values = { name = "Wake" } }))
+                local result = fixture.call_sink(execute, request)
                 test.eq(result.success, true, fixture.error_text(result))
-                local saw_receipt = false
-                local timeout = time.after("5s")
-                while not saw_receipt do
-                    local selected = channel.select({ mailbox:case_receive(), timeout:case_receive() })
-                    if selected.channel ~= mailbox then break end
-                    if selected.value.kind == "crm_receipt_committed" then
-                        saw_receipt = true
-                        test.eq(#fixture.receipt_rows(crm_id, "retention:wake"), 1)
-                    end
-                end
-                test.is_true(saw_receipt, "the receipt commits after the event's retention hint")
+                test.eq(fixture.event_count(crm_id), event_count, "replay commits the missing receipt without a new append")
+                local selected = channel.select({ mailbox:case_receive(), time.after("5s"):case_receive() })
+                test.eq(selected.channel, mailbox, "the earlier event wake cannot discover a later receipt commit")
+                test.eq(selected.value.kind, "crm_receipt_committed")
+                test.eq(#fixture.receipt_rows(crm_id, "retention:wake"), 1)
+                local handle = assert(sql.get(types.db_id())) :: sql.DB
+                local after, after_err = retention_runner.on_wake(handle, tostring(process.pid()), selected.value)
+                handle:release()
+                test.is_nil(after_err, tostring(after_err))
+                local completed = tostring(fixture.receipt_rows(crm_id, "retention:wake")[1].completed_at)
+                local expected = math.floor(assert(time.parse(time.RFC3339, completed)):unix_nano() / 1000000) + 30 * 86400000 + 1000
+                test.eq(after.deadline_ms, expected)
             end)
             process.registry.unregister("kickside.core.retention.service:sweeper_process", process.registry.CONSISTENT)
             process.unlisten(mailbox)
+            fixture.exec("DELETE FROM kickside_crm_sink_receipt WHERE crm_id = $1", { crm_id })
             if not ok then error(failure) end
         end)
 
@@ -120,6 +138,21 @@ local function define()
             end
             local expected = math.floor(assert(time.parse(time.RFC3339, oldest)):unix_nano() / 1000000) + 30 * 86400000 + 1000
             test.eq(pass.deadline_ms, expected)
+            db:release()
+        end)
+
+        test.it("seeks the first unexpired completion while an expired backlog remains", function()
+            local db = assert(sql.get(types.db_id())) :: sql.DB
+            local cutoff, live = "2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z"
+            for _, table_name in ipairs({ RECEIPTS, ORIGINS }) do
+                local id = tostring(uuid.v7())
+                seed(db, table_name, id, 601, "2000-01-01T00:00:00Z")
+                seed(db, table_name, id .. ":live", 1, live)
+                local next_completed = table_name == RECEIPTS and receipts.next_completed_at or origins.next_completed_at
+                local completed, err = next_completed(db, cutoff)
+                test.is_nil(err); test.eq(completed, live, "deadline reads skip expired rows")
+                exec(db, "DELETE FROM " .. table_name .. " WHERE crm_id = $1 OR crm_id = $2", { id, id .. ":live" })
+            end
             db:release()
         end)
 
@@ -209,6 +242,59 @@ local function migrate(id: string)
     return result
 end
 
+local function planned(db: sql.DB, owner_bound: boolean?): sql.DB
+    local pg = db:type() == sql.type.POSTGRES
+    local function check(executor: any, statement: string, params: { any }?)
+        local rows = query(executor, (pg and "EXPLAIN (FORMAT JSON) " or "EXPLAIN QUERY PLAN ") .. statement, params)
+        logger:info("CRM retention query plan", { statement = statement, plan = json.encode(rows) })
+        if pg then
+            local plan = assert(json.decode(tostring(rows[1]["QUERY PLAN"])))
+            local function visit(node: any)
+                if node["Relation Name"] then
+                    test.is_true(node["Node Type"] ~= "Seq Scan", "unbounded relation scan: " .. statement)
+                end
+                for _, child in ipairs(node.Plans or {}) do visit(child) end
+            end
+            visit(plan[1].Plan)
+        else
+            for _, row in ipairs(rows) do
+                local detail = tostring(row.detail)
+                test.is_nil(detail:match("SCAN kickside_crm_"), detail)
+                if owner_bound then test.is_nil(detail:match("SCAN owners"), "orphan eligibility scans the owner set before LIMIT: " .. detail) end
+                if statement:match("^DELETE") and detail:match("^SEARCH kickside_crm_write_origin")
+                    and not detail:find("_retention", 1, true) then
+                    test.is_true(detail:find("attr=?", 1, true) ~= nil, "origin delete must seek the full key: " .. detail)
+                end
+                if statement:match("^DELETE") and detail:find("sqlite_autoindex", 1, true) then
+                    test.is_true(detail:find("idempotency_key=?", 1, true) ~= nil
+                        or detail:find("attr=?", 1, true) ~= nil, "delete must seek the full primary key: " .. detail)
+                end
+            end
+        end
+    end
+    local function observed(executor: any): any
+        return {
+            query = function(_, statement: string, params: { any }?)
+                check(executor, statement, params)
+                return executor:query(statement, params)
+            end,
+            execute = function(_, statement: string, params: { any }?)
+                check(executor, statement, params)
+                return executor:execute(statement, params)
+            end,
+            begin = function(_)
+                local tx, err = executor:begin()
+                if err then return nil, err end
+                local out = observed(tx)
+                out.commit = function(_) return tx:commit() end
+                out.rollback = function(_) return tx:rollback() end
+                return out, nil
+            end,
+        }
+    end
+    return observed(db) :: sql.DB
+end
+
 local function define_scale()
     test.describe("CRM indexed retention scale and upgrade", function()
         local db = assert(sql.get("app:receipt_schema_db")) :: sql.DB
@@ -264,7 +350,63 @@ local function define_scale()
                 test.eq(count(db, "kickside_crm_conditional_outcome", protected_id), 100000)
             end)
         end
+        test.it("bounds prune and future-deadline queries by index seeks", function()
+            local probe_id = "plan-owner:" .. tostring(uuid.v7())
+            for _, table_name in ipairs({ RECEIPTS, ORIGINS }) do
+                seed(db, table_name, probe_id, 100000, "2000-01-01T00:00:00Z")
+                local key = table_name == RECEIPTS and "idempotency_key" or "target_ref"
+                exec(db, "UPDATE " .. table_name .. " SET crm_id = crm_id || ':' || CAST(CAST(" .. key
+                    .. " AS INTEGER) % 1000 AS TEXT) WHERE crm_id = $1", { probe_id })
+            end
+            exec(db, "ANALYZE")
+            local observed = planned(db)
+            for _, owner in ipairs({
+                { name = RECEIPTS, prune = receipts.prune, next_completed = receipts.next_completed_at },
+                { name = ORIGINS, prune = origins.prune, next_completed = origins.next_completed_at },
+            }) do
+                local removed, prune_err = owner.prune(observed, "2020-01-01T00:00:00Z", 500)
+                test.is_nil(prune_err); test.eq(removed, 500)
+                local completed, err = owner.next_completed(observed, "2020-01-01T00:00:00Z")
+                test.is_nil(err); test.is_nil(completed)
+                exec(db, "DELETE FROM " .. owner.name .. " WHERE crm_id LIKE $1", { probe_id .. ":%" })
+            end
+        end)
     end)
 end
 
-return { run = test.run_cases(define), scale = test.run_cases(define_scale) }
+local function define_owner_bounds()
+    test.describe("CRM orphan retention query bounds", function()
+        local db = assert(sql.get("app:receipt_schema_db")) :: sql.DB
+        local prefix = "bounds:" .. tostring(uuid.v7()) .. ":"
+        test.before_all(function()
+            migrate("kickside.crm.migrations:01_storage_catalog")
+            migrate("kickside.crm.migrations:06_conditional_outcome")
+            exec(db, [[WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i+1 FROM n WHERE i<999)
+                INSERT INTO kickside_crm_schema_revision (crm_id, revision, source_hash, dialect, applied_at)
+                SELECT $1 || CAST(i AS TEXT), 'revision', 'hash', $2, '2000-01-01T00:00:00Z' FROM n]],
+                { prefix, db:type() == sql.type.POSTGRES and "postgres" or "sqlite" })
+            exec(db, [[WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<100000)
+                INSERT INTO kickside_crm_conditional_outcome (crm_id, external_source, external_id, outcomes, updated_at)
+                SELECT $1 || CAST(i%1000 AS TEXT), 'source', CAST(i AS TEXT), '{}', '2000-01-01T00:00:00Z' FROM n]], { prefix })
+            seed(db, "kickside_crm_conditional_outcome", prefix .. "retired", 1000, "2000-01-01T00:00:00Z")
+            exec(db, "ANALYZE")
+        end)
+        test.after_all(function()
+            for _, table_name in ipairs({ "kickside_crm_conditional_outcome", "kickside_crm_schema_revision" }) do
+                exec(db, "DELETE FROM " .. table_name .. " WHERE crm_id LIKE $1", { prefix .. "%" })
+            end
+            db:release()
+        end)
+        test.it("seeks eligible orphan candidates without scanning all live owners", function()
+            local deleted, err = storage.prune_orphaned_conditional_outcomes(planned(db, true), 500)
+            test.is_nil(err); test.eq(deleted, 500)
+        end)
+    end)
+end
+
+local function run(args)
+    return require("isolated").run({ args = args, target = "app:crm_retention_cases",
+        database = "app:db", isolated = "app:schema_fault_db" })
+end
+
+return { run = run, cases = test.run_cases(define), scale = test.run_cases(define_scale), owner_bounds = test.run_cases(define_owner_bounds) }

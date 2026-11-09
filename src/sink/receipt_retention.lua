@@ -55,7 +55,7 @@ function M.run(): any
         end
         deleted = deleted + removed
         needs_continue = needs_continue or removed == PAGE
-        local completed, read_err = owner.next_completed_at(db)
+        local completed, read_err = owner.next_completed_at(db, cutoff)
         if read_err then db:release(); return failure("CRM retention deadline failed: " .. read_err) end
         local due, date_err = deadline(completed, owner.days)
         if date_err then db:release(); return failure(date_err) end

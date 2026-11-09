@@ -101,9 +101,9 @@ function M.prune(db: Executor, cutoff: string, limit: integer): (integer?, strin
     return (result :: Row).rows_affected :: integer, nil
 end
 
-function M.next_completed_at(db: Executor): (string?, string?)
+function M.next_completed_at(db: Executor, cutoff: string): (string?, string?)
     local rows, err = db:query([[SELECT completed_at FROM kickside_crm_sink_receipt
-        ORDER BY completed_at, crm_id, origin, sink_op, idempotency_key LIMIT 1]])
+        WHERE completed_at >= $1 ORDER BY completed_at, crm_id, origin, sink_op, idempotency_key LIMIT 1]], { cutoff })
     if err then return nil, tostring(err) end
     local row = rows_of(rows)[1]
     return row and tostring(row.completed_at) or nil, nil
