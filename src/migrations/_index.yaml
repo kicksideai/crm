@@ -81,3 +81,16 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  - name: 10_orphan_conditional_outcomes
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage]
+      comment: Remove replay outcomes whose CRM no longer has a schema revision.
+      target_db: app:db
+      timestamp: "2026-11-09T00:00:01Z"
+    source: file://10_orphan_conditional_outcomes.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

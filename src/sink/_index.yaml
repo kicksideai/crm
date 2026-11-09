@@ -27,7 +27,7 @@ entries:
     kind: function.lua
     meta:
       type: kickside.retention.owner
-      comment: Remove expired receipts and write origins and orphaned replay outcomes through Core retention.
+      comment: Remove expired receipts and write origins through Core retention.
     source: file://receipt_retention.lua
     method: run
     modules: [registry, sql, time]
@@ -38,7 +38,6 @@ entries:
       types: kickside.crm:types
       sink_receipts: kickside.crm.persist:sink_receipts
       write_origin: kickside.crm.persist:write_origin
-      storage: kickside.crm.persist:repo
 
   - name: receipt_retention_db_access
     kind: security.policy

@@ -5,7 +5,6 @@ local sql = require("sql")
 local types = require("types")
 local sink_receipts = require("sink_receipts")
 local write_origin = require("write_origin")
-local storage = require("storage")
 local time = require("time")
 
 local M = {}
@@ -61,11 +60,9 @@ function M.run(): any
         if date_err then db:release(); return failure(date_err) end
         if due then deadline_ms = deadline_ms == nil and due or math.min(deadline_ms, due) end
     end
-    local orphaned, orphan_err, orphan_more = storage.prune_orphaned_conditional_outcomes(db, PAGE)
     db:release()
-    if orphan_err or orphaned == nil then return failure("CRM outcome retention failed: " .. tostring(orphan_err)) end
-    return { success = true, deleted = deleted + orphaned,
-        needs_continue = needs_continue or orphaned == PAGE or orphan_more, deadline_ms = deadline_ms }
+    return { success = true, deleted = deleted,
+        needs_continue = needs_continue, deadline_ms = deadline_ms }
 end
 
 return M

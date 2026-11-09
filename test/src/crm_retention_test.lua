@@ -197,22 +197,6 @@ local function define()
             db:release()
         end)
 
-        test.it("drains conditional outcomes left by earlier CRM teardown without expiring live evidence", function()
-            local db = assert(sql.get(types.db_id())) :: sql.DB
-            local id = tostring(uuid.v7())
-            exec(db, [[WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i < 1201)
-                INSERT INTO kickside_crm_conditional_outcome (crm_id, external_source, external_id, outcomes, updated_at)
-                SELECT $1, 'source', CAST(i AS TEXT), '{}', '2000-01-01T00:00:00Z' FROM n]], { id })
-            local answer = callback()
-            test.is_true(answer.needs_continue)
-            test.eq(count(db, "kickside_crm_conditional_outcome", id), 701)
-            local passes = 1
-            while answer.needs_continue and passes < 10 do answer = callback(); passes = passes + 1 end
-            test.eq(passes, 3)
-            test.eq(count(db, "kickside_crm_conditional_outcome", id), 0)
-            db:release()
-        end)
-
         test.it("removes conditional outcomes with their CRM while preserving another owner's replay evidence", function()
             local db = assert(sql.get(types.db_id())) :: sql.DB
             local id, other = tostring(uuid.v7()), tostring(uuid.v7())
@@ -242,7 +226,7 @@ local function migrate(id: string)
     return result
 end
 
-local function planned(db: sql.DB, owner_bound: boolean?): sql.DB
+local function planned(db: sql.DB): sql.DB
     local pg = db:type() == sql.type.POSTGRES
     local function check(executor: any, statement: string, params: { any }?)
         local rows = query(executor, (pg and "EXPLAIN (FORMAT JSON) " or "EXPLAIN QUERY PLAN ") .. statement, params)
@@ -260,7 +244,6 @@ local function planned(db: sql.DB, owner_bound: boolean?): sql.DB
             for _, row in ipairs(rows) do
                 local detail = tostring(row.detail)
                 test.is_nil(detail:match("SCAN kickside_crm_"), detail)
-                if owner_bound then test.is_nil(detail:match("SCAN owners"), "orphan eligibility scans the owner set before LIMIT: " .. detail) end
                 if statement:match("^DELETE") and detail:match("^SEARCH kickside_crm_write_origin")
                     and not detail:find("_retention", 1, true) then
                     test.is_true(detail:find("attr=?", 1, true) ~= nil, "origin delete must seek the full key: " .. detail)
@@ -305,7 +288,7 @@ local function define_scale()
             migrate("kickside.crm.migrations:02_activity_reference")
             migrate("kickside.crm.migrations:06_conditional_outcome")
             migrate("kickside.crm.migrations:07_pending_relation")
-            for _, table_name in ipairs({ ORIGINS, RECEIPTS, "kickside_crm_conditional_outcome" }) do
+            for _, table_name in ipairs({ ORIGINS, RECEIPTS }) do
                 ids[table_name] = "retired-owner:" .. tostring(uuid.v7())
                 seed(db, table_name, ids[table_name], 100000, "2000-01-01T00:00:00Z")
             end
@@ -328,17 +311,13 @@ local function define_scale()
             test.eq(result.skipped, 1)
             test.eq(count(db, ORIGINS, ids[ORIGINS]), 100000)
         end)
-        for _, table_name in ipairs({ ORIGINS, RECEIPTS, "kickside_crm_conditional_outcome" }) do
+        for _, table_name in ipairs({ ORIGINS, RECEIPTS }) do
             test.it("drains 100000 rows in 200 bounded transactions from " .. table_name, function()
                 local total, batches = 0, 0
                 while true do
                     local deleted, err
-                    if table_name == "kickside_crm_conditional_outcome" then
-                        deleted, err = storage.prune_orphaned_conditional_outcomes(db, 500)
-                    else
-                        local prune = table_name == RECEIPTS and receipts.prune or origins.prune
-                        deleted, err = prune(db, "2020-01-01T00:00:00Z", 500)
-                    end
+                    local prune = table_name == RECEIPTS and receipts.prune or origins.prune
+                    deleted, err = prune(db, "2020-01-01T00:00:00Z", 500)
                     test.is_nil(err, tostring(err))
                     test.is_true(deleted <= 500)
                     total = total + deleted
@@ -374,10 +353,18 @@ local function define_scale()
     end)
 end
 
-local function define_owner_bounds()
-    test.describe("CRM orphan retention query bounds", function()
+local function define_outcome_migration()
+    test.describe("CRM conditional outcome upgrade", function()
         local db = assert(sql.get("app:receipt_schema_db")) :: sql.DB
-        local prefix = "bounds:" .. tostring(uuid.v7()) .. ":"
+        local prefix = "upgrade:" .. tostring(uuid.v7()) .. ":"
+        local repair = "kickside.crm.migrations:10_orphan_conditional_outcomes"
+        local function assert_preserved()
+            test.eq(tonumber(query(db, "SELECT COUNT(*) AS n FROM kickside_crm_conditional_outcome")[1].n), 99000)
+            test.eq(tonumber(query(db, [[SELECT COUNT(*) AS n FROM kickside_crm_conditional_outcome
+                WHERE outcomes = '{"name":"applied"}' AND updated_at = '2000-01-01T00:00:00Z']])[1].n), 99000,
+                "all live replay payloads and timestamps survive unchanged")
+            test.eq(count(db, "kickside_crm_conditional_outcome", prefix .. "retired"), 0)
+        end
         test.before_all(function()
             migrate("kickside.crm.migrations:01_storage_catalog")
             migrate("kickside.crm.migrations:06_conditional_outcome")
@@ -385,11 +372,12 @@ local function define_owner_bounds()
                 INSERT INTO kickside_crm_schema_revision (crm_id, revision, source_hash, dialect, applied_at)
                 SELECT $1 || CAST(i AS TEXT), 'revision', 'hash', $2, '2000-01-01T00:00:00Z' FROM n]],
                 { prefix, db:type() == sql.type.POSTGRES and "postgres" or "sqlite" })
-            exec(db, [[WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<100000)
+            exec(db, [[WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<99000)
                 INSERT INTO kickside_crm_conditional_outcome (crm_id, external_source, external_id, outcomes, updated_at)
-                SELECT $1 || CAST(i%1000 AS TEXT), 'source', CAST(i AS TEXT), '{}', '2000-01-01T00:00:00Z' FROM n]], { prefix })
+                SELECT $1 || CAST(i%1000 AS TEXT), 'source', CAST(i AS TEXT), '{"name":"applied"}',
+                    '2000-01-01T00:00:00Z' FROM n]], { prefix })
             seed(db, "kickside_crm_conditional_outcome", prefix .. "retired", 1000, "2000-01-01T00:00:00Z")
-            exec(db, "ANALYZE")
+            test.eq(tonumber(query(db, "SELECT COUNT(*) AS n FROM kickside_crm_conditional_outcome")[1].n), 100000)
         end)
         test.after_all(function()
             for _, table_name in ipairs({ "kickside_crm_conditional_outcome", "kickside_crm_schema_revision" }) do
@@ -397,9 +385,31 @@ local function define_owner_bounds()
             end
             db:release()
         end)
-        test.it("seeks eligible orphan candidates without scanning all live owners", function()
-            local deleted, err = storage.prune_orphaned_conditional_outcomes(planned(db, true), 500)
-            test.is_nil(err); test.eq(deleted, 500)
+        test.it("removes orphan outcomes from a 100000-row published schema and preserves live evidence", function()
+            local started = time.now()
+            migrate(repair)
+            logger:info("CRM outcome migration over 100000 mixed rows", {
+                elapsed_ms = math.floor((time.now():unix_nano() - started:unix_nano()) / 1000000) })
+            assert_preserved()
+        end)
+        test.it("repeats the upgrade without changing live evidence", function()
+            local repeated = migrate(repair)
+            test.eq(repeated.skipped, 1)
+            assert_preserved()
+            -- Re-executing the statement after interruption also preserves live rows.
+            exec(db, "DELETE FROM _migrations WHERE id = $1", { repair })
+            migrate(repair)
+            assert_preserved()
+        end)
+        test.it("removes 100000 orphan outcomes in one forward migration", function()
+            exec(db, "DELETE FROM kickside_crm_schema_revision WHERE crm_id LIKE $1", { prefix .. "%" })
+            seed(db, "kickside_crm_conditional_outcome", prefix .. "retired", 1000, "2000-01-01T00:00:00Z")
+            exec(db, "DELETE FROM _migrations WHERE id = $1", { repair })
+            local started = time.now()
+            migrate(repair)
+            logger:info("CRM outcome migration deletes 100000 orphan rows", {
+                elapsed_ms = math.floor((time.now():unix_nano() - started:unix_nano()) / 1000000) })
+            test.eq(tonumber(query(db, "SELECT COUNT(*) AS n FROM kickside_crm_conditional_outcome")[1].n), 0)
         end)
     end)
 end
@@ -409,4 +419,4 @@ local function run(args)
         database = "app:db", isolated = "app:schema_fault_db" })
 end
 
-return { run = run, cases = test.run_cases(define), scale = test.run_cases(define_scale), owner_bounds = test.run_cases(define_owner_bounds) }
+return { run = run, cases = test.run_cases(define), scale = test.run_cases(define_scale), outcome_migration = test.run_cases(define_outcome_migration) }

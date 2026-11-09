@@ -1292,11 +1292,11 @@ entries:
       fixture: app:crm_sink_fixture
       retention_runner: kickside.core.retention.service:runner
 
-  - name: crm_retention_owner_bounds_test
+  - name: crm_conditional_outcome_migration_test
     kind: function.lua
-    meta: { type: test, suite: "02_retention_owner_bounds" }
+    meta: { type: test, suite: "02_conditional_outcome_migration" }
     source: file://crm_retention_test.lua
-    method: owner_bounds
+    method: outcome_migration
     modules: [sql, time, funcs, uuid, process, channel, json, logger]
     imports:
       isolated: app:isolated_database
