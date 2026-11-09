@@ -18,6 +18,8 @@ interface ControlLabels {
   failed: string
   // A small auto-width control shows an icon, so the failure keeps its normal space.
   iconOnly?: boolean
+  // A tag that can render nothing once loaded cannot reserve with :empty, so its loader shows at once.
+  immediate?: boolean
 }
 
 const loadTimeoutMs = 30000
@@ -60,8 +62,9 @@ export function lazyPage<T extends { rootComponent: Component }>(
 }
 
 // Compact controls use an async root, because the wrapper's loader fills the viewport
-// when it is the only child of a small surface. The control's stylesheet reserves its
-// normal size during the load only, so a loaded control keeps its own size.
+// when it is the only child of a small surface. Both loader roots carry data-lazy-state,
+// so the control's stylesheet can reserve its loaded height while it loads or fails with
+// `:host > div:empty, :host > div:has(> [data-lazy-state])`. Width is never reserved.
 export function lazyControl(
   loader: () => Promise<{ default: Component }>,
   labels: ControlLabels,
@@ -72,6 +75,7 @@ export function lazyControl(
     loadingComponent: {
       render: () => h('span', {
         role: 'status',
+        'data-lazy-state': 'loading',
         'aria-label': labels.loading,
         style: `${controlStyle}color:var(--p-text-muted-color);`,
       }, h('span', { style: 'display:inline-flex;', onVnodeMounted: spin }, h(Icon, { icon: 'tabler:loader-2', 'aria-hidden': 'true' }))),
@@ -82,6 +86,7 @@ export function lazyControl(
         useFailure(labels.failed, props.error, useEvents)
         return () => h('span', {
           role: 'alert',
+          'data-lazy-state': 'failed',
           title: labels.iconOnly ? labels.failed : undefined,
           style: `${controlStyle}color:var(--p-danger-500);`,
         }, labels.iconOnly
@@ -89,7 +94,7 @@ export function lazyControl(
           : labels.failed)
       },
     }),
-    delay: 200,
+    delay: labels.immediate ? 0 : 200,
     timeout: loadTimeoutMs,
     suspensible: false,
   })

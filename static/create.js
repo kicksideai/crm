@@ -1,6 +1,6 @@
 import { W as e, u as o } from "./wc-runtime-CNDpK4lj.js";
-import { c as r } from "./crmStyles-1-09v1uX.js";
-import { l as n } from "./lazy-CHftQ23z.js";
+import { c as r } from "./crmStyles-FURw0f4P.js";
+import { l as n } from "./lazy-Cfv2E3SG.js";
 import "@iconify/vue";
 import { define as i } from "@wippy-fe/proxy";
 const s = {

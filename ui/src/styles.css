@@ -4,7 +4,7 @@
 :host { display: block; color: inherit; font-family: inherit; }
 /* Reserved only while the implementation loads, so a loaded card keeps its own size.
    The card height depends on the notice content, so this is a small estimate. */
-:host > div:empty, :host > div:has(> [role=status]) { min-height: 120px; }
+:host > div:empty, :host > div:has(> [data-lazy-state]) { min-height: 120px; }
 * { box-sizing: border-box; }
 
 .cm {

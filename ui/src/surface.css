@@ -7,8 +7,8 @@ wippy-loading ~ wippy-loading { display: none; }
 /* Reserved only while the implementation loads, so a loaded tag keeps its own size. The
    create form is estimated from its CSS (20px padding, name field, hint, actions); the
    picker input is 36px high. */
-:host(kickside-crm-create) > div:empty, :host(kickside-crm-create) > div:has(> [role=status]) { min-height: 205px; }
-:host(kickside-crm-record-picker) > div:empty, :host(kickside-crm-record-picker) > div:has(> [role=status]) { min-height: 36px; }
+:host(kickside-crm-create) > div:empty, :host(kickside-crm-create) > div:has(> [data-lazy-state]) { min-height: 204px; }
+:host(kickside-crm-record-picker) > div:empty, :host(kickside-crm-record-picker) > div:has(> [data-lazy-state]) { min-height: 36px; }
 *, *::before, *::after { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
 button { color: inherit; }
