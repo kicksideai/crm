@@ -92,19 +92,21 @@ end
 -- prune(db, cutoff, limit) -> the number of receipts completed before cutoff that
 -- one bounded page removed, oldest first through the retention index.
 function M.prune(db: Executor, cutoff: string, limit: integer): (integer?, string?)
-    local rows, err = db:query([[SELECT crm_id, origin, sink_op, idempotency_key FROM kickside_crm_sink_receipt
-        WHERE completed_at < $1 ORDER BY completed_at, crm_id, origin, sink_op, idempotency_key LIMIT $2]],
-        { cutoff, limit })
+    local result, err = db:execute([[DELETE FROM kickside_crm_sink_receipt
+        WHERE completed_at < $1 AND (crm_id, origin, sink_op, idempotency_key) IN (
+            SELECT crm_id, origin, sink_op, idempotency_key FROM kickside_crm_sink_receipt
+            WHERE completed_at < $1 ORDER BY completed_at, crm_id, origin, sink_op, idempotency_key LIMIT $2
+        )]], { cutoff, limit })
     if err then return nil, tostring(err) end
-    local deleted = 0
-    for _, row in ipairs(rows_of(rows)) do
-        local result, delete_err = db:execute([[DELETE FROM kickside_crm_sink_receipt
-            WHERE crm_id = $1 AND origin = $2 AND sink_op = $3 AND idempotency_key = $4 AND completed_at < $5]],
-            { row.crm_id, row.origin, row.sink_op, row.idempotency_key, cutoff })
-        if delete_err then return nil, tostring(delete_err) end
-        deleted = deleted + math.floor(tonumber(type(result) == "table" and (result :: Row).rows_affected or 0) or 0)
-    end
-    return deleted, nil
+    return (result :: Row).rows_affected :: integer, nil
+end
+
+function M.next_completed_at(db: Executor, cutoff: string): (string?, string?)
+    local rows, err = db:query([[SELECT completed_at FROM kickside_crm_sink_receipt
+        WHERE completed_at >= $1 ORDER BY completed_at, crm_id, origin, sink_op, idempotency_key LIMIT 1]], { cutoff })
+    if err then return nil, tostring(err) end
+    local row = rows_of(rows)[1]
+    return row and tostring(row.completed_at) or nil, nil
 end
 
 return M

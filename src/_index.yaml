@@ -93,6 +93,7 @@ entries:
       comment: Database for CRM schema catalog, typed records, and projections.
     targets:
       - { entry: kickside.crm.migrations:01_storage_catalog, path: .meta.target_db }
+      - { entry: kickside.crm.migrations:09_write_origin_retention, path: .meta.target_db }
       - { entry: kickside.crm.persist:config, path: .meta.db_id }
 
   - name: thread_event_retention_days

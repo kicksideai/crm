@@ -1244,3 +1244,66 @@ entries:
       storage: kickside.crm.persist:repo
       test: wippy.test:test
       types: kickside.crm:types
+
+  - name: crm_retention_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_retention_test.lua
+    method: run
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner
+
+  - name: crm_retention_cases
+    kind: function.lua
+    source: file://crm_retention_test.lua
+    method: cases
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner
+
+  - name: crm_retention_scale_test
+    kind: function.lua
+    meta: { type: test, suite: "02_retention_scale" }
+    source: file://crm_retention_test.lua
+    method: scale
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner
+
+  - name: crm_conditional_outcome_migration_test
+    kind: function.lua
+    meta: { type: test, suite: "02_conditional_outcome_migration" }
+    source: file://crm_retention_test.lua
+    method: outcome_migration
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner

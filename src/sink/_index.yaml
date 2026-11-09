@@ -26,16 +26,17 @@ entries:
     kind: function.lua
     meta:
       type: kickside.retention.owner
-      comment: Remove sink receipts older than the configured window on the core retention tick.
+      comment: Remove expired receipts and write origins through Core retention.
     source: file://receipt_retention.lua
     method: run
-    modules: [registry, sql]
+    modules: [registry, sql, time]
     security:
       actor: { id: system:kickside.crm.sink.receipt_retention }
       policies: [kickside.crm.sink:receipt_retention_db_access]
     imports:
       types: kickside.crm:types
       sink_receipts: kickside.crm.persist:sink_receipts
+      write_origin: kickside.crm.persist:write_origin
 
   - name: receipt_retention_db_access
     kind: security.policy

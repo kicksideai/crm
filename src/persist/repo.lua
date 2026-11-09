@@ -1255,7 +1255,7 @@ function M.destroy_crm(db: sql.DB, crm_id: string)
             execute(tx, "DROP TABLE IF EXISTS " .. object.table_name)
         end
         for _, table_name in ipairs({
-            "kickside_crm_merge_resolution", "kickside_crm_merge_decision",
+            "kickside_crm_conditional_outcome", "kickside_crm_merge_resolution", "kickside_crm_merge_decision",
             "kickside_crm_alias_secret", "kickside_crm_alias_reservation", "kickside_crm_alias",
             "kickside_crm_pending_relation",
             "kickside_crm_ref", "kickside_crm_activity_alias",
