@@ -8,6 +8,7 @@ local types = require("types")
 local writer = require("writer")
 local commands = require("sink_commands")
 local sink_receipts = require("sink_receipts")
+local retention_notifier = require("retention_notifier")
 
 local M = {}
 
@@ -161,6 +162,8 @@ local function commit_receipt(crm_id: string, origin: string, operation: string,
     db:release()
     if commit_err or not stored then return nil, response_error("provider_error", commit_err, true, "provider") end
     if stored.payload_hash ~= digest then return nil, idempotency_conflict() end
+    local _, notify_err = retention_notifier.notify({ kind = "crm_receipt_committed", crm_id = crm_id })
+    if notify_err then return nil, response_error("provider_error", notify_err, true, "provider") end
     return true, nil
 end
 

@@ -119,7 +119,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.47a
+        version: 0.3.59a
         hub-url: https://hub.wippy.ai
     - name: Check out kickside module sources
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

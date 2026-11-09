@@ -13,6 +13,7 @@ entries:
       writer: kickside.crm.command:writer
       types: kickside.crm:types
       sink_commands: kickside.crm.sink:sink_commands
+      retention_notifier: kickside.core.retention:notifier
       sink_receipts: kickside.crm.persist:sink_receipts
 
   - name: sink_commands
@@ -26,16 +27,18 @@ entries:
     kind: function.lua
     meta:
       type: kickside.retention.owner
-      comment: Remove sink receipts older than the configured window on the core retention tick.
+      comment: Remove expired receipts and write origins and orphaned replay outcomes through Core retention.
     source: file://receipt_retention.lua
     method: run
-    modules: [registry, sql]
+    modules: [registry, sql, time]
     security:
       actor: { id: system:kickside.crm.sink.receipt_retention }
       policies: [kickside.crm.sink:receipt_retention_db_access]
     imports:
       types: kickside.crm:types
       sink_receipts: kickside.crm.persist:sink_receipts
+      write_origin: kickside.crm.persist:write_origin
+      storage: kickside.crm.persist:repo
 
   - name: receipt_retention_db_access
     kind: security.policy
@@ -58,6 +61,8 @@ entries:
       comment: kickside.data:writable.write -- write generic records, activities, typed references, and memberships into a workspace CRM via crm.* events.
     source: file://crm_sink.lua
     method: write
+    security:
+      policies: [kickside.core.retention:notify_access]
     modules: [ctx, hash, json, sql]
     imports:
       component: kickside.component:component
@@ -65,6 +70,7 @@ entries:
       writer: kickside.crm.command:writer
       types: kickside.crm:types
       sink_commands: kickside.crm.sink:sink_commands
+      retention_notifier: kickside.core.retention:notifier
       sink_receipts: kickside.crm.persist:sink_receipts
 
   - name: crm_list_keys
@@ -80,6 +86,7 @@ entries:
       writer: kickside.crm.command:writer
       types: kickside.crm:types
       sink_commands: kickside.crm.sink:sink_commands
+      retention_notifier: kickside.core.retention:notifier
       sink_receipts: kickside.crm.persist:sink_receipts
 
   - name: crm_sink

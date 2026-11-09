@@ -1255,7 +1255,7 @@ function M.destroy_crm(db: sql.DB, crm_id: string)
             execute(tx, "DROP TABLE IF EXISTS " .. object.table_name)
         end
         for _, table_name in ipairs({
-            "kickside_crm_merge_resolution", "kickside_crm_merge_decision",
+            "kickside_crm_conditional_outcome", "kickside_crm_merge_resolution", "kickside_crm_merge_decision",
             "kickside_crm_alias_secret", "kickside_crm_alias_reservation", "kickside_crm_alias",
             "kickside_crm_pending_relation",
             "kickside_crm_ref", "kickside_crm_activity_alias",
@@ -1273,6 +1273,34 @@ function M.destroy_crm(db: sql.DB, crm_id: string)
         if commit_err then tx:rollback(); raise(errors.wrap(commit_err, "failed to commit CRM teardown transaction")) end
         return result
     end)
+end
+
+-- Seek between CRM prefixes in the primary key instead of scanning each live
+-- owner's replay history while looking for outcomes left by earlier teardown.
+local ORPHAN_OWNER = [[WITH RECURSIVE owners(crm_id) AS (
+    SELECT MIN(crm_id) FROM kickside_crm_conditional_outcome
+    UNION ALL
+    SELECT (SELECT MIN(crm_id) FROM kickside_crm_conditional_outcome o WHERE o.crm_id > owners.crm_id)
+    FROM owners WHERE owners.crm_id IS NOT NULL
+), orphan(crm_id) AS (
+    SELECT crm_id FROM owners WHERE crm_id IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM kickside_crm_schema_revision s WHERE s.crm_id = owners.crm_id)
+    LIMIT 1
+) ]]
+
+function M.prune_orphaned_conditional_outcomes(db: sql.DB, limit: integer): (integer?, string?, boolean?)
+    local result, err = db:execute(ORPHAN_OWNER .. [[DELETE FROM kickside_crm_conditional_outcome
+        WHERE NOT EXISTS (SELECT 1 FROM kickside_crm_schema_revision s
+            WHERE s.crm_id = kickside_crm_conditional_outcome.crm_id)
+          AND (crm_id, external_source, external_id) IN (
+            SELECT crm_id, external_source, external_id FROM kickside_crm_conditional_outcome
+            WHERE crm_id = (SELECT crm_id FROM orphan)
+            ORDER BY crm_id, external_source, external_id LIMIT $1
+          )]], { limit })
+    if err then return nil, tostring(err) end
+    local remaining, read_err = db:query(ORPHAN_OWNER .. "SELECT crm_id FROM orphan")
+    if read_err then return nil, tostring(read_err) end
+    return (result :: SqlRow).rows_affected :: integer, nil, #(remaining :: { SqlRow }) > 0
 end
 
 return M

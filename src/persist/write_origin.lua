@@ -79,7 +79,7 @@ function M.value_hash(value: unknown): string
     return hash.sha256(stable_encode(value))
 end
 
-local function retention_days(): number
+function M.retention_days(): number
     local entry, err = registry.get(CONFIG)
     if not err and type(entry) == "table" then
         local raw_meta = (entry :: ConfigEntry).meta
@@ -91,7 +91,7 @@ local function retention_days(): number
 end
 
 local function cutoff(): string
-    return tostring(os.date("!%Y-%m-%dT%H:%M:%SZ", os.time() - (retention_days() * 86400)))
+    return tostring(os.date("!%Y-%m-%dT%H:%M:%SZ", os.time() - (M.retention_days() * 86400)))
 end
 
 function M.lookup(
@@ -160,6 +160,24 @@ function M.matches(
     if err or not row or row.found ~= true then return nil, err end
     if trim(row.value_hash) == M.value_hash(value) then return row, nil end
     return nil, nil
+end
+
+function M.prune(db: Executor, cutoff: string, limit: integer): (integer?, string?)
+    local result, err = db:execute([[DELETE FROM kickside_crm_write_origin
+        WHERE completed_at < $1 AND (crm_id, provider, connection_id, object_type, target_ref, attr) IN (
+            SELECT crm_id, provider, connection_id, object_type, target_ref, attr FROM kickside_crm_write_origin
+            WHERE completed_at < $1 ORDER BY completed_at, crm_id, provider, connection_id, object_type, target_ref, attr LIMIT $2
+        )]], { cutoff, limit })
+    if err then return nil, tostring(err) end
+    return (result :: UnknownMap).rows_affected :: integer, nil
+end
+
+function M.next_completed_at(db: Executor): (string?, string?)
+    local rows, err = db:query([[SELECT completed_at FROM kickside_crm_write_origin
+        ORDER BY completed_at, crm_id, provider, connection_id, object_type, target_ref, attr LIMIT 1]])
+    if err then return nil, tostring(err) end
+    local row = (rows :: { OriginRow })[1]
+    return row and tostring(row.completed_at) or nil, nil
 end
 
 return M
