@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.10](https://github.com/kicksideai/crm/compare/crm-v0.6.9...crm-v0.6.10) (2026-11-09)
+
+
+### Bug Fixes
+
+* **crm:** drain retention backlogs and remove retired outcomes ([#36](https://github.com/kicksideai/crm/issues/36)) ([e29cd56](https://github.com/kicksideai/crm/commit/e29cd56db35fad1020db2b21e5a3d079a40a43de))
+
 ## [0.6.9](https://github.com/kicksideai/crm/compare/crm-v0.6.8...crm-v0.6.9) (2026-11-07)
 
 
