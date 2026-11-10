@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.11](https://github.com/kicksideai/crm/compare/crm-v0.6.10...crm-v0.6.11) (2026-11-10)
+
+
+### Bug Fixes
+
+* **crm:** rebuild package without baked default bindings ([#39](https://github.com/kicksideai/crm/issues/39)) ([5cf2e3d](https://github.com/kicksideai/crm/commit/5cf2e3d88212911b9232532fcae93234f78fdf3d))
+
 ## [0.6.10](https://github.com/kicksideai/crm/compare/crm-v0.6.9...crm-v0.6.10) (2026-11-09)
 
 
