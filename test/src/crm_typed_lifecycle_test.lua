@@ -53,6 +53,11 @@ type WriteOrigin = { found: boolean, write_ref: string? }
 type AliasClaim = { record_id: string, state: string, won: boolean }
 type Event = { type: string, body: UnknownMap }
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function require_map(value: unknown, name: string): UnknownMap
     if type(value) ~= "table" then error(name .. " must be a table", 0) end
     return value :: UnknownMap
@@ -444,7 +449,7 @@ local function define_tests()
             local crm_id = tostring(uuid.v7())
             apply(crm_id, declaration("v1"))
             local handle = db()
-            local created, create_err = storage.upsert(handle, crm_id, "entity", {
+            local created, create_err = storage.upsert(handle, applied(handle, crm_id), "entity", {
                 record_id = "entity:one",
                 values = { name = "Primary Record", email = "primary@example.test", score = 9 },
             })
@@ -454,14 +459,14 @@ local function define_tests()
 
             apply(crm_id, declaration("v2", "display_name"))
             handle = db()
-            local renamed, rename_err = storage.get(handle, crm_id, "entity", "entity:one")
+            local renamed, rename_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:one")
             test.is_nil(rename_err)
             test.eq(require_record(renamed).values.display_name, "Primary Record")
             handle:release()
 
             apply(crm_id, declaration("v1"))
             handle = db()
-            local restored, restore_err = storage.get(handle, crm_id, "entity", "entity:one")
+            local restored, restore_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:one")
             test.is_nil(restore_err)
             test.eq(require_record(restored).values.name, "Primary Record")
             local schema, schema_err = storage.load_schema(handle, crm_id)
@@ -502,7 +507,7 @@ local function define_tests()
             local crm_id = tostring(uuid.v7())
             apply(crm_id, wide_declaration())
             local handle = db()
-            local record, write_err = storage.upsert(handle, crm_id, "wide", {
+            local record, write_err = storage.upsert(handle, applied(handle, crm_id), "wide", {
                 record_id = "wide:one",
                 values = { field_001 = "first", field_300 = "last" },
             })
@@ -511,6 +516,29 @@ local function define_tests()
             local written = require_record(record)
             test.eq(written.values.field_001, "first")
             test.eq(written.values.field_300, "last")
+        end)
+
+        test.it("merges a loser's unique value into a winner that lacks it", function()
+            local crm_id = tostring(uuid.v7())
+            apply(crm_id, unique_declaration("unique-merge-v1", true))
+            local handle = db()
+            for _, row in ipairs({
+                { record_id = "entity:winner", values = { name = "Winner" } },
+                { record_id = "entity:loser", values = { name = "Loser", email = "loser@example.test" } },
+            }) do
+                local _, write_err = storage.upsert(handle, applied(handle, crm_id), "entity", row)
+                test.is_nil(write_err)
+            end
+            local _, merge_err = storage.merge(handle, applied(handle, crm_id), "entity", "entity:winner", "entity:loser",
+                "2026-07-24T12:00:00Z")
+            test.is_nil(merge_err)
+            local winner, winner_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:winner")
+            local loser, loser_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:loser")
+            handle:release()
+            test.is_nil(winner_err)
+            test.is_nil(loser_err)
+            test.eq(require_record(winner).values.email, "loser@example.test")
+            test.is_nil(loser)
         end)
 
         test.it("enforces unique scalar fields through compile, write, update, and removal", function()
@@ -523,7 +551,7 @@ local function define_tests()
                 { record_id = "entity:nil-one", values = { name = "Nil one" } },
                 { record_id = "entity:nil-two", values = { name = "Nil two" } },
             }) do
-                local _, write_err = storage.upsert(handle, crm_id, "entity", row)
+                local _, write_err = storage.upsert(handle, applied(handle, crm_id), "entity", row)
                 test.is_nil(write_err)
             end
 
@@ -536,7 +564,7 @@ local function define_tests()
             test.is_nil(prior_err)
             test.eq(require_schema(prior).declaration.version, "unique-v1")
 
-            local _, repair_err = storage.upsert(handle, crm_id, "entity", {
+            local _, repair_err = storage.upsert(handle, applied(handle, crm_id), "entity", {
                 record_id = "entity:two", values = { email = "two@example.test" },
             })
             test.is_nil(repair_err)
@@ -545,7 +573,7 @@ local function define_tests()
             test.is_nil(enabled_err)
             test.not_nil(enabled)
 
-            local _, create_conflict = storage.upsert(handle, crm_id, "entity", {
+            local _, create_conflict = storage.upsert(handle, applied(handle, crm_id), "entity", {
                 record_id = "entity:three", values = { name = "Three", email = "shared@example.test" },
             })
             test.eq(tostring(create_conflict), "CRM unique field conflict: entity.email")
@@ -553,7 +581,7 @@ local function define_tests()
             local orphan, orphan_err = storage.locate(handle, crm_id, "entity:three")
             test.is_nil(orphan_err)
             test.is_nil(orphan)
-            local _, update_conflict = storage.upsert(handle, crm_id, "entity", {
+            local _, update_conflict = storage.upsert(handle, applied(handle, crm_id), "entity", {
                 record_id = "entity:two", values = { email = "shared@example.test" },
             })
             test.eq(tostring(update_conflict), "CRM unique field conflict: entity.email")
@@ -568,7 +596,7 @@ local function define_tests()
                 unique_declaration("unique-v4", false))
             test.is_nil(readd_err)
             test.not_nil(readded)
-            local _, duplicate_allowed = storage.upsert(handle, crm_id, "entity", {
+            local _, duplicate_allowed = storage.upsert(handle, applied(handle, crm_id), "entity", {
                 record_id = "entity:two", values = { email = "shared@example.test" },
             })
             test.is_nil(duplicate_allowed)
@@ -579,14 +607,14 @@ local function define_tests()
             local crm_id = tostring(uuid.v7())
             apply(crm_id, relation_declaration("delete-v1"))
             local handle, dialect = db()
-            local _, company_err = storage.upsert(handle, crm_id, "company", {
+            local _, company_err = storage.upsert(handle, applied(handle, crm_id), "company", {
                 record_id = "company:acme", values = { name = "Acme" },
             })
-            local _, contact_err = storage.upsert(handle, crm_id, "contact", {
+            local _, contact_err = storage.upsert(handle, applied(handle, crm_id), "contact", {
                 record_id = "contact:primary", values = { name = "Primary Record" },
             })
             test.is_nil(company_err); test.is_nil(contact_err)
-            local _, link_err = storage.link(handle, crm_id, "contact", "contact:primary", "company",
+            local _, link_err = storage.link(handle, applied(handle, crm_id), "contact", "contact:primary", "company",
                 { kind = "record", type = "company", id = "company:acme" })
             test.is_nil(link_err)
 
@@ -655,10 +683,10 @@ local function define_tests()
                 { record_id = "entity:c", values = { name = "Tertiary Record", email = "tertiary@example.test", score = 7 } },
                 { record_id = "entity:d", values = { name = "No Score", email = "none@example.test" } },
             }) do
-                local _, err = storage.upsert(handle, crm_id, "entity", row)
+                local _, err = storage.upsert(handle, applied(handle, crm_id), "entity", row)
                 test.is_nil(err)
             end
-            local updated, update_err = storage.update(handle, crm_id, "entity", {
+            local updated, update_err = storage.update(handle, applied(handle, crm_id), "entity", {
                 record_id = "entity:a",
                 values = { score = 11 },
                 unset = { "email" },
@@ -669,46 +697,46 @@ local function define_tests()
             test.is_nil(updated_record.values.email)
             test.eq(updated_record.values.active, true)
 
-            local found, search_err = storage.list(handle, crm_id, "entity", { search = "Searchable" })
+            local found, search_err = storage.list(handle, applied(handle, crm_id), "entity", { search = "Searchable" })
             test.is_nil(search_err)
             local found_records = require_list_result(found)
             test.eq(found_records.total, 1)
             test.eq(found_records.rows[1].record_id, "entity:a")
             -- A seller types the start of a name, not its dictionary form:
             -- every search token matches as a prefix.
-            local prefixed, prefix_err = storage.list(handle, crm_id, "entity", { search = "Searc" })
+            local prefixed, prefix_err = storage.list(handle, applied(handle, crm_id), "entity", { search = "Searc" })
             test.is_nil(prefix_err)
             local prefix_records = require_list_result(prefixed)
             test.eq(prefix_records.total, 1)
             test.eq(prefix_records.rows[1].record_id, "entity:a")
             -- A term that survives sanitization as nothing matches nothing,
             -- never everything.
-            local quoted, quoted_err = storage.list(handle, crm_id, "entity", { search = '"' })
+            local quoted, quoted_err = storage.list(handle, applied(handle, crm_id), "entity", { search = '"' })
             test.is_nil(quoted_err)
             test.eq(require_list_result(quoted).total, 0)
-            local operators, operators_err = storage.list(handle, crm_id, "entity", { search = "&|!():*" })
+            local operators, operators_err = storage.list(handle, applied(handle, crm_id), "entity", { search = "&|!():*" })
             test.is_nil(operators_err)
             test.eq(require_list_result(operators).total, 0)
 
-            local ordered, ordered_err = storage.list(handle, crm_id, "entity", {
+            local ordered, ordered_err = storage.list(handle, applied(handle, crm_id), "entity", {
                 sort = { attr = "score", dir = "asc" }, limit = 10,
             })
             test.is_nil(ordered_err)
             local ordered_records = require_list_result(ordered)
             test.eq(ordered_records.rows[#ordered_records.rows].record_id, "entity:d")
 
-            local linked, link_err = storage.link(handle, crm_id, "entity", "entity:a", "parent",
+            local linked, link_err = storage.link(handle, applied(handle, crm_id), "entity", "entity:a", "parent",
                 { kind = "record", type = "entity", id = "entity:b" })
             test.is_nil(link_err)
             test.eq(linked, true)
-            linked, link_err = storage.link(handle, crm_id, "entity", "entity:a", "parent",
+            linked, link_err = storage.link(handle, applied(handle, crm_id), "entity", "entity:a", "parent",
                 { kind = "record", type = "entity", id = "entity:c" })
             test.is_nil(link_err)
             test.eq(linked, true)
-            local parent, parent_err = storage.field(handle, crm_id, "entity", "entity:a", "parent")
+            local parent, parent_err = storage.field(handle, applied(handle, crm_id), "entity", "entity:a", "parent")
             test.is_nil(parent_err)
             test.eq(require_ref(require_field(parent).value, "parent field").id, "entity:c")
-            local related_many, related_many_err = storage.related_many(handle, crm_id, { "entity:a", "entity:c" })
+            local related_many, related_many_err = storage.related_many(handle, applied(handle, crm_id), { "entity:a", "entity:c" })
             test.is_nil(related_many_err)
             local related_groups = require_relation_groups(related_many)
             test.eq(#related_groups["entity:a"].outgoing, 1)
@@ -716,10 +744,10 @@ local function define_tests()
             test.eq(#related_groups["entity:c"].incoming, 1)
             test.eq(related_groups["entity:c"].incoming[1].source.id, "entity:a")
 
-            local deleted, delete_err = storage.delete(handle, crm_id, "entity", "entity:b")
+            local deleted, delete_err = storage.delete(handle, applied(handle, crm_id), "entity", "entity:b")
             test.is_nil(delete_err)
             test.eq(deleted, true)
-            local missing, missing_err = storage.get(handle, crm_id, "entity", "entity:b")
+            local missing, missing_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:b")
             test.is_nil(missing_err)
             test.is_nil(missing)
             handle:release()
@@ -850,7 +878,7 @@ local function define_tests()
                 { "entity:winner", "parent", "entity:loser" },
                 { "entity:loser", "parent", "entity:third" },
             }) do
-                local _, link_err = storage.link(handle, crm_id, "entity", edge[1], edge[2], {
+                local _, link_err = storage.link(handle, applied(handle, crm_id), "entity", edge[1], edge[2], {
                     kind = "record",
                     type = "entity",
                     id = edge[3],
@@ -904,8 +932,8 @@ local function define_tests()
             test.is_nil(project(crm_id, { merged }))
 
             handle = db()
-            local winner, winner_read_err = storage.get(handle, crm_id, "entity", "entity:winner")
-            local loser, loser_read_err = storage.get(handle, crm_id, "entity", "entity:loser")
+            local winner, winner_read_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:winner")
+            local loser, loser_read_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:loser")
             handle:release()
             test.is_nil(winner_read_err)
             test.is_nil(loser_read_err)
@@ -916,9 +944,9 @@ local function define_tests()
             test.is_nil(loser)
 
             handle = db()
-            local parent, parent_err = storage.field(handle, crm_id, "entity", "entity:winner", "parent")
-            local peers, peers_err = storage.field(handle, crm_id, "entity", "entity:winner", "peers")
-            local related, related_err = storage.related(handle, crm_id, "entity:winner")
+            local parent, parent_err = storage.field(handle, applied(handle, crm_id), "entity", "entity:winner", "parent")
+            local peers, peers_err = storage.field(handle, applied(handle, crm_id), "entity", "entity:winner", "peers")
+            local related, related_err = storage.related(handle, applied(handle, crm_id), "entity:winner")
             local memberships, memberships_err = handle:query([[
                 SELECT collection_id, stage_id FROM kickside_crm_collection_membership
                 WHERE crm_id = $1 AND record_id = $2 ORDER BY collection_id
@@ -1035,7 +1063,7 @@ local function define_tests()
             local crm_id = tostring(uuid.v7())
             apply(crm_id, declaration("teardown-v1"))
             local handle = db()
-            local created, create_err = storage.upsert(handle, crm_id, "entity", {
+            local created, create_err = storage.upsert(handle, applied(handle, crm_id), "entity", {
                 record_id = "entity:preserved",
                 values = { name = "Preserved", email = "preserved@example.test" },
             })
@@ -1046,7 +1074,7 @@ local function define_tests()
             test.is_nil(destroyed)
             test.is_true(tostring(destroy_err):find("CRM schema is not applied:", 1, true) ~= nil)
 
-            local preserved, read_err = storage.get(handle, crm_id, "entity", "entity:preserved")
+            local preserved, read_err = storage.get(handle, applied(handle, crm_id), "entity", "entity:preserved")
             handle:release()
             test.is_nil(read_err)
             test.eq(require_record(preserved).values.name, "Preserved")

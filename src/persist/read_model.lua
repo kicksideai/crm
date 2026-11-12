@@ -120,13 +120,15 @@ end
 function M.internal_list_records(crm_id: string, object_type: string, opts: unknown): (RecordPage?, error?)
     local db, err = open_db()
     if not db then return nil, err end
-    local result, list_err = storage.list(db, crm_id, object_type, opts)
+    local current, schema_err = storage.load_schema(db, crm_id)
+    if not current then db:release(); return nil, schema_err end
+    local result, list_err = storage.list(db, current, object_type, opts)
     if not list_err and result then
         local page = result :: RecordPage
         local rows = type(page.rows) == "table" and page.rows or {}
         local ids: { unknown } = {}
         for _, record in ipairs(rows) do ids[#ids + 1] = record.record_id end
-        local groups, related_err = storage.related_many(db, crm_id, ids)
+        local groups, related_err = storage.related_many(db, current, ids)
         if related_err then db:release(); return nil, related_err end
         attach_associations(rows, type(groups) == "table" and groups :: UnknownMap or {})
     end
@@ -161,9 +163,11 @@ end
 function M.internal_get_record(crm_id: string, record_id: string): (Record?, error?)
     local db, err = open_db()
     if not db then return nil, err end
-    local record, read_err = storage.get_any(db, crm_id, record_id)
+    local current, schema_err = storage.load_schema(db, crm_id)
+    if not current then db:release(); return nil, schema_err end
+    local record, read_err = storage.get_any(db, current, record_id)
     if not read_err and record then
-        local groups, related_err = storage.related_many(db, crm_id, { record_id })
+        local groups, related_err = storage.related_many(db, current, { record_id })
         if related_err then db:release(); return nil, related_err end
         attach_associations({ record :: Record }, type(groups) == "table" and groups :: UnknownMap or {})
     end
@@ -177,12 +181,14 @@ function M.internal_records_by_ids(crm_id: string, ids: unknown): ({ Record }?, 
     if type(ids) ~= "table" or #ids == 0 then return {}, nil end
     local db, err = open_db()
     if not db then return nil, err end
-    local records, read_err = storage.get_many(db, crm_id, ids)
+    local current, schema_err = storage.load_schema(db, crm_id)
+    if not current then db:release(); return nil, schema_err end
+    local records, read_err = storage.get_many(db, current, ids)
     if not read_err and records then
         local typed_records = records :: { Record }
         local record_ids: { unknown } = {}
         for _, record in ipairs(typed_records) do record_ids[#record_ids + 1] = record.record_id end
-        local groups, related_err = storage.related_many(db, crm_id, record_ids)
+        local groups, related_err = storage.related_many(db, current, record_ids)
         if related_err then db:release(); return nil, related_err end
         attach_associations(typed_records, type(groups) == "table" and groups :: UnknownMap or {})
     end
@@ -197,7 +203,9 @@ function M.internal_exists(crm_id: string, record_id: string, object_type: strin
     if not db then return nil, err end
     local exists, exists_err
     if trim(object_type) ~= "" then
-        exists, exists_err = storage.exists(db, crm_id, object_type :: string, record_id)
+        local current
+        current, exists_err = storage.load_schema(db, crm_id)
+        if current then exists, exists_err = storage.exists(db, current, object_type :: string, record_id) end
     else
         local locator
         locator, exists_err = storage.locate(db, crm_id, record_id)
@@ -210,7 +218,9 @@ end
 function M.internal_related(crm_id: string, record_id: string): (unknown?, error?)
     local db, err = open_db()
     if not db then return nil, err end
-    local rows, related_err = storage.related(db, crm_id, record_id)
+    local current, schema_err = storage.load_schema(db, crm_id)
+    if not current then db:release(); return nil, schema_err end
+    local rows, related_err = storage.related(db, current, record_id)
     db:release()
     return rows, related_err
 end
@@ -270,7 +280,9 @@ end
 -- bounds it by the schema instead. Both directions travel: the records this one
 -- points at, and the records that point at it.
 local function neighbor_cte(db: sql.DB, crm_id: string): (string?, error?)
-    local tables, err = storage.relation_tables(db, crm_id)
+    local current, schema_err = storage.load_schema(db, crm_id)
+    if not current then return nil, schema_err end
+    local tables, err = storage.relation_tables(current)
     if err then return nil, err end
     local branches: { string } = {}
     for _, name in ipairs(type(tables) == "table" and tables :: { string } or {}) do

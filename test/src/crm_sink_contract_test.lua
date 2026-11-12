@@ -17,6 +17,11 @@ local receipt_rows, receipt_identities = f.receipt_rows, f.receipt_identities
 local request, from_origin, call_sink = f.request, f.from_origin, f.call_sink
 local call_list_keys, key_ids = f.call_list_keys, f.key_ids
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function define_reconciliation()
     test.describe("CRM writable sink reconciliation", function()
         test.it("converges a delete for a record the CRM never held", function()
@@ -254,7 +259,7 @@ local function define_conditional()
             test.eq(event_count(crm_id), 3)
 
             local db = assert(sql.get(types.db_id())) :: sql.DB
-            local record, record_err = storage.get(db, crm_id, "entity", "entity:folded")
+            local record, record_err = storage.get(db, applied(db, crm_id), "entity", "entity:folded")
             db:release()
             test.is_nil(record_err)
             local values = map(map(record).values)
@@ -300,7 +305,7 @@ local function define_conditional()
             test.eq(filled.success, true, error_text(filled))
 
             local db = assert(sql.get(types.db_id())) :: sql.DB
-            local record, record_err = storage.get(db, crm_id, "entity", "entity:cond")
+            local record, record_err = storage.get(db, applied(db, crm_id), "entity", "entity:cond")
             test.is_nil(record_err)
             local values = map(map(record).values)
             test.eq(values.name, "Primary Record")
@@ -337,7 +342,7 @@ local function define_conditional()
             test.eq(appended.success, true, error_text(appended))
 
             local db = assert(sql.get(types.db_id())) :: sql.DB
-            local record, record_err = storage.get(db, crm_id, "entity", "entity:tags")
+            local record, record_err = storage.get(db, applied(db, crm_id), "entity", "entity:tags")
             db:release()
             test.is_nil(record_err)
             local tags = list(map(map(record).values).tags)

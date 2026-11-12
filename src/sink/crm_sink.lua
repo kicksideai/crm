@@ -232,6 +232,89 @@ local function delete_target_absent(crm_id: string, input: UnknownMap): (boolean
     return existing == nil, nil
 end
 
+-- The fields that carry a record's identity keys: aliases and unique values.
+local function identity_fields(crm_id: string, object_type: string): ({ [string]: boolean }?, ErrorResponse?)
+    local db, db_err = open_db()
+    if not db then return nil, response_error("provider_unavailable", db_err, true, "provider") end
+    local schema, schema_err = storage.load_schema(db, crm_id)
+    db:release()
+    if not schema then return nil, append_failure(schema_err) end
+    local object, object_err = storage.object(schema, object_type)
+    if object_err then return nil, append_failure(object_err) end
+    local fields = type(object) == "table" and type((object :: UnknownMap).fields) == "table"
+        and (object :: UnknownMap).fields :: { [string]: UnknownMap } or {}
+    local identity: { [string]: boolean } = {}
+    for attr, field in pairs(fields) do
+        local config = type(field.config) == "table" and field.config :: UnknownMap or {}
+        if trim(config.alias) ~= "" or config.unique == true then identity[attr] = true end
+    end
+    return identity, nil
+end
+
+type Absorption = { commands: { Command }, creates: boolean }
+
+-- A source that merged records names the ones it folded into this record. Each
+-- that still exists is merged into it by a CRM merge decision, which carries its
+-- values, relations, activities, memberships and identity keys over and keeps the
+-- decision on record. These commands precede the delivery's own write in one
+-- append, so the delivery lands whole or not at all. A record created to absorb
+-- others is created without its identity fields: the absorbed records hold those
+-- keys until their merge moves them, and the delivery's own write sets them. An
+-- absorbed record that is already gone is skipped.
+local function absorption(crm_id: string, object_type: string, record_id: string, values: UnknownMap,
+    provenance: unknown, merged_ids: { string }, origin: string, operation: string,
+    idempotency_key: string): (Absorption?, ErrorResponse?)
+    local plan: Absorption = { commands = {}, creates = false }
+    if #merged_ids == 0 then return plan, nil end
+    local db, db_err = open_db()
+    if not db then return nil, response_error("provider_unavailable", db_err, true, "provider") end
+    local absorbed: { string } = {}
+    for _, id in ipairs(merged_ids) do
+        local located, locate_err = storage.locate(db, crm_id, id)
+        if locate_err then
+            db:release()
+            return nil, response_error("provider_unavailable", locate_err, true, "provider")
+        end
+        if located ~= nil then
+            if trim((located :: UnknownMap).object_type) ~= object_type then
+                db:release()
+                return nil, validation_error("merged record " .. id .. " is not a " .. object_type)
+            end
+            absorbed[#absorbed + 1] = id
+        end
+    end
+    db:release()
+    if #absorbed == 0 then return plan, nil end
+
+    local exists, exists_err = record_exists(crm_id, record_id)
+    if exists_err then return nil, exists_err end
+    if not exists then
+        local identity, identity_err = identity_fields(crm_id, object_type)
+        if not identity then return nil, identity_err end
+        local initial: UnknownMap = {}
+        for attr, value in pairs(values) do
+            if not identity[attr] then initial[attr] = value end
+        end
+        local body: UnknownMap = { object_type = object_type, record_id = record_id, values = initial }
+        if provenance ~= nil then body.provenance = provenance end
+        plan.commands[1] = { type = types.EVENTS.RECORD_CREATED, body = body,
+            external = writer.sink_step_external(origin, operation, idempotency_key, "create") }
+        plan.creates = true
+    end
+    -- Each merge is decided by this delivery for this loser: the step's external
+    -- identity names exactly that decision, so it keys the resolution too, and a
+    -- loser recreated and absorbed again by a later delivery gets its own.
+    for _, loser_id in ipairs(absorbed) do
+        local external = writer.sink_step_external(origin, operation, idempotency_key, tostring(hash.sha256(loser_id)))
+        plan.commands[#plan.commands + 1] = { type = types.EVENTS.MERGE_DECIDED, body = {
+            left_id = record_id, right_id = loser_id, object_type = object_type,
+            decision = "merged", winner_id = record_id, loser_id = loser_id,
+            reason = "merged at source", resolution_id = "source-merge:" .. tostring(external.external_id),
+        }, external = external }
+    end
+    return plan, nil
+end
+
 function M.write(req: unknown): UnknownMap
     if type(req) ~= "table" then return validation_error("request must be an object") end
     local request = req :: UnknownMap
@@ -261,6 +344,8 @@ function M.write(req: unknown): UnknownMap
     if shape_err then return validation_error(shape_err) end
     local provenance, provenance_err = commands.validate_provenance(input)
     if provenance_err then return validation_error(provenance_err) end
+    local merged_ids, merged_err = commands.merged_record_ids(operation, input)
+    if not merged_ids then return validation_error(merged_err :: string) end
     local allowed, access_err = writer.require_access(crm_id, component.ACCESS.WRITE)
     if not allowed then return response_error("permission_denied", access_err, false, "item") end
     local digest, digest_err = payload_hash(config, input, operation, request.dest_ref)
@@ -319,7 +404,18 @@ function M.write(req: unknown): UnknownMap
         if not unset then return validation_error(unset_err :: string) end
         command_input.unset = unset
     end
-    if operation == "upsert" and trim(input.kind) == "record"
+    local absorbing: Absorption = { commands = {}, creates = false }
+    if #merged_ids > 0 then
+        local plan, plan_err = absorption(crm_id, trim(input.object_type), trim(input.record_id),
+            command_input.values :: UnknownMap, provenance, merged_ids, origin, operation, idempotency_key)
+        if not plan then return plan_err :: ErrorResponse end
+        absorbing = plan
+    end
+    if #absorbing.commands > 0 then
+        -- The absorbing commands leave the record in place for the delivery's
+        -- own write, which updates it.
+        command_input._update_shape = true
+    elseif operation == "upsert" and trim(input.kind) == "record"
         and request.dest_ref == nil and trim(input.record_id) ~= "" then
         local update_shape, shape_err = record_exists(crm_id, trim(input.record_id))
         if shape_err then return shape_err end
@@ -327,6 +423,7 @@ function M.write(req: unknown): UnknownMap
     end
     local command, outcome, dest_ref, command_err = commands.command_for(operation, command_input, request.dest_ref)
     if not command then return validation_error(command_err :: string) end
+    if absorbing.creates then outcome = "created" end
     if provenance ~= nil and type((command :: Command).body) == "table" then
         ((command :: Command).body :: UnknownMap).provenance = provenance
     end
@@ -358,7 +455,10 @@ function M.write(req: unknown): UnknownMap
         return delivered(recovered.outcome, recovered.dest_ref)
     end
     ((command :: Command).body :: UnknownMap).delivery = { payload_hash = digest, outcome = outcome, dest_ref = dest_ref }
-    local _, append_err, append_result = writer.append(crm_id, { command })
+    local batch: { Command } = {}
+    for _, step in ipairs(absorbing.commands) do batch[#batch + 1] = step end
+    batch[#batch + 1] = command :: Command
+    local _, append_err, append_result = writer.append(crm_id, batch)
     if append_err then
         -- A write blocked on a record that does not exist yet is a dependency,
         -- retriable once that record lands, and the key names exactly which.

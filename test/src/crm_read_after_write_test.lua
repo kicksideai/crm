@@ -12,6 +12,11 @@ local time = require("time")
 
 type Map = { [string]: unknown }
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function setup(): (string, any)
     local crm_id = uuid.v7()
     local actor = actors.make(uuid.v4())
@@ -63,7 +68,7 @@ local function define_tests()
                 test.eq(checkpoint.last_seq, checkpoint.projected_seq)
                 test.is_true(tonumber(checkpoint.projected_seq) >= tonumber(receipt.appended_seq))
                 local db = assert(sql.get(types.db_id())) :: sql.DB
-                local persisted, read_err = storage.get(db, crm_id, "entity", tostring(record_id))
+                local persisted, read_err = storage.get(db, applied(db, crm_id), "entity", tostring(record_id))
                 db:release()
                 test.is_nil(read_err)
                 test.eq(((persisted :: Map).values :: Map).name, "Resolved " .. tostring(index))

@@ -68,3 +68,29 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
+
+  - name: 09_write_origin_retention
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage, retention]
+      comment: Index write-origin expiry on existing and fresh storage without changing retained facts.
+      target_db: app:db
+      timestamp: "2026-11-09T00:00:00Z"
+    source: file://09_write_origin_retention.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  - name: 10_orphan_conditional_outcomes
+    kind: function.lua
+    meta:
+      type: migration
+      tags: [crm, storage]
+      comment: Remove replay outcomes whose CRM no longer has a schema revision.
+      target_db: app:db
+      timestamp: "2026-11-09T00:00:01Z"
+    source: file://10_orphan_conditional_outcomes.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate

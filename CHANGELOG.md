@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.6.11](https://github.com/kicksideai/crm/compare/crm-v0.6.10...crm-v0.6.11) (2026-11-10)
+
+
+### Bug Fixes
+
+* **crm:** rebuild package without baked default bindings ([#39](https://github.com/kicksideai/crm/issues/39)) ([5cf2e3d](https://github.com/kicksideai/crm/commit/5cf2e3d88212911b9232532fcae93234f78fdf3d))
+
+## [0.6.10](https://github.com/kicksideai/crm/compare/crm-v0.6.9...crm-v0.6.10) (2026-11-09)
+
+
+### Bug Fixes
+
+* **crm:** drain retention backlogs and remove retired outcomes ([#36](https://github.com/kicksideai/crm/issues/36)) ([e29cd56](https://github.com/kicksideai/crm/commit/e29cd56db35fad1020db2b21e5a3d079a40a43de))
+
+## [0.6.9](https://github.com/kicksideai/crm/compare/crm-v0.6.8...crm-v0.6.9) (2026-11-07)
+
+
+### Performance Improvements
+
+* **crm:** load the applied schema once per batch and request ([#29](https://github.com/kicksideai/crm/issues/29)) ([d8583eb](https://github.com/kicksideai/crm/commit/d8583eb1b7b969375416ca5e3151de4331e78dc3))
+
+## [0.6.8](https://github.com/kicksideai/crm/compare/crm-v0.6.7...crm-v0.6.8) (2026-11-07)
+
+
+### Bug Fixes
+
+* **crm:** merge the records a source folded into an upserted record ([#28](https://github.com/kicksideai/crm/issues/28)) ([31e3fe2](https://github.com/kicksideai/crm/commit/31e3fe26155458bd0a16a28023d4bf99400f6d8b))
+
 ## [0.6.7](https://github.com/kicksideai/crm/compare/crm-v0.6.6...crm-v0.6.7) (2026-11-07)
 
 

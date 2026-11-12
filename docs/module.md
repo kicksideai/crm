@@ -117,9 +117,15 @@ shared external ID. Colliding external IDs, correlation keys, or activity IDs
 fold into the surviving activity; absorbed identities remain lookup aliases.
 Use the same correlation key only for observations of the same event.
 
-Membership to a missing record returns retriable `dependency_missing` with a
-record `dependency_key`. A successful record delivery announces
-`dependencies_available` so waiting writes can retry.
+Relation upserts with a missing source or target record, and memberships with
+a missing record, return `dependency_missing` with `retriable: true`,
+`scope: "item"`, and a record `dependency_key`. Validation rejects these writes
+before appending an event or storing a completed receipt; they do not enter
+`kickside_crm_pending_relation`. A successful record delivery announces
+`dependencies_available`. Automation retains the failed item for retry without
+an attempt cutoff. A later delivery with the same identity applies the relation
+once both endpoints exist; subsequent deliveries replay its completed receipt.
+Record arrival alone does not apply a rejected relation.
 
 A round opens the sink with its work deadline. The projection catch-up wait is
 bounded by that deadline; a timeout returns retriable `provider_unavailable`
@@ -152,12 +158,17 @@ caller's `title` and `idempotency_key`; a repeated key returns the same CRM with
 A relation field is a record value. `values` on create and `set` on update
 take one typed reference `{kind, type, id}` or an array of them, which replaces
 the relation's edge set; `unset` clears it. A required relation is therefore
-satisfied at creation. The projection assigns the edges through the same
-deferral path as `relation.linked`, so an edge whose endpoint has not
-materialized parks until it does. `CRMCreateRecords` appends every record of a
-batch at once, so they all land or none do, and a relation may name a record
-created earlier in the batch by its `record_id`. Generated record ids take the
-form `<object_type>:<uuid>` for every tool and the resolver.
+satisfied at creation. Command validation requires record endpoints to exist;
+`CRMCreateRecords` appends every record of a batch at once, so they all land or
+none do, and a relation may name a record created earlier in the batch by its
+`record_id`. Generated record ids take the form `<object_type>:<uuid>` for every
+tool and the resolver.
+
+When projecting already persisted events, the fold parks relation edges whose
+record endpoints have not materialized in `kickside_crm_pending_relation` and
+drains them when those records materialize. This projection ordering behavior
+also serves relation values and unlinks; it does not admit relation upserts
+that command validation rejects.
 
 ### Structured reads
 

@@ -8,6 +8,7 @@ local uuid = require("uuid")
 local f = require("fixture")
 
 type Map = { [string]: unknown }
+type List = { unknown }
 
 local SINK, LIST_KEYS = f.SINK, f.LIST_KEYS
 local map, list, destination_ref = f.map, f.list, f.destination_ref
@@ -16,6 +17,11 @@ local machine_execute, provision, event_count = f.machine_execute, f.provision, 
 local receipt_rows, receipt_identities = f.receipt_rows, f.receipt_identities
 local request, from_origin, call_sink = f.request, f.from_origin, f.call_sink
 local call_list_keys, key_ids = f.call_list_keys, f.key_ids
+
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
 
 local function define_receipts()
     test.describe("CRM writable sink receipts", function()
@@ -124,7 +130,7 @@ local function define_receipts()
             test.eq(updated.result, "updated")
 
             local db = assert(sql.get(types.db_id())) :: sql.DB
-            local row, row_err = storage.get(db, crm_id, "entity", "entity:authority")
+            local row, row_err = storage.get(db, applied(db, crm_id), "entity", "entity:authority")
             db:release()
             test.is_nil(row_err)
             local values = map(map(row).values)
@@ -172,8 +178,8 @@ local function define_receipts()
             local active_actor, active_scope = actor(uuid.v4()), scope()
             provision(crm_id, active_actor, active_scope)
             local db = assert(sql.get(types.db_id())) :: sql.DB
-            local _, source_err = storage.upsert(db, crm_id, "entity", { record_id = "entity:3", values = { name = "Before" } })
-            local _, target_err = storage.upsert(db, crm_id, "entity", { record_id = "entity:4", values = { name = "Target" } })
+            local _, source_err = storage.upsert(db, applied(db, crm_id), "entity", { record_id = "entity:3", values = { name = "Before" } })
+            local _, target_err = storage.upsert(db, applied(db, crm_id), "entity", { record_id = "entity:4", values = { name = "Target" } })
             db:release()
             test.is_nil(source_err)
             test.is_nil(target_err)
@@ -250,6 +256,67 @@ local function define_references()
             test.eq(blocked.error.dependency_key, "crm:" .. crm_id .. ":record:entity:dep-target")
             test.eq(event_count(crm_id), 1, "a dependency-blocked write appends nothing")
         end)
+        for _, missing in ipairs({ "source", "target" }) do
+            test.it("retries a sink relation after its missing " .. missing .. " record arrives", function()
+                local crm_id, execute = f.crm()
+                local function record(endpoint: string): Map
+                    return request(crm_id, "ordering:" .. endpoint, {
+                        kind = "record", object_type = "entity", record_id = "entity:" .. endpoint,
+                        values = { name = endpoint },
+                    })
+                end
+                local function related(): List
+                    local db = assert(sql.get(types.db_id()))
+                    local field, err = storage.field(db, applied(db, crm_id), "entity", "entity:source", "related")
+                    db:release()
+                    test.is_nil(err)
+                    return list(map(field).value)
+                end
+                local function pending(): number
+                    return tonumber(f.query("SELECT COUNT(*) AS n FROM kickside_crm_pending_relation WHERE crm_id = $1",
+                        { crm_id })[1].n) or 0
+                end
+                local existing = missing == "source" and "target" or "source"
+                test.eq(call_sink(execute, record(existing)).success, true)
+                local relation = request(crm_id, "ordering:link", {
+                    kind = "relation", object_type = "entity", record_id = "entity:source", attr = "related",
+                    reference = { kind = "record", type = "entity", id = "entity:target" },
+                })
+                for _ = 1, 2 do
+                    local blocked = call_sink(execute, relation)
+                    test.eq(blocked.success, false)
+                    test.eq(blocked.error.code, "dependency_missing")
+                    test.eq(blocked.error.retriable, true)
+                    test.eq(blocked.error.scope, "item")
+                    test.eq(blocked.error.dependency_key, "crm:" .. crm_id .. ":record:entity:" .. missing)
+                    test.eq(event_count(crm_id), 1)
+                    test.eq(#receipt_rows(crm_id, "ordering:link"), 0)
+                    test.eq(pending(), 0)
+                end
+                local arrived = call_sink(execute, record(missing))
+                test.eq(arrived.success, true, error_text(arrived))
+                test.eq(list(arrived.dependencies_available)[1], "crm:" .. crm_id .. ":record:entity:" .. missing)
+                test.eq(#related(), 0, "record arrival alone does not apply a rejected relation")
+                test.eq(pending(), 0)
+                test.eq(event_count(crm_id), 2)
+
+                local retried = call_sink(execute, relation)
+                test.eq(retried.success, true, error_text(retried))
+                test.eq(#related(), 1)
+                test.eq(map(related()[1]).id, "entity:target")
+                test.eq(event_count(crm_id), 3)
+                test.eq(#receipt_rows(crm_id, "ordering:link"), 1)
+                test.eq(pending(), 0)
+
+                local replayed = call_sink(execute, relation)
+                test.eq(replayed.success, true, error_text(replayed))
+                test.eq(replayed.dest_ref.record_id, retried.dest_ref.record_id)
+                test.eq(event_count(crm_id), 3)
+                test.eq(#related(), 1)
+                test.eq(#receipt_rows(crm_id, "ordering:link"), 1)
+                test.eq(pending(), 0)
+            end)
+        end
         test.it("classifies a membership of a missing record as a dependency that lands with the record", function()
             local crm_id = uuid.v7()
             local active_actor, active_scope = actor(uuid.v4()), scope()

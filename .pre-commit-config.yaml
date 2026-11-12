@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+# Secret scan on commit. gitleaks checks the staged changes against the default
+# rules and .gitleaks.toml, and stops a commit that carries a secret before it
+# reaches a branch. The secret-scan workflow stays the check on the server.
+# pre-commit builds gitleaks from source on first use.
+#
+# Setup, once per clone: `pre-commit install`.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 39fdb480a06768cc41a84ef86959c07ff33091c4  # v8.28.0
+    hooks:
+      - id: gitleaks

@@ -15,6 +15,11 @@ type Event = { type: string, body: UnknownMap }
 type TypedRef = { kind: string, type: string, id: string }
 type FieldResult = { value: unknown }
 
+-- The applied schema a storage call works against, loaded at the call.
+local function applied(handle: sql.DB | sql.Transaction, crm_id: string): storage.Schema
+    return assert(storage.load_schema(handle, crm_id))
+end
+
 local function db(): (sql.DB, string)
     local handle, err = sql.get(types.db_id())
     if err then error(tostring(err), 0) end
@@ -88,7 +93,7 @@ end
 
 local function field(crm_id: string, record_id: string, attr: string): unknown
     local handle = db()
-    local result, err = storage.field(handle, crm_id, "person", record_id, attr)
+    local result, err = storage.field(handle, applied(handle, crm_id), "person", record_id, attr)
     handle:release()
     test.is_nil(err)
     return (result :: FieldResult).value
@@ -185,7 +190,7 @@ local function define_tests()
                 updated("person:ada", { name = "Ada Lovelace", company = ref("company", "company:acme") }),
             }))
             local handle = db()
-            local name, err = storage.field(handle, crm_id, "person", "person:ada", "name")
+            local name, err = storage.field(handle, applied(handle, crm_id), "person", "person:ada", "name")
             handle:release()
             test.is_nil(err)
             test.eq((name :: FieldResult).value, "Ada Lovelace")

@@ -286,7 +286,7 @@ function M.suggest_for_record(crm_id: string, object_type: string,
     if not db then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "CRM database unavailable" }) end
     local schema
     schema, err = storage.load_schema(db, crm_id)
-    if err then db:release(); return nil, err end
+    if not schema then db:release(); return nil, err end
     local schema_map = schema :: UnknownMap
     local declaration = type(schema_map.declaration) == "table"
         and (schema_map.declaration :: UnknownMap) or {}
@@ -299,14 +299,14 @@ function M.suggest_for_record(crm_id: string, object_type: string,
         return {}, nil
     end
     local current
-    current, err = storage.get(db, crm_id, object_type, record_id)
+    current, err = storage.get(db, schema, object_type, record_id)
     if err then db:release(); return nil, err end
     if not current then db:release(); return nil, errors.new({ kind = errors.NOT_FOUND, message = "CRM record not found" }) end
 
     local candidates: { Record }, offset = {}, 0
     repeat
         local page
-        page, err = storage.list(db, crm_id, object_type, {
+        page, err = storage.list(db, schema, object_type, {
             limit = 500,
             offset = offset,
             sort = { attr = "record_id", dir = "asc" },

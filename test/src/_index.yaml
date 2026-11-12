@@ -684,6 +684,22 @@ entries:
       storage: kickside.crm.persist:repo
       fixture: app:crm_sink_fixture
 
+  - name: crm_sink_merge_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: CRM writable sink merges the records a delivered record absorbed into it.
+    source: file://crm_sink_merge_test.lua
+    method: run
+    modules: [sql]
+    imports:
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      fixture: app:crm_sink_fixture
+
   - name: crm_sink_fixture
     kind: library.lua
     meta:
@@ -1191,3 +1207,103 @@ entries:
       actors: app:actors
       test: wippy.test:test
       trusted_reader: kickside.uploads:trusted_reader
+
+  - name: schema_load_counter
+    kind: library.lua
+    meta:
+      type: test_helper
+      comment: Counts applied-schema catalog loads through the executors a caller passes or the storage facade receives.
+    source: file://schema_load_counter.lua
+
+  - name: schema_load_probe
+    kind: function.lua
+    meta:
+      comment: Test-only actor-scoped adapter that counts schema loads of one write batch or read request.
+    source: file://schema_load_probe.lua
+    method: run
+    imports:
+      counter: app:schema_load_counter
+      read_model: kickside.crm.persist:read_model
+      storage: kickside.crm.persist:repo
+      writer: kickside.crm.command:writer
+
+  - name: crm_schema_load_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: kickside_crm
+      group: CRM
+      comment: The applied schema loads once per write batch, projection batch and read request.
+    source: file://crm_schema_load_test.lua
+    method: run
+    modules: [contract, funcs, security, sql, uuid]
+    imports:
+      actors: app:actors
+      counter: app:schema_load_counter
+      materializer: kickside.crm.persist:materializer
+      storage: kickside.crm.persist:repo
+      test: wippy.test:test
+      types: kickside.crm:types
+
+  - name: crm_retention_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_retention_test.lua
+    method: run
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner
+
+  - name: crm_retention_cases
+    kind: function.lua
+    source: file://crm_retention_test.lua
+    method: cases
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner
+
+  - name: crm_retention_scale_test
+    kind: function.lua
+    meta: { type: test, suite: "02_retention_scale" }
+    source: file://crm_retention_test.lua
+    method: scale
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner
+
+  - name: crm_conditional_outcome_migration_test
+    kind: function.lua
+    meta: { type: test, suite: "02_conditional_outcome_migration" }
+    source: file://crm_retention_test.lua
+    method: outcome_migration
+    modules: [sql, time, funcs, uuid, process, channel, json, logger]
+    imports:
+      isolated: app:isolated_database
+      test: wippy.test:test
+      types: kickside.crm:types
+      storage: kickside.crm.persist:repo
+      receipts: kickside.crm.persist:sink_receipts
+      origins: kickside.crm.persist:write_origin
+      fixture: app:crm_sink_fixture
+      retention_runner: kickside.core.retention.service:runner

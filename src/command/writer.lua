@@ -14,6 +14,7 @@ local validation = require("validation")
 local aliases = require("aliases")
 local policy = require("policy")
 local sql = require("sql")
+local storage = require("storage")
 
 local M = {}
 
@@ -96,6 +97,16 @@ local function open_db(): (sql.DB?, error?)
     if err then return nil, err end
     if not db then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "crm: app:db unavailable" }) end
     return db, nil
+end
+
+-- The applied schema one command batch is checked against: policy, validation
+-- and alias reservation all read this one load.
+local function load_schema(crm_id: string): (storage.Schema?, error?)
+    local db, err = open_db()
+    if not db then return nil, err end
+    local schema, schema_err = storage.load_schema(db, crm_id)
+    db:release()
+    return schema, schema_err
 end
 
 function M.thread_id_for(c: ThreadsClient, crm_id: string): (string?, error?)
@@ -341,6 +352,19 @@ function M.sink_external(origin: string, sink_op: string, idempotency_key: strin
     }
 end
 
+-- The external identity of one step a delivery appends ahead of its own write.
+-- Steps carry their own source, which keeps each step identity distinct from
+-- every delivery's own command; the step name is a fixed word or a fixed-length
+-- digest, which keeps the steps of distinct deliveries apart.
+function M.sink_step_external(origin: string, sink_op: string, idempotency_key: string, step: string): UnknownMap
+    local delivery = M.sink_external(origin, sink_op, idempotency_key)
+    return {
+        external_source = SINK_EXTERNAL_SOURCE .. ".step",
+        external_id = tostring(delivery.external_id) .. " " .. step,
+        external_version = SINK_EXTERNAL_VERSION,
+    }
+end
+
 -- The already-durable event carrying this external identity, { type, body, seq }, or nil
 -- when no candidate committed. A caller whose own receipt is missing reads the
 -- effect it already appended from here instead of re-deriving it from current state.
@@ -461,6 +485,8 @@ function M.append(crm_id: string, commands: unknown): (boolean?, error?, Unknown
     if not c then return nil, err end
     local tid, terr = M.thread_id_for(c, crm_id)
     if not tid then return nil, terr end
+    local schema, schema_err = load_schema(crm_id)
+    if not schema then return nil, schema_err end
 
     local safe_commands = copy(commands) :: { Command }
     local actor_context = runtime_actor_context()
@@ -474,7 +500,7 @@ function M.append(crm_id: string, commands: unknown): (boolean?, error?, Unknown
         actor_id = actor_id_for_context(),
         actor_context = actor_context,
     }
-    local filtered, outcomes, perr = policy.enforce(crm_id, safe_commands, source_context)
+    local filtered, outcomes, perr = policy.enforce(schema, safe_commands, source_context)
     if not filtered then return nil, perr end
 
     local filtered_commands = filtered :: { Command }
@@ -504,7 +530,7 @@ function M.append(crm_id: string, commands: unknown): (boolean?, error?, Unknown
         return true, nil, durable, outcomes
     end
 
-    local vok, verr = validation.validate_commands(crm_id, filtered_commands)
+    local vok, verr = validation.validate_commands(schema, filtered_commands)
     if not vok then return nil, verr end
 
     local expanded = filtered_commands
@@ -528,7 +554,7 @@ function M.append(crm_id: string, commands: unknown): (boolean?, error?, Unknown
         }
     end
 
-    local reservations, reservation_err = aliases.reserve_for_commands(crm_id, expanded)
+    local reservations, reservation_err = aliases.reserve_for_commands(schema, expanded)
     if not reservations then return nil, reservation_err end
 
     local result, aerr = c:append_events({ thread_id = tid, events = events })

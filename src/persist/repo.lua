@@ -279,11 +279,21 @@ local function load_schema(db: Executor, crm_id: string): Schema
     return schema
 end
 
-local function object_for(db: Executor, crm_id: string, object_type: string): (ObjectSchema, Schema)
-    local schema = load_schema(db, crm_id)
+-- Repository operations take the schema their caller loaded once for its batch or
+-- request; none of them reads the schema catalog on its own.
+local function bound(schema: Schema): string
+    if type(schema) ~= "table" or type(schema.crm_id) ~= "string" or schema.crm_id == ""
+        or type(schema.objects) ~= "table" then
+        fail(errors.INVALID, "a loaded CRM schema is required")
+    end
+    return schema.crm_id
+end
+
+local function object_in(schema: Schema, object_type: string): ObjectSchema
+    bound(schema)
     local object = schema.objects[object_type]
     if not object then fail(errors.INVALID, "unknown CRM object type: " .. tostring(object_type)) end
-    return object, schema
+    return object
 end
 
 local function decode_value(field: ScalarField, value: unknown): unknown
@@ -366,34 +376,38 @@ function M.ensure(db: sql.DB, dialect: string, crm_id: string, declaration: unkn
     return protected(function() return compiler.apply(db, dialect, crm_id, declaration, expected_revision) end)
 end
 
-function M.load_schema(db: Executor, crm_id: string)
-    return protected(function() return load_schema(db, crm_id) end)
+function M.load_schema(db: Executor, crm_id: string): (Schema?, error?)
+    local schema, err = protected(function() return load_schema(db, crm_id) end)
+    if err then return nil, err end
+    return schema :: Schema, nil
 end
 
-function M.object(db: Executor, crm_id: string, object_type: string)
-    return protected(function() return object_for(db, crm_id, object_type) end)
+function M.object(schema: Schema, object_type: string)
+    return protected(function() return object_in(schema, object_type) end)
 end
 
-function M.reference(db: Executor, crm_id: string, object_type: string, attr: string)
+function M.reference(schema: Schema, object_type: string, attr: string)
     return protected(function()
-        local object = object_for(db, crm_id, object_type)
+        local object = object_in(schema, object_type)
         local relation = object.relations[attr]
         if not relation then fail(errors.INVALID, "unknown CRM relation: " .. tostring(object_type) .. "." .. tostring(attr)) end
         return relation
     end)
 end
 
-function M.get(db: Executor, crm_id: string, object_type: string, record_id: string)
+function M.get(db: Executor, schema: Schema, object_type: string, record_id: string)
     return protected(function()
-        local object = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         local row = query(db, "SELECT * FROM " .. object.table_name .. " WHERE crm_id = $1 AND record_id = $2 LIMIT 1", { crm_id, record_id })[1]
         return hydrate(object, row)
     end)
 end
 
-function M.exists(db: Executor, crm_id: string, object_type: string, record_id: string)
+function M.exists(db: Executor, schema: Schema, object_type: string, record_id: string)
     return protected(function()
-        local object = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         return query(db, "SELECT 1 AS present FROM " .. object.table_name .. " WHERE crm_id = $1 AND record_id = $2 LIMIT 1", { crm_id, record_id })[1] ~= nil
     end)
 end
@@ -406,17 +420,19 @@ function M.locate(db: Executor, crm_id: string, record_id: string)
     end)
 end
 
-function M.get_any(db: Executor, crm_id: string, record_id: string)
+function M.get_any(db: Executor, schema: Schema, record_id: string)
     return protected(function()
+        local crm_id = bound(schema)
         local locator = query(db, "SELECT object_type FROM kickside_crm_record_locator WHERE crm_id = $1 AND record_id = $2 LIMIT 1", { crm_id, record_id })[1]
         if not locator then return nil end
-        local object = object_for(db, crm_id, stored_string(locator.object_type, "locator object_type"))
+        local object = object_in(schema, stored_string(locator.object_type, "locator object_type"))
         return hydrate(object, query(db, "SELECT * FROM " .. object.table_name .. " WHERE crm_id = $1 AND record_id = $2 LIMIT 1", { crm_id, record_id })[1])
     end)
 end
 
-function M.get_many(db: Executor, crm_id: string, record_ids: unknown)
+function M.get_many(db: Executor, schema: Schema, record_ids: unknown)
     return protected(function()
+        local crm_id = bound(schema)
         if type(record_ids) ~= "table" or #record_ids == 0 then return {} end
         local params, slots = { crm_id }, {}
         for _, record_id in ipairs(record_ids) do
@@ -429,7 +445,7 @@ function M.get_many(db: Executor, crm_id: string, record_ids: unknown)
         end
         local found = {}
         for object_type, ids in pairs(grouped) do
-            local object = object_for(db, crm_id, stored_string(object_type, "locator object_type"))
+            local object = object_in(schema, stored_string(object_type, "locator object_type"))
             local object_params, object_slots = { crm_id }, {}
             for _, record_id in ipairs(ids) do object_params[#object_params + 1] = record_id; object_slots[#object_slots + 1] = "$" .. tostring(#object_params) end
             for _, row in ipairs(query(db, "SELECT * FROM " .. object.table_name .. " WHERE crm_id = $1 AND record_id IN (" .. table.concat(object_slots, ", ") .. ")", object_params)) do
@@ -442,15 +458,16 @@ end
 
 -- Defined below alongside the relation helpers it depends on; forward-declared so
 -- the record-materialization path can drain the edges parked on a new record.
-local drain_pending_relations: (Executor, string, string) -> ()
-local assign_relation: (Executor, string, ObjectSchema, string, string, unknown) -> ()
+local drain_pending_relations: (Executor, Schema, string) -> ()
+local assign_relation: (Executor, Schema, ObjectSchema, string, string, unknown) -> ()
 
-function M.upsert(db: Executor, crm_id: string, object_type: string, record: unknown)
+function M.upsert(db: Executor, schema: Schema, object_type: string, record: unknown)
     return protected(function()
+        local crm_id = bound(schema)
         return atomic(db, function(write_db: Executor)
         if type(record) ~= "table" or type(record.record_id) ~= "string" or record.record_id == "" then fail(errors.INVALID, "record_id is required") end
         local input = record :: RecordInput
-        local object, schema = object_for(write_db, crm_id, object_type)
+        local object = object_in(schema, object_type)
         -- Scalar fields are columns on the object table; relation fields named in
         -- values or unset are edge sets, assigned once the record row holds.
         local unset = {}
@@ -513,10 +530,10 @@ function M.upsert(db: Executor, crm_id: string, object_type: string, record: unk
         for attr in pairs(relation_assignments) do relation_attrs[#relation_attrs + 1] = attr end
         table.sort(relation_attrs)
         for _, attr in ipairs(relation_attrs) do
-            assign_relation(write_db, crm_id, object, input.record_id, attr, relation_assignments[attr])
+            assign_relation(write_db, schema, object, input.record_id, attr, relation_assignments[attr])
         end
         -- The record now holds, so any edge parked on it as source or target can land.
-        drain_pending_relations(write_db, crm_id, input.record_id)
+        drain_pending_relations(write_db, schema, input.record_id)
         return hydrate(object, query(write_db, "SELECT * FROM " .. object.table_name .. " WHERE crm_id = $1 AND record_id = $2", { crm_id, input.record_id })[1])
         end)
     end)
@@ -623,10 +640,11 @@ end
 
 -- Apply a link whose endpoints and reference are already verified. Cardinality-one
 -- replaces; cardinality-many appends at the next ordinal.
-local function link_internal(db: Executor, crm_id: string, object: ObjectSchema, relation: Relation,
+local function link_internal(db: Executor, schema: Schema, relation: Relation,
     object_type: string, source_id: string, attr: string, typed_ref: TypedRef)
+    local crm_id = schema.crm_id
     if relation.cardinality == "one" then
-        local result, err = M.replace_relation(db, crm_id, object_type, source_id, attr, { typed_ref })
+        local result, err = M.replace_relation(db, schema, object_type, source_id, attr, { typed_ref })
         if err then raise(err) end
         return
     end
@@ -639,8 +657,9 @@ end
 -- an array of them, applied in order. Prior edges and parked edges for the same
 -- source and relation are replaced; an endpoint not yet materialized parks exactly
 -- as a relation.linked would.
-assign_relation = function(db: Executor, crm_id: string, object: ObjectSchema, source_id: string,
+assign_relation = function(db: Executor, schema: Schema, object: ObjectSchema, source_id: string,
     attr: string, value: unknown)
+    local crm_id = schema.crm_id
     local relation = object.relations[attr]
     if not relation then fail(errors.INVALID, "unknown CRM relation: " .. object.object_type .. "." .. attr) end
     local refs: { unknown } = {}
@@ -664,7 +683,7 @@ assign_relation = function(db: Executor, crm_id: string, object: ObjectSchema, s
         { crm_id, source_id, attr })
     for _, typed_ref in ipairs(typed_refs) do
         if not defer_if_endpoint_absent(db, crm_id, object.object_type, source_id, attr, typed_ref, true) then
-            link_internal(db, crm_id, object, relation, object.object_type, source_id, attr, typed_ref)
+            link_internal(db, schema, relation, object.object_type, source_id, attr, typed_ref)
         end
     end
 end
@@ -680,7 +699,8 @@ end
 -- the seq order its events carried; a still-incomplete edge stays parked. Applied
 -- rows are deleted by their natural key, so a replayed materialization re-drains a
 -- clean table and no edge lands twice.
-drain_pending_relations = function(db: Executor, crm_id: string, record_id: string)
+drain_pending_relations = function(db: Executor, schema: Schema, record_id: string)
+    local crm_id = schema.crm_id
     local rows = query(db, [[SELECT source_object_type, source_id, attr, target_ref_json, linked
         FROM kickside_crm_pending_relation
         WHERE crm_id = $1 AND (source_id = $2 OR target_id = $2)
@@ -699,12 +719,12 @@ drain_pending_relations = function(db: Executor, crm_id: string, record_id: stri
             ready = locator_state(db, crm_id, typed_ref.id, typed_ref.type, "relation target") == "present"
         end
         if ready then
-            local object = object_for(db, crm_id, source_object_type)
+            local object = object_in(schema, source_object_type)
             local relation = object.relations[attr]
             if relation then
                 local valid_ref = validate_ref(relation, typed_ref)
                 if linked then
-                    link_internal(db, crm_id, object, relation, source_object_type, source_id, attr, valid_ref)
+                    link_internal(db, schema, relation, source_object_type, source_id, attr, valid_ref)
                 else
                     unlink_internal(db, crm_id, relation, source_id, valid_ref)
                 end
@@ -716,9 +736,10 @@ drain_pending_relations = function(db: Executor, crm_id: string, record_id: stri
     end
 end
 
-function M.field(db: Executor, crm_id: string, object_type: string, record_id: string, attr: string)
+function M.field(db: Executor, schema: Schema, object_type: string, record_id: string, attr: string)
     return protected(function()
-        local object = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         local field = object.fields[attr]
         if field then
             local row = query(db, "SELECT * FROM " .. object.table_name .. " WHERE crm_id = $1 AND record_id = $2 LIMIT 1", { crm_id, record_id })[1]
@@ -735,9 +756,10 @@ function M.field(db: Executor, crm_id: string, object_type: string, record_id: s
     end)
 end
 
-function M.replace_relation(db: Executor, crm_id: string, object_type: string, source_id: string, attr: string, refs: unknown)
+function M.replace_relation(db: Executor, schema: Schema, object_type: string, source_id: string, attr: string, refs: unknown)
     return protected(function()
-        local object = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         local relation = object.relations[attr]
         if not relation then fail(errors.INVALID, "unknown CRM relation: " .. tostring(object_type) .. "." .. tostring(attr)) end
         if type(refs) ~= "table" then fail(errors.INVALID, "relation replacement requires an array") end
@@ -759,9 +781,10 @@ function M.replace_relation(db: Executor, crm_id: string, object_type: string, s
     end)
 end
 
-function M.link(db: Executor, crm_id: string, object_type: string, source_id: string, attr: string, ref: unknown)
+function M.link(db: Executor, schema: Schema, object_type: string, source_id: string, attr: string, ref: unknown)
     return protected(function()
-        local object = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         local relation = object.relations[attr]
         if not relation then fail(errors.INVALID, "unknown CRM relation: " .. tostring(object_type) .. "." .. tostring(attr)) end
         local typed_ref = validate_ref(relation, ref)
@@ -769,14 +792,15 @@ function M.link(db: Executor, crm_id: string, object_type: string, source_id: st
         -- the record.created arrives later in the stream. Park it rather than fail,
         -- so the fold advances and the record-materialization path drains it.
         if defer_if_endpoint_absent(db, crm_id, object_type, source_id, attr, typed_ref, true) then return true end
-        link_internal(db, crm_id, object, relation, object_type, source_id, attr, typed_ref)
+        link_internal(db, schema, relation, object_type, source_id, attr, typed_ref)
         return true
     end)
 end
 
-function M.unlink(db: Executor, crm_id: string, object_type: string, source_id: string, attr: string, ref: unknown)
+function M.unlink(db: Executor, schema: Schema, object_type: string, source_id: string, attr: string, ref: unknown)
     return protected(function()
-        local object = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         local relation = object.relations[attr]
         if not relation then fail(errors.INVALID, "unknown CRM relation: " .. tostring(object_type) .. "." .. tostring(attr)) end
         local typed_ref = validate_ref(relation, ref)
@@ -832,9 +856,10 @@ local function filter_sql(schema: Schema, object: ObjectSchema, filters: { Filte
     return clauses
 end
 
-function M.list(db: Executor, crm_id: string, object_type: string, options: unknown)
+function M.list(db: Executor, schema: Schema, object_type: string, options: unknown)
     return protected(function()
-        local object, schema = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         local list_options: ListOptions = type(options) == "table" and options :: ListOptions or {}
         local params = { crm_id }
         local clauses = { "crm_id = $1" }
@@ -917,9 +942,9 @@ local function relation_descriptors(schema: Schema): { Relation }
     return out
 end
 
-function M.related_many(db: Executor, crm_id: string, record_ids: unknown)
+function M.related_many(db: Executor, schema: Schema, record_ids: unknown)
     return protected(function()
-        local schema = load_schema(db, crm_id)
+        local crm_id = bound(schema)
         local result: { [string]: RelationGroup } = {}
         local ids = {}
         local seen = {}
@@ -984,11 +1009,12 @@ end
 -- schema which tables hold those edges rather than composing a table name of its
 -- own, and joins against them instead of materializing the neighbour list into a
 -- parameter per neighbour.
-function M.relation_tables(db: Executor, crm_id: string): (unknown?, error?)
+function M.relation_tables(schema: Schema): (unknown?, error?)
     return protected(function()
+        bound(schema)
         local out: { string } = {}
         local seen: { [string]: boolean } = {}
-        for _, relation in ipairs(relation_descriptors(load_schema(db, crm_id))) do
+        for _, relation in ipairs(relation_descriptors(schema)) do
             if not seen[relation.relation_table] then
                 seen[relation.relation_table] = true
                 out[#out + 1] = relation.relation_table
@@ -998,8 +1024,8 @@ function M.relation_tables(db: Executor, crm_id: string): (unknown?, error?)
     end)
 end
 
-function M.related(db: Executor, crm_id: string, record_id: string)
-    local groups, err = M.related_many(db, crm_id, { record_id })
+function M.related(db: Executor, schema: Schema, record_id: string)
+    local groups, err = M.related_many(db, schema, { record_id })
     if err then return nil, err end
     if type(groups) ~= "table" then return nil, errors.new({ kind = errors.INTERNAL, message = "invalid related record response" }) end
     return (groups :: { [string]: RelationGroup })[record_id] or { outgoing = {}, incoming = {} }, nil
@@ -1086,9 +1112,10 @@ function M.locate_activity(db: Executor, crm_id: string, activity_id: unknown,
     return (held :: { string })[1], nil
 end
 
-function M.cleanup_record(db: Executor, crm_id: string, object_type: string, record_id: string)
+function M.cleanup_record(db: Executor, schema: Schema, object_type: string, record_id: string)
     return protected(function()
-        local object, schema = object_for(db, crm_id, object_type)
+        local crm_id = bound(schema)
+        local object = object_in(schema, object_type)
         for _, relation in ipairs(relation_descriptors(schema)) do
             execute(db, "DELETE FROM " .. relation.relation_table
                 .. " WHERE crm_id = $1 AND (source_id = $2 OR (target_kind = 'record' AND target_id = $2))", { crm_id, record_id })
@@ -1101,11 +1128,12 @@ end
 
 M.delete = M.cleanup_record
 
-function M.merge(db: Executor, crm_id: string, object_type: string, winner_id: string, loser_id: string, at: string)
+function M.merge(db: Executor, schema: Schema, object_type: string, winner_id: string, loser_id: string, at: string)
     return protected(function()
+        local crm_id = bound(schema)
         if winner_id == loser_id then fail(errors.INVALID, "winner and loser must differ") end
         if type(at) ~= "string" or at == "" then fail(errors.INVALID, "merge timestamp is required") end
-        local object, schema = object_for(db, crm_id, object_type)
+        local object = object_in(schema, object_type)
         local winner = query(db, "SELECT * FROM " .. object.table_name
             .. " WHERE crm_id = $1 AND record_id = $2", { crm_id, winner_id })[1]
         local loser = query(db, "SELECT * FROM " .. object.table_name
@@ -1123,12 +1151,6 @@ function M.merge(db: Executor, crm_id: string, object_type: string, winner_id: s
                 assignments[#assignments + 1] = field.column_name .. " = " .. value_sql[1]
             end
         end
-        params[#params + 1] = crm_id
-        local crm_slot = "$" .. tostring(#params)
-        params[#params + 1] = winner_id
-        local winner_slot = "$" .. tostring(#params)
-        execute(db, "UPDATE " .. object.table_name .. " SET " .. table.concat(assignments, ", ")
-            .. " WHERE crm_id = " .. crm_slot .. " AND record_id = " .. winner_slot, params)
 
         for _, relation in ipairs(relation_descriptors(schema)) do
             execute(db, "DELETE FROM " .. relation.relation_table
@@ -1199,9 +1221,17 @@ function M.merge(db: Executor, crm_id: string, object_type: string, winner_id: s
             end
         end
 
+        -- The loser leaves before the winner takes its values, so a unique
+        -- value the winner inherits has a single holder at every step.
         delete_record(db, schema, object, crm_id, loser_id)
         execute(db, "DELETE FROM kickside_crm_record_locator"
             .. " WHERE crm_id = $1 AND record_id = $2", { crm_id, loser_id })
+        params[#params + 1] = crm_id
+        local crm_slot = "$" .. tostring(#params)
+        params[#params + 1] = winner_id
+        local winner_slot = "$" .. tostring(#params)
+        execute(db, "UPDATE " .. object.table_name .. " SET " .. table.concat(assignments, ", ")
+            .. " WHERE crm_id = " .. crm_slot .. " AND record_id = " .. winner_slot, params)
         execute(db, "UPDATE kickside_crm_record_locator SET updated_at = $1"
             .. " WHERE crm_id = $2 AND record_id = $3", { at, crm_id, winner_id })
         if schema.dialect == "sqlite" then
@@ -1225,7 +1255,7 @@ function M.destroy_crm(db: sql.DB, crm_id: string)
             execute(tx, "DROP TABLE IF EXISTS " .. object.table_name)
         end
         for _, table_name in ipairs({
-            "kickside_crm_merge_resolution", "kickside_crm_merge_decision",
+            "kickside_crm_conditional_outcome", "kickside_crm_merge_resolution", "kickside_crm_merge_decision",
             "kickside_crm_alias_secret", "kickside_crm_alias_reservation", "kickside_crm_alias",
             "kickside_crm_pending_relation",
             "kickside_crm_ref", "kickside_crm_activity_alias",
