@@ -1,9 +1,9 @@
-import { W as t } from "./index-BzYkOw4T.js";
-import { P as i } from "./primevue-plugin-BK4VDKFT.js";
-import { c as r } from "./crmStyles-CmIx_Z1C.js";
+import { W as o, u as r } from "./wc-runtime-CNDpK4lj.js";
+import { c as i } from "./crmStyles-FURw0f4P.js";
+import { a as n } from "./lazy-Cfv2E3SG.js";
 import "@iconify/vue";
-import { define as o } from "@wippy-fe/proxy";
-const n = {
+import { define as s } from "@wippy-fe/proxy";
+const p = {
   type: "object",
   properties: {
     route: { type: "string", default: "", description: "CRM object, record, review, or model route." },
@@ -11,13 +11,25 @@ const n = {
     "entry-id": { type: "string", default: "", description: "CRM component id supplied by the Workspace manage view." }
   }
 };
-class p extends t {
+class e extends o {
   static get wippyConfig() {
-    return { propsSchema: n, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: r };
+    return { propsSchema: p, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: i };
   }
   static get vueConfig() {
-    return { lazyConfig: () => import("./CrmSurface-93gpdwog.js").then((e) => ({ rootComponent: e.default, plugins: [i] })) };
+    return {
+      lazyConfig: n(
+        () => import("./surface-mount-id8OKqaL.js").then((t) => t.mountConfig),
+        "Could not load the CRM. Reload the page to try again.",
+        r
+      )
+    };
   }
 }
-o(import.meta.url, p);
+async function f() {
+  return e;
+}
+s(import.meta.url, e);
+export {
+  f as webComponent
+};
 //# sourceMappingURL=surface.js.map
