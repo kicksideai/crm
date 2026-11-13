@@ -5,6 +5,7 @@ namespace: kickside.crm.traits
 # schema changes use the portable authority, with no action dispatcher, direct
 # merge, or visual-builder coupling.
 entries:
+
   - name: crm_tool
     kind: library.lua
     meta: { comment: Shared exact-operation CRM agent tool implementation. }
@@ -790,6 +791,9 @@ entries:
     method: resolve_record
     modules: [ctx, security, uuid]
     imports: *crm_tool_imports
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: create_record
     kind: function.lua
@@ -854,6 +858,9 @@ entries:
     method: create_record
     modules: [ctx, security, uuid]
     imports: *crm_tool_imports
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: create_records
     kind: function.lua
@@ -913,6 +920,9 @@ entries:
     method: create_records
     modules: [ctx, security, uuid]
     imports: *crm_tool_imports
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: update_record
     kind: function.lua
@@ -979,6 +989,9 @@ entries:
     method: update_record
     modules: [ctx, security, uuid]
     imports: *crm_tool_imports
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: set_membership
     kind: function.lua
@@ -1343,6 +1356,7 @@ entries:
 
   # Record files for a module that does not depend on CRM (Leads, ATN-98). Not
   # agent tools: they are absent from crm_trait.
+
   - name: record.files
     kind: function.lua
     meta:
@@ -1369,3 +1383,6 @@ entries:
     method: record_file_url
     modules: [ctx, security, uuid]
     imports: *crm_tool_imports
+    security:
+      policies:
+      - kickside.crm:upload_read_token_call

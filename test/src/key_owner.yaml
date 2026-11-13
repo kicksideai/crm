@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: key_owner_test
+    kind: function.lua
+    meta: {type: test, suite: key_owner}
+    source: file://key_owner_test.lua
+    method: run
+    modules: [sql,uuid,funcs,security,env,crypto,base64]
+    imports:
+      test: wippy.test:test
+      consts: kickside.crm:consts
+  - name: key_owner_probe
+    kind: function.lua
+    source: file://key_owner_test.lua
+    method: probe
+    modules: [sql,uuid,funcs,security,env,crypto,base64]
+    imports:
+      test: wippy.test:test
+      consts: kickside.crm:consts
+  - name: key_owner_caller
+    kind: security.policy
+    policy:
+      resources: '*'
+      actions: [funcs.call, funcs.security, funcs.context, contract.get, contract.open, contract.call, contract.implementations, contract.security, registry.get, registry.find, db.get]
+      effect: allow
