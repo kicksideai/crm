@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.12](https://github.com/kicksideai/crm/compare/crm-v0.6.11...crm-v0.6.12) (2026-11-13)
+
+
+### Bug Fixes
+
+* **crm:** name the arm when resuming a parked block ([#43](https://github.com/kicksideai/crm/issues/43)) ([4bdac6a](https://github.com/kicksideai/crm/commit/4bdac6a5376078fef97c4605a85223e3aadb3ce9))
+
 ## [0.6.11](https://github.com/kicksideai/crm/compare/crm-v0.6.10...crm-v0.6.11) (2026-11-10)
 
 
