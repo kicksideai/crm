@@ -79,7 +79,9 @@ CRM publishes two object-neutral `kickside.block/v1` entries:
   outcomes, and merge suggestions.
 - `kickside.crm.blocks:merge_review` parks a Dataflow on the generic Blocks
   Signal seam and returns exactly one decision: `merged`, `do_not_merge`, or
-  `skipped`.
+  `skipped`. Its resolution callback sends the constant
+  `arm_id: kickside.crm.resolution:merge_arm` to `kickside.blocks:resume`
+  under the resolution actor and scope, preserving that frame's arm invocation authority.
 
 These Blocks are headless. They have no dependency on visual Workflows,
 Automation, or CRM UI components. CRM publishes no business-specific Flows.
