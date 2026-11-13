@@ -21,3 +21,5 @@ mv "$MIRROR/wippy.yaml.filtered" "$MIRROR/wippy.yaml"
 
 cp "$HERE/../src/api/query.lua" "$HERE/src/query_handler_source.lua"
 cp "$HERE/../src/api/resolve.lua" "$HERE/src/resolve_handler_source.lua"
+
+cp "$HERE/../src/resolution/merge_arm.lua" "$HERE/src/merge_arm_source.lua"

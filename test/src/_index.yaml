@@ -1307,3 +1307,41 @@ entries:
       origins: kickside.crm.persist:write_origin
       fixture: app:crm_sink_fixture
       retention_runner: kickside.core.retention.service:runner
+
+  - name: crm_merge_resume_writer
+    kind: library.lua
+    source: file://crm_merge_resume_fixture.lua
+
+  - name: crm_merge_resume_reader
+    kind: library.lua
+    source: file://crm_merge_resume_fixture.lua
+
+  - name: crm_merge_resume_security
+    kind: library.lua
+    source: file://crm_merge_resume_fixture.lua
+
+  - name: crm_merge_resume_funcs
+    kind: library.lua
+    source: file://crm_merge_resume_fixture.lua
+
+  - name: crm_merge_resume_subject
+    kind: library.lua
+    source: file://merge_arm_source.lua
+    imports:
+      writer: app:crm_merge_resume_writer
+      types: kickside.crm:types
+      reader: app:crm_merge_resume_reader
+      component: kickside.component:component
+      security: app:crm_merge_resume_security
+      funcs: app:crm_merge_resume_funcs
+
+  - name: crm_merge_resume_test
+    kind: function.lua
+    meta: { type: test, suite: kickside_crm }
+    source: file://crm_merge_resume_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      merge_arm: app:crm_merge_resume_subject
+      fixture: app:crm_merge_resume_funcs
+      identity: app:crm_merge_resume_security

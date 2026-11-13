@@ -12,3 +12,5 @@ coverage/
 
 /test/src/query_handler_source.lua
 /test/src/resolve_handler_source.lua
+
+/test/src/merge_arm_source.lua
