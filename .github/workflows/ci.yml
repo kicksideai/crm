@@ -64,7 +64,7 @@ jobs:
             mkdir -p .wippy
             wippy lint --ns app --ns 'app.*' --ns kickside.crm --ns kickside.crm.api --ns kickside.crm.binding --ns kickside.crm.blocks --ns kickside.crm.command --ns kickside.crm.domain --ns kickside.crm.events --ns kickside.crm.files --ns kickside.crm.migrations --ns kickside.crm.persist --ns kickside.crm.ports --ns kickside.crm.read --ns kickside.crm.registry --ns kickside.crm.resolution --ns kickside.crm.schema --ns kickside.crm.security --ns kickside.crm.service --ns kickside.crm.sink --ns kickside.crm.surface --ns kickside.crm.traits --ns kickside.crm.ui --ns kickside.crm.workspace --level error --set "vars.sqlite_path=$PWD/.wippy/ci.sqlite"
             bash ./run.sh --set "vars.sqlite_path=$PWD/.wippy/ci.sqlite" 2>&1 | tee .wippy-test.log
-            sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' .wippy-test.log > .wippy-test.clean.log
+            LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' .wippy-test.log > .wippy-test.clean.log
             awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
             cd "$source_root"
             version=$(jq -er --arg path . '.[$path]' .release-please-manifest.json)
@@ -92,7 +92,7 @@ jobs:
             databases+=("$database")
             wippy lint --ns app --ns 'app.*' --ns kickside.crm --ns kickside.crm.api --ns kickside.crm.binding --ns kickside.crm.blocks --ns kickside.crm.command --ns kickside.crm.domain --ns kickside.crm.events --ns kickside.crm.files --ns kickside.crm.migrations --ns kickside.crm.persist --ns kickside.crm.ports --ns kickside.crm.read --ns kickside.crm.registry --ns kickside.crm.resolution --ns kickside.crm.schema --ns kickside.crm.security --ns kickside.crm.service --ns kickside.crm.sink --ns kickside.crm.surface --ns kickside.crm.traits --ns kickside.crm.ui --ns kickside.crm.workspace --level error --profile postgres --set "vars.pg_database=${databases[0]}" --set "vars.pg_receipt_schema_database=${databases[1]}" --set vars.pg_host=127.0.0.1 --set vars.pg_port=5433
             bash ./run.sh --profile postgres --set "vars.pg_database=${databases[0]}" --set "vars.pg_receipt_schema_database=${databases[1]}" --set vars.pg_host=127.0.0.1 --set vars.pg_port=5433 2>&1 | tee .wippy-test.log
-            sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' .wippy-test.log > .wippy-test.clean.log
+            LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' .wippy-test.log > .wippy-test.clean.log
             awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
             cd "$source_root"
             version=$(jq -er --arg path . '.[$path]' .release-please-manifest.json)
