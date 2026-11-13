@@ -2,6 +2,7 @@ version: "1.0"
 namespace: kickside.crm
 
 entries:
+
   - name: definition
     kind: ns.definition
     meta:
@@ -145,3 +146,35 @@ entries:
       component: kickside.component:component
       reader_internal: kickside.crm.persist:read_model
       files: kickside.crm.files:files
+
+  - name: upload_read_token_call
+    kind: security.policy
+    policy:
+      resources:
+        - kickside.uploads.persist:token_pack_read
+      actions: [funcs.call, funcs.security]
+      effect: allow
+
+  - name: upload_callback_token_call
+    kind: security.policy
+    policy:
+      resources:
+        - kickside.uploads.persist:token_pack
+        - kickside.uploads.persist:token_unpack
+      actions: [funcs.call, funcs.security]
+      effect: allow
+
+  - name: encryption_key
+    kind: ns.requirement
+    default: ENCRYPTION_KEY
+    targets:
+      - {entry: kickside.crm.env:encryption_key, path: .default}
+      - {entry: kickside.crm:secret_key_access, path: '.policy.resources +='}
+
+  - name: secret_key_access
+    kind: security.policy
+    meta: {service_only: true}
+    policy:
+      resources: [kickside.crm.env:encryption_key]
+      actions: [env.get]
+      effect: allow

@@ -2,6 +2,7 @@ version: "1.0"
 namespace: kickside.crm.sink
 
 entries:
+
   - name: crm_sink_implementation
     kind: library.lua
     meta: { comment: Shared implementation behind individually owned function entries. }
@@ -67,6 +68,9 @@ entries:
       types: kickside.crm:types
       sink_commands: kickside.crm.sink:sink_commands
       sink_receipts: kickside.crm.persist:sink_receipts
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: crm_list_keys
     kind: function.lua
