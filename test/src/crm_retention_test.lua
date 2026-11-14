@@ -8,6 +8,7 @@ local process = require("process")
 local channel = require("channel")
 local types = require("types")
 local retention_runner = require("retention_runner")
+local clock = require("clock")
 local storage = require("storage")
 local receipts = require("receipts")
 local origins = require("origins")
@@ -90,13 +91,20 @@ local function define()
                 test.eq(report.deleted, 0)
                 test.eq(report.needs_continue, false)
                 local handle = assert(sql.get(types.db_id())) :: sql.DB
+                local audit_heads = query(handle, [[SELECT e.created_at FROM kickside_thread t
+                    JOIN kickside_event e ON e.thread_id = t.id AND e.seq = t.max_pruned_seq + 1
+                    WHERE t.thread_class = $1]], { "lifecycle." .. types.CRM_IMPL })
+                test.eq(#audit_heads, 1, "the fixture creates one component audit thread")
+                local created = assert(clock.parse(tostring(audit_heads[1].created_at)))
+                local audit_deadline = math.floor(created:unix_nano() / 1000000) + 30 * 86400000 + 1
                 local after, after_err = retention_runner.on_wake(handle, tostring(process.pid()), { kind = "deadline_test" })
                 handle:release()
                 test.is_nil(after_err, tostring(after_err))
                 local completed = tostring(fixture.receipt_rows(crm_id, "retention:wake")[1].completed_at)
                 local expected = math.floor(assert(time.parse(time.RFC3339, completed)):unix_nano() / 1000000) + 30 * 86400000 + 1000
                 test.eq(report.deadline_ms, expected)
-                test.eq(after.deadline_ms, expected)
+                test.eq(after.deadline_ms, math.min(expected, audit_deadline),
+                    "Core combines the owner's deadline with the audit event's full-precision eligibility")
             end)
             process.registry.unregister("kickside.core.retention.service:sweeper_process", process.registry.CONSISTENT)
             process.unlisten(mailbox)
