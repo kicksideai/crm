@@ -1,13 +1,12 @@
-import { _ as va, P as ma } from "./CrmSettings.vue_vue_type_script_setup_true_lang-vvRk7aa4.js";
-import { defineComponent as ue, ref as A, computed as $, watch as ve, onMounted as Ne, openBlock as n, createElementBlock as r, createElementVNode as a, createVNode as j, unref as p, createTextVNode as Y, toDisplayString as d, Fragment as F, renderList as W, normalizeClass as Z, createCommentVNode as N, createBlock as le, withDirectives as qe, vModelSelect as ba, withKeys as Je, withModifiers as Ke, vModelText as Xe, useId as Vt, reactive as fa, withCtx as Mt, onBeforeUnmount as At, resolveDynamicComponent as Nt, normalizeStyle as ya } from "vue";
+import { a as va, u as ma, P as ba } from "./wc-runtime-DKFqZRRO.js";
+import { defineComponent as ue, ref as A, computed as $, watch as ve, onMounted as Ne, openBlock as n, createElementBlock as r, createElementVNode as a, createVNode as j, unref as p, createTextVNode as Y, toDisplayString as d, Fragment as F, renderList as W, normalizeClass as Z, createCommentVNode as N, createBlock as le, withDirectives as qe, vModelSelect as fa, withKeys as Je, withModifiers as Ke, vModelText as Xe, useId as Vt, reactive as ya, withCtx as Mt, onBeforeUnmount as At, resolveDynamicComponent as Nt, normalizeStyle as pa } from "vue";
 import { Icon as x } from "@iconify/vue";
-import { host as ae, loadByTagName as pa, api as ht, on as ha } from "@wippy-fe/proxy";
-import { a as ga, u as ka } from "./wc-runtime-CNDpK4lj.js";
-import { c as Tt, a as Lt, r as at, h as oe, d as _a, e as xe, o as Se, f as Ve, g as lt, i as nt, j as Ot, s as Et, k as $a, l as Ft, n as wa, t as rt, p as Ca, q as ja, u as Ia, v as ye, w as $e, x as Me, y as gt, z as Sa, A as kt, B as Ze, m as se, C as _t, D as Ie, E as Ra, F as We, G as xa, H as Va, I as Ue, J as Ma, K as Aa, L as $t, M as Na, N as Ta, O as La, P as Dt, Q as st, R as Oa, S as Ea, T as Fa, U as Da, V as Ba, W as Pa, b as wt, X as Ct, Y as qa } from "./crm-model-BaRhr3mT.js";
-import { _ as Wa } from "./RecordPickerControl.vue_vue_type_script_setup_true_lang-DqL5RXQ_.js";
-import Ua from "primevue/dialog";
+import { host as ae, loadByTagName as ha, api as ht, on as ga } from "@wippy-fe/proxy";
+import { c as Tt, a as Lt, r as at, h as oe, d as ka, e as xe, o as Se, f as Ve, g as lt, i as nt, j as Ot, s as Et, k as _a, l as Ft, n as $a, t as rt, p as wa, q as Ca, u as ja, v as ye, w as $e, x as Me, y as gt, z as Ia, A as kt, B as Ze, m as se, C as _t, D as Ie, E as Sa, F as We, G as Ra, H as xa, I as Ue, J as Va, K as Ma, L as $t, M as Aa, N as Na, O as Ta, P as Bt, Q as st, R as La, S as Oa, T as Ea, U as Fa, V as Ba, W as Da, b as wt, X as Ct, Y as Pa } from "./crm-model-BaRhr3mT.js";
+import { _ as qa } from "./RecordPickerControl.vue_vue_type_script_setup_true_lang-DqL5RXQ_.js";
+import { s as Wa, _ as Ua } from "./CrmSettings.vue_vue_type_script_setup_true_lang-Bb0D-vhh.js";
 import { c as za, a as Ka, r as Ya } from "./model-COKQFUj6.js";
-import { _ as Ha } from "./CrmCreate.vue_vue_type_script_setup_true_lang-BRTMnis7.js";
+import { _ as Ha } from "./CrmCreate.vue_vue_type_script_setup_true_lang-DNTvvDdX.js";
 function Ga(e, o) {
   let t, l = 0;
   function s() {
@@ -159,7 +158,7 @@ const Qa = { class: "crm-rail" }, Ja = { class: "crm-brand" }, Xa = { class: "cr
   membershipSet: "kickside.crm.events:membership.set",
   activityLogged: "kickside.crm.events:activity.logged"
 };
-function Be(e) {
+function De(e) {
   return `${e.kind}\0${e.type}\0${e.id}`;
 }
 function ol(e) {
@@ -203,11 +202,11 @@ function ul(e, o, t, l, s) {
   });
   for (const g of t) {
     if (g.data_type !== "relation") continue;
-    const i = u.relations.get(g.attr) || [], y = h.relations.get(g.attr) || [], v = new Set(i.map(Be)), f = new Set(y.map(Be));
+    const i = u.relations.get(g.attr) || [], y = h.relations.get(g.attr) || [], v = new Set(i.map(De)), f = new Set(y.map(De));
     for (const R of i)
-      f.has(Be(R)) || V.push(et(we.relationUnlinked, e, o, g, R));
+      f.has(De(R)) || V.push(et(we.relationUnlinked, e, o, g, R));
     for (const R of y)
-      v.has(Be(R)) || V.push(et(we.relationLinked, e, o, g, R));
+      v.has(De(R)) || V.push(et(we.relationLinked, e, o, g, R));
   }
   return V;
 }
@@ -229,7 +228,7 @@ const pe = {
 function cl(e) {
   return !0;
 }
-function Bt(e) {
+function Dt(e) {
   return e.filter(cl);
 }
 const _e = ["is_set", "is_empty"];
@@ -334,7 +333,7 @@ function fl(e, o) {
 }
 function yl(e, o) {
   const t = e.toLowerCase();
-  return Bt(o).find(
+  return Dt(o).find(
     (l) => l.attr.toLowerCase() === t || (l.label || "").toLowerCase() === t || oe(l.attr).toLowerCase() === t
   );
 }
@@ -348,7 +347,7 @@ function pl(e, o) {
   return { filters: t, text: l.join(" ") };
 }
 function Pe(e, o) {
-  return e == null || e === "" ? "" : typeof e == "boolean" ? e ? "Yes" : "No" : o?.data_type === "relation" ? _a(String(e)) : String(e);
+  return e == null || e === "" ? "" : typeof e == "boolean" ? e ? "Yes" : "No" : o?.data_type === "relation" ? ka(String(e)) : String(e);
 }
 function hl(e, o) {
   const t = pe[e.op], l = o?.label || oe(e.attr);
@@ -414,7 +413,7 @@ const gl = { class: "crm-reference-input" }, kl = {
           ], 8, _l))
         ]))), 128))
       ])) : N("", !0),
-      e.target.kind === "record" && (e.cardinality === "many" || !s.value.length) ? (n(), le(Wa, {
+      e.target.kind === "record" && (e.cardinality === "many" || !s.value.length) ? (n(), le(qa, {
         key: 1,
         "crm-id": e.crmId,
         "object-type": e.target.object_type,
@@ -437,7 +436,7 @@ const gl = { class: "crm-reference-input" }, kl = {
             value: R
           }, d(p(oe)(R)), 9, Cl))), 128))
         ], 8, wl)), [
-          [ba, h.value]
+          [fa, h.value]
         ]) : N("", !0),
         qe(a("input", {
           "onUpdate:modelValue": f[1] || (f[1] = (R) => u.value = R),
@@ -470,7 +469,7 @@ const gl = { class: "crm-reference-input" }, kl = {
 }, Al = ["value", "onChange"], Nl = ["value"], Tl = ["value", "onChange"], Ll = ["value"], Ol = {
   key: 0,
   class: "crm-filter-novalue"
-}, El = ["value", "onChange"], Fl = ["value", "onChange"], Dl = ["value"], Bl = ["onChange"], Pl = ["value", "selected"], ql = ["type", "value", "onInput"], Wl = ["type", "value", "onInput"], Ul = ["type", "value", "onInput"], zl = ["onClick"], Kl = { class: "crm-filter-actions" }, Yl = { class: "crm-filter-chips" }, Hl = ["onClick"], Gl = { class: "crm-filter-chip-field" }, Ql = { class: "crm-filter-chip-op" }, Jl = {
+}, El = ["value", "onChange"], Fl = ["value", "onChange"], Bl = ["value"], Dl = ["onChange"], Pl = ["value", "selected"], ql = ["type", "value", "onInput"], Wl = ["type", "value", "onInput"], Ul = ["type", "value", "onInput"], zl = ["onClick"], Kl = { class: "crm-filter-actions" }, Yl = { class: "crm-filter-chips" }, Hl = ["onClick"], Gl = { class: "crm-filter-chip-field" }, Ql = { class: "crm-filter-chip-op" }, Jl = {
   key: 0,
   class: "crm-filter-chip-value"
 }, Xl = /* @__PURE__ */ ue({
@@ -482,7 +481,7 @@ const gl = { class: "crm-reference-input" }, kl = {
   },
   emits: ["update:modelValue"],
   setup(e, { emit: o }) {
-    const t = e, l = o, s = A(!1), u = Vt(), h = $(() => Bt(t.fields)), C = $(() => t.modelValue.filter(Wt)), I = $(() => C.value.length);
+    const t = e, l = o, s = A(!1), u = Vt(), h = $(() => Dt(t.fields)), C = $(() => t.modelValue.filter(Wt)), I = $(() => C.value.length);
     function k(w) {
       return ze(t.fields, w.attr);
     }
@@ -512,7 +511,7 @@ const gl = { class: "crm-reference-input" }, kl = {
       const _ = ze(t.fields, O);
       if (!_) return;
       const M = It(_);
-      f(t.modelValue.map((D) => D.id === w ? { ...M, id: w } : D));
+      f(t.modelValue.map((B) => B.id === w ? { ...M, id: w } : B));
     }
     function T(w, O) {
       const _ = t.modelValue.find((M) => M.id === w);
@@ -613,7 +612,7 @@ const gl = { class: "crm-reference-input" }, kl = {
               (n(!0), r(F, null, W(g(_), (M) => (n(), r("option", {
                 key: M,
                 value: M
-              }, d(M), 9, Dl))), 128))
+              }, d(M), 9, Bl))), 128))
             ], 40, Fl)) : v(_) === "choices-multi" ? (n(), r("select", {
               key: 3,
               class: "crm-input crm-multi",
@@ -626,7 +625,7 @@ const gl = { class: "crm-reference-input" }, kl = {
                 value: M,
                 selected: i(_.value).includes(M)
               }, d(M), 9, Pl))), 128))
-            ], 40, Bl)) : v(_) === "relation" && p(Ve)(k(_)) ? (n(), le(Ut, {
+            ], 40, Dl)) : v(_) === "relation" && p(Ve)(k(_)) ? (n(), le(Ut, {
               key: 4,
               class: "crm-filter-relation",
               "crm-id": e.crmId,
@@ -738,7 +737,7 @@ const gl = { class: "crm-reference-input" }, kl = {
     const t = e, l = o, s = $(() => t.attribute?.data_type === "relation"), u = $(() => s.value ? lt(t.value, t.names, Ve(t.attribute)) : []), h = $(() => t.attribute?.data_type === "boolean"), C = $(() => nt(t.value, t.attribute)), I = $(() => Array.isArray(t.value) && t.value.every((y) => y === null || typeof y != "object")), k = $(() => Ot(t.value, t.attribute)), V = $(() => k.value ? Et(t.value) : []), g = $(() => {
       const y = `${V.value.length} field${V.value.length === 1 ? "" : "s"}`, v = t.attribute?.label?.trim();
       return v ? `${v} — ${y}` : y;
-    }), i = $(() => (!s.value && I.value ? t.value : t.attribute?.data_type === "select" && t.value ? [t.value] : []).map((v) => ({ key: String(v), label: $a(v) })));
+    }), i = $(() => (!s.value && I.value ? t.value : t.attribute?.data_type === "select" && t.value ? [t.value] : []).map((v) => ({ key: String(v), label: _a(v) })));
     return (y, v) => s.value ? (n(), r("span", Zl, [
       u.value.length ? (n(!0), r(F, { key: 0 }, W(u.value, (f) => (n(), r(F, {
         key: `${f.kind}:${f.type}:${f.id}`
@@ -909,7 +908,7 @@ const gl = { class: "crm-reference-input" }, kl = {
   },
   emits: ["close", "save"],
   setup(e, { emit: o }) {
-    const t = e, l = o, s = fa({ ...t.record?.values || {} }), u = A(""), h = () => l("close"), C = { content: { class: "crm-dialog-content" } }, I = $(() => t.attributes.filter((g) => Ft(g).form !== !1));
+    const t = e, l = o, s = ya({ ...t.record?.values || {} }), u = A(""), h = () => l("close"), C = { content: { class: "crm-dialog-content" } }, I = $(() => t.attributes.filter((g) => Ft(g).form !== !1));
     function k(g, i) {
       i === void 0 || i === "" ? delete s[g] : s[g] = i;
     }
@@ -921,7 +920,7 @@ const gl = { class: "crm-reference-input" }, kl = {
       }
       u.value = "", l("save", { ...s });
     }
-    return (g, i) => (n(), le(p(Ua), {
+    return (g, i) => (n(), le(p(Wa), {
       visible: !0,
       modal: "",
       "dismissable-mask": !0,
@@ -954,7 +953,7 @@ const gl = { class: "crm-reference-input" }, kl = {
         }, [
           (n(!0), r(F, null, W(I.value, (y) => (n(), le(jn, {
             key: y.attr,
-            class: Z(`crm-field-span-${p(wa)(y)}`),
+            class: Z(`crm-field-span-${p($a)(y)}`),
             "crm-id": e.crmId,
             attribute: y,
             attributes: e.schema,
@@ -994,7 +993,7 @@ const gl = { class: "crm-reference-input" }, kl = {
   key: 0,
   class: "crm-command-scoped",
   title: "Typed scope tokens are applied as filters"
-}, Fn = ["title"], Dn = ["aria-expanded", "aria-controls"], Bn = ["id"], Pn = ["checked", "disabled", "onChange"], qn = {
+}, Fn = ["title"], Bn = ["aria-expanded", "aria-controls"], Dn = ["id"], Pn = ["checked", "disabled", "onChange"], qn = {
   class: "crm-segment",
   "aria-label": "View layout"
 }, Wn = ["aria-pressed"], Un = ["aria-pressed"], zn = ["aria-pressed"], Kn = {
@@ -1042,9 +1041,9 @@ const gl = { class: "crm-reference-input" }, kl = {
   setup(e, { emit: o }) {
     const t = ["updated_at", "created_at", "record_id"], l = e, s = o, u = A([]), h = A({}), C = A([]), I = A({}), k = A("table"), V = A(""), g = A(""), i = A([]), y = A(!0), v = A(!1), f = A(""), R = A(!1), E = A(!1), T = A(!1), z = Vt(), K = A(!1), J = A(""), ee = A(""), H = A([]), U = A({ attr: "", dir: "asc" }), X = A([]), w = A(0), O = A(0), _ = A(0);
     let M = {};
-    const D = $(() => Se(l.attributes, l.object.type)), S = $(() => rt(D.value)), P = $(() => Ca(D.value)), me = $(() => [...l.views.filter((m) => m.object_type === l.object.type), ...H.value]), re = $(() => [...bl(X.value, D.value), ...i.value]), G = $(() => ja(l.pipelines, l.object)), Le = $(() => Object.fromEntries(D.value.map((m) => [m.attr, m]))), Ce = $(() => new Set(D.value.map((m) => m.attr))), q = $(() => l.views.find((m) => m.object_type === l.object.type && (m.layout === "table" || !m.layout) && Array.isArray(m.spec?.columns) && (m.spec?.columns?.length || 0) > 0)), L = $(() => {
+    const B = $(() => Se(l.attributes, l.object.type)), S = $(() => rt(B.value)), P = $(() => wa(B.value)), me = $(() => [...l.views.filter((m) => m.object_type === l.object.type), ...H.value]), re = $(() => [...bl(X.value, B.value), ...i.value]), G = $(() => Ca(l.pipelines, l.object)), Le = $(() => Object.fromEntries(B.value.map((m) => [m.attr, m]))), Ce = $(() => new Set(B.value.map((m) => m.attr))), q = $(() => l.views.find((m) => m.object_type === l.object.type && (m.layout === "table" || !m.layout) && Array.isArray(m.spec?.columns) && (m.spec?.columns?.length || 0) > 0)), L = $(() => {
       const m = q.value?.spec?.columns?.filter((c) => Ce.value.has(c));
-      return m && m.length ? m : Ia(D.value);
+      return m && m.length ? m : ja(B.value);
     }), te = A(null), he = $(() => {
       const m = te.value ? te.value.filter((c) => Ce.value.has(c)) : [];
       return m.length ? m : L.value;
@@ -1058,7 +1057,7 @@ const gl = { class: "crm-reference-input" }, kl = {
     }
     async function Ye(m) {
       const c = { ...M[l.crmId] || {} };
-      c[l.object.type] = { ...vt(), ...m }, M = { ...M, [l.crmId]: c }, await Aa(M);
+      c[l.object.type] = { ...vt(), ...m }, M = { ...M, [l.crmId]: c }, await Ma(M);
     }
     async function mt(m) {
       try {
@@ -1081,8 +1080,8 @@ const gl = { class: "crm-reference-input" }, kl = {
         const b = m.values[c.attr];
         if (!(b == null || b === "")) {
           if (c.data_type === "relation") {
-            const B = lt(b, h.value, c.config?.target);
-            if (B.length) return B.map((Q) => Q.label).join(", ");
+            const D = lt(b, h.value, c.config?.target);
+            if (D.length) return D.map((Q) => Q.label).join(", ");
           }
           return nt(b, c);
         }
@@ -1090,26 +1089,26 @@ const gl = { class: "crm-reference-input" }, kl = {
       return "";
     }
     function ge(m, c = "") {
-      return m ? xe(m, D.value) : c;
+      return m ? xe(m, B.value) : c;
     }
-    async function De(m, c) {
+    async function Be(m, c) {
       Ue(m, l.object.type, c, l.attributes);
-      const b = D.value.filter((Q) => Q.data_type === "relation"), B = /* @__PURE__ */ new Set();
-      for (const Q of m) for (const de of b) for (const ie of Ma(Q.values[de.attr])) c[ie] || B.add(ie);
-      B.size && Ue(await Ie(l.crmId, [...B]), "", c, l.attributes);
+      const b = B.value.filter((Q) => Q.data_type === "relation"), D = /* @__PURE__ */ new Set();
+      for (const Q of m) for (const de of b) for (const ie of Va(Q.values[de.attr])) c[ie] || D.add(ie);
+      D.size && Ue(await Ie(l.crmId, [...D]), "", c, l.attributes);
     }
     async function ce(m = {}) {
       const c = m.background ? Math.max(je, u.value.length) : je;
       m.background || (y.value = !0, f.value = "", _.value = 0);
       try {
-        const [b, B, Q] = await Promise.all([
+        const [b, D, Q] = await Promise.all([
           kt(l.crmId, l.object.type, { filters: re.value, sort: U.value.attr ? U.value : void 0, search: g.value, limit: c, offset: 0 }),
           Tt(l.crmId, l.object.type),
           Ze(l.crmId, void 0, 100)
         ]);
-        u.value = b.rows, w.value = b.total, O.value = B, C.value = Q, _.value = Math.max(0, b.rows.length - je), f.value = "";
+        u.value = b.rows, w.value = b.total, O.value = D, C.value = Q, _.value = Math.max(0, b.rows.length - je), f.value = "";
         const de = {};
-        await De(b.rows, de), h.value = de, k.value === "board" && await ft();
+        await Be(b.rows, de), h.value = de, k.value === "board" && await ft();
       } catch (b) {
         m.background || (f.value = se(b, `${l.object.label} could not load.`));
       } finally {
@@ -1124,7 +1123,7 @@ const gl = { class: "crm-reference-input" }, kl = {
           const m = await kt(l.crmId, l.object.type, { filters: re.value, sort: U.value.attr ? U.value : void 0, search: g.value, limit: je, offset: _.value });
           u.value = [...u.value, ...m.rows], w.value = m.total;
           const c = { ...h.value };
-          await De(m.rows, c), h.value = c;
+          await Be(m.rows, c), h.value = c;
         } catch (m) {
           ae.toast({ severity: "error", summary: "Could not load more", detail: se(m, "CRM query failed.") });
         } finally {
@@ -1137,28 +1136,28 @@ const gl = { class: "crm-reference-input" }, kl = {
         I.value = {};
         return;
       }
-      const m = await _t(l.crmId, G.value.collection_id, { limit: Ge, offset: 0 }), c = Object.values(m).flatMap((ie) => ie.records.map((ke) => ke.record_id)), b = c.length ? await Ie(l.crmId, c) : [], B = Object.fromEntries(b.map((ie) => [ie.record_id, ie])), Q = {};
+      const m = await _t(l.crmId, G.value.collection_id, { limit: Ge, offset: 0 }), c = Object.values(m).flatMap((ie) => ie.records.map((ke) => ke.record_id)), b = c.length ? await Ie(l.crmId, c) : [], D = Object.fromEntries(b.map((ie) => [ie.record_id, ie])), Q = {};
       for (const ie of gt(G.value)) {
         const ke = m[ie.stage_id] || { records: [], total: 0 };
-        Q[ie.stage_id] = { rows: ke.records.map((fe) => B[fe.record_id]).filter(Boolean), total: ke.total };
+        Q[ie.stage_id] = { rows: ke.records.map((fe) => D[fe.record_id]).filter(Boolean), total: ke.total };
       }
       const de = { ...h.value };
-      await De(b, de), I.value = Q, h.value = de;
+      await Be(b, de), I.value = Q, h.value = de;
     }
     async function aa(m) {
       const c = I.value[m.stage_id];
       if (!G.value || !c || c.rows.length >= c.total) return;
-      const b = await _t(l.crmId, G.value.collection_id, { limit: Ge, offset: c.rows.length }), B = (b[m.stage_id]?.records || []).map((fe) => fe.record_id), Q = B.length ? await Ie(l.crmId, B) : [], de = Object.fromEntries(Q.map((fe) => [fe.record_id, fe])), ie = B.map((fe) => de[fe]).filter(Boolean), ke = { ...h.value };
-      await De(ie, ke), I.value = { ...I.value, [m.stage_id]: { rows: [...c.rows, ...ie], total: b[m.stage_id]?.total || c.total } }, h.value = ke;
+      const b = await _t(l.crmId, G.value.collection_id, { limit: Ge, offset: c.rows.length }), D = (b[m.stage_id]?.records || []).map((fe) => fe.record_id), Q = D.length ? await Ie(l.crmId, D) : [], de = Object.fromEntries(Q.map((fe) => [fe.record_id, fe])), ie = D.map((fe) => de[fe]).filter(Boolean), ke = { ...h.value };
+      await Be(ie, ke), I.value = { ...I.value, [m.stage_id]: { rows: [...c.rows, ...ie], total: b[m.stage_id]?.total || c.total } }, h.value = ke;
     }
     function la(m) {
       U.value = { attr: m, dir: U.value.attr === m && U.value.dir === "asc" ? "desc" : "asc" }, mt({ sort: U.value }), ce();
     }
     async function na(m) {
       E.value = !0;
-      const c = Ra(l.object.type);
+      const c = Sa(l.object.type);
       try {
-        await We(l.crmId, il(c, l.object.type, D.value, m)), ae.toast({ severity: "success", summary: `${ye(l.object)} created`, detail: xe({ record_id: c, values: m }, D.value) }), R.value = !1, await ce(), s("changed"), s("navigate", $e(l.object.type, c));
+        await We(l.crmId, il(c, l.object.type, B.value, m)), ae.toast({ severity: "success", summary: `${ye(l.object)} created`, detail: xe({ record_id: c, values: m }, B.value) }), R.value = !1, await ce(), s("changed"), s("navigate", $e(l.object.type, c));
       } catch (b) {
         ae.toast({ severity: "error", summary: "Could not create record", detail: se(b, "CRM write failed.") });
       } finally {
@@ -1167,19 +1166,19 @@ const gl = { class: "crm-reference-input" }, kl = {
     }
     async function ra(m, c) {
       if (!G.value) return;
-      const b = Object.entries(I.value).find(([, B]) => B.rows.some((Q) => Q.record_id === m.record_id))?.[0];
+      const b = Object.entries(I.value).find(([, D]) => D.rows.some((Q) => Q.record_id === m.record_id))?.[0];
       if (b !== c.stage_id)
         try {
           await We(l.crmId, [{ type: we.membershipSet, body: { collection_id: G.value.collection_id, record_id: m.record_id, stage_id: c.stage_id, position: (I.value[c.stage_id]?.total || 0) + 1, ...b ? { from_stage_id: b } : {} } }]), ae.toast({ severity: "success", summary: "Stage updated", detail: ge(m) }), await ce(), s("changed");
-        } catch (B) {
-          ae.toast({ severity: "error", summary: "Could not move record", detail: se(B, "CRM write failed.") });
+        } catch (D) {
+          ae.toast({ severity: "error", summary: "Could not move record", detail: se(D, "CRM write failed.") });
         }
     }
     function sa(m) {
       return String(m.payload?.title || m.activity_type || "Activity");
     }
     function oa(m) {
-      ee.value = m.view_id, V.value = "", i.value = [], g.value = "", X.value = m.layout === "board" ? [] : fl(m.spec?.filters, D.value);
+      ee.value = m.view_id, V.value = "", i.value = [], g.value = "", X.value = m.layout === "board" ? [] : fl(m.spec?.filters, B.value);
       const c = Array.isArray(m.spec?.columns) ? m.spec.columns.filter((b) => Ce.value.has(b)) : [];
       c.length && (te.value = c.slice(), Ye({ columns: c })), m.spec?.sort?.attr && (U.value = { attr: m.spec.sort.attr, dir: m.spec.sort.dir === "desc" ? "desc" : "asc" }), m.layout === "board" && G.value ? k.value = "board" : m.layout === "timeline" ? k.value = "timeline" : k.value = "table", ce();
     }
@@ -1191,10 +1190,10 @@ const gl = { class: "crm-reference-input" }, kl = {
       m && (ua(m), J.value = "", K.value = !1);
     }
     async function ua(m) {
-      const c = `private:${l.object.type}:${xa(m) || "view"}`, b = k.value === "board" ? { columns: he.value, sort: U.value } : { filters: re.value, columns: he.value, sort: U.value }, B = { view_id: c, object_type: l.object.type, name: m, layout: k.value, spec: b };
-      k.value === "board" && G.value && (B.collection_id = G.value.collection_id);
+      const c = `private:${l.object.type}:${Ra(m) || "view"}`, b = k.value === "board" ? { columns: he.value, sort: U.value } : { filters: re.value, columns: he.value, sort: U.value }, D = { view_id: c, object_type: l.object.type, name: m, layout: k.value, spec: b };
+      k.value === "board" && G.value && (D.collection_id = G.value.collection_id);
       try {
-        const Q = [...H.value.filter((de) => de.view_id !== c), B];
+        const Q = [...H.value.filter((de) => de.view_id !== c), D];
         H.value = Q, await Ye({ views: Q }), ae.toast({ severity: "success", summary: "View saved", detail: m });
       } catch (Q) {
         ae.toast({ severity: "error", summary: "Could not save view", detail: se(Q, "CRM write failed.") });
@@ -1202,7 +1201,7 @@ const gl = { class: "crm-reference-input" }, kl = {
     }
     async function pt() {
       try {
-        M = await Va();
+        M = await xa();
       } catch (b) {
         M = {}, ae.toast({ severity: "error", summary: "Could not load view preferences", detail: se(b, "Profile read failed.") });
       }
@@ -1212,7 +1211,7 @@ const gl = { class: "crm-reference-input" }, kl = {
       m.sort?.attr ? U.value = { attr: m.sort.attr, dir: m.sort.dir === "desc" ? "desc" : "asc" } : c?.attr && (Ce.value.has(c.attr) || t.includes(c.attr)) ? U.value = { attr: c.attr, dir: c.dir === "desc" ? "desc" : "asc" } : U.value = { attr: S.value?.attr || "", dir: "asc" };
     }
     function ca() {
-      const { filters: m, text: c } = pl(V.value, D.value);
+      const { filters: m, text: c } = pl(V.value, B.value);
       i.value = m, g.value = c;
     }
     function da() {
@@ -1256,7 +1255,7 @@ const gl = { class: "crm-reference-input" }, kl = {
             modelValue: X.value,
             "onUpdate:modelValue": c[1] || (c[1] = (b) => X.value = b),
             "crm-id": e.crmId,
-            fields: D.value
+            fields: B.value
           }, null, 8, ["modelValue", "crm-id", "fields"])) : N("", !0),
           a("span", {
             class: "crm-count",
@@ -1276,7 +1275,7 @@ const gl = { class: "crm-reference-input" }, kl = {
               onClick: c[2] || (c[2] = (b) => T.value = !T.value)
             }, [
               j(p(x), { icon: "tabler:columns-3" })
-            ], 10, Dn),
+            ], 10, Bn),
             T.value ? (n(), r("div", {
               key: 0,
               id: p(z),
@@ -1285,7 +1284,7 @@ const gl = { class: "crm-reference-input" }, kl = {
               "aria-label": "Visible columns"
             }, [
               c[17] || (c[17] = a("span", { class: "crm-colmenu-label" }, "Columns", -1)),
-              (n(!0), r(F, null, W(D.value, (b) => (n(), r("label", {
+              (n(!0), r(F, null, W(B.value, (b) => (n(), r("label", {
                 key: b.attr,
                 class: "crm-colopt"
               }, [
@@ -1293,11 +1292,11 @@ const gl = { class: "crm-reference-input" }, kl = {
                   type: "checkbox",
                   checked: he.value.includes(b.attr),
                   disabled: b.attr === S.value?.attr,
-                  onChange: (B) => Zt(b.attr)
+                  onChange: (D) => Zt(b.attr)
                 }, null, 40, Pn),
                 a("span", null, d(b.label || b.attr), 1)
               ]))), 128))
-            ], 8, Bn)) : N("", !0)
+            ], 8, Dn)) : N("", !0)
           ], 32)) : N("", !0),
           a("div", qn, [
             a("button", {
@@ -1348,7 +1347,7 @@ const gl = { class: "crm-reference-input" }, kl = {
           class: Z(["crm-vtab", { active: ee.value === b.view_id }]),
           role: "tab",
           "aria-selected": ee.value === b.view_id,
-          onClick: (B) => oa(b)
+          onClick: (D) => oa(b)
         }, d(b.name), 11, Hn))), 128)),
         a("div", Gn, [
           K.value ? (n(), r(F, { key: 1 }, [
@@ -1409,7 +1408,7 @@ const gl = { class: "crm-reference-input" }, kl = {
               a("tr", null, [
                 (n(!0), r(F, null, W(he.value, (b) => (n(), r("th", { key: b }, [
                   a("button", {
-                    onClick: (B) => la(b)
+                    onClick: (D) => la(b)
                   }, [
                     Y(d(Le.value[b]?.label || b), 1),
                     U.value.attr === b ? (n(), le(p(x), {
@@ -1425,8 +1424,8 @@ const gl = { class: "crm-reference-input" }, kl = {
               (n(!0), r(F, null, W(u.value, (b) => (n(), r("tr", {
                 key: b.record_id
               }, [
-                (n(!0), r(F, null, W(he.value, (B) => (n(), r("td", { key: B }, [
-                  B === S.value?.attr ? (n(), r("button", {
+                (n(!0), r(F, null, W(he.value, (D) => (n(), r("td", { key: D }, [
+                  D === S.value?.attr ? (n(), r("button", {
                     key: 0,
                     type: "button",
                     class: "crm-name-cell crm-row-link",
@@ -1436,8 +1435,8 @@ const gl = { class: "crm-reference-input" }, kl = {
                     a("strong", null, d(ge(b)), 1)
                   ], 8, ar)) : (n(), r("span", nr, [
                     j(Ae, {
-                      value: b.values[B],
-                      attribute: Le.value[B],
+                      value: b.values[D],
+                      attribute: Le.value[D],
                       names: h.value,
                       compact: "",
                       onNavigate: c[12] || (c[12] = (Q) => s("navigate", Q))
@@ -1449,7 +1448,7 @@ const gl = { class: "crm-reference-input" }, kl = {
                     type: "button",
                     class: "crm-row-open",
                     "aria-label": `Open ${ge(b)}`,
-                    onClick: (B) => s("navigate", p($e)(e.object.type, b.record_id))
+                    onClick: (D) => s("navigate", p($e)(e.object.type, b.record_id))
                   }, [
                     j(p(x), {
                       icon: "tabler:chevron-right",
@@ -1503,30 +1502,30 @@ const gl = { class: "crm-reference-input" }, kl = {
           class: "crm-board-column",
           onDragover: c[14] || (c[14] = Ke(() => {
           }, ["prevent"])),
-          onDrop: (B) => e.canWrite && B.dataTransfer?.getData("text/plain") && Oe.value[B.dataTransfer.getData("text/plain")] && ra(Oe.value[B.dataTransfer.getData("text/plain")], b)
+          onDrop: (D) => e.canWrite && D.dataTransfer?.getData("text/plain") && Oe.value[D.dataTransfer.getData("text/plain")] && ra(Oe.value[D.dataTransfer.getData("text/plain")], b)
         }, [
           a("header", null, [
             a("span", null, d(b.label), 1),
             a("b", null, d(I.value[b.stage_id]?.total ?? 0), 1)
           ]),
           a("div", fr, [
-            (n(!0), r(F, null, W(I.value[b.stage_id]?.rows || [], (B) => (n(), r("button", {
-              key: B.record_id,
+            (n(!0), r(F, null, W(I.value[b.stage_id]?.rows || [], (D) => (n(), r("button", {
+              key: D.record_id,
               class: "crm-board-card",
               draggable: e.canWrite,
-              onDragstart: (Q) => e.canWrite && Q.dataTransfer?.setData("text/plain", B.record_id),
-              onClick: (Q) => s("navigate", p($e)(e.object.type, B.record_id))
+              onDragstart: (Q) => e.canWrite && Q.dataTransfer?.setData("text/plain", D.record_id),
+              onClick: (Q) => s("navigate", p($e)(e.object.type, D.record_id))
             }, [
-              a("span", pr, d(p(Me)(ge(B))), 1),
+              a("span", pr, d(p(Me)(ge(D))), 1),
               a("span", null, [
-                a("strong", null, d(ge(B)), 1),
-                bt(B) ? (n(), r("small", hr, d(bt(B)), 1)) : N("", !0)
+                a("strong", null, d(ge(D)), 1),
+                bt(D) ? (n(), r("small", hr, d(bt(D)), 1)) : N("", !0)
               ])
             ], 40, yr))), 128)),
             (I.value[b.stage_id]?.rows || []).length ? (I.value[b.stage_id]?.total ?? 0) > (I.value[b.stage_id]?.rows.length ?? 0) ? (n(), r("button", {
               key: 1,
               class: "crm-button ghost small crm-lane-more",
-              onClick: (B) => aa(b)
+              onClick: (D) => aa(b)
             }, "Load " + d(Math.min(Ge, (I.value[b.stage_id]?.total ?? 0) - (I.value[b.stage_id]?.rows.length ?? 0))) + " more", 9, kr)) : N("", !0) : (n(), r("p", gr, "No records in " + d(b.label), 1))
           ])
         ], 40, br))), 128))
@@ -1545,14 +1544,14 @@ const gl = { class: "crm-reference-input" }, kl = {
             a("p", null, [
               b.record_id && Oe.value[b.record_id] ? (n(), r("button", {
                 key: 0,
-                onClick: (B) => s("navigate", p($e)(e.object.type, b.record_id))
+                onClick: (D) => s("navigate", p($e)(e.object.type, b.record_id))
               }, d(ge(Oe.value[b.record_id], b.record_id)), 9, wr)) : N("", !0),
               a("span", null, d(b.activity_type), 1)
             ])
           ]),
           a("time", {
             datetime: b.occurred_at
-          }, d(p(Sa)(b.occurred_at)), 9, Cr)
+          }, d(p(Ia)(b.occurred_at)), 9, Cr)
         ]))), 128)),
         C.value.length ? N("", !0) : (n(), r("div", jr, [
           a("span", Ir, [
@@ -1566,7 +1565,7 @@ const gl = { class: "crm-reference-input" }, kl = {
         key: 5,
         "crm-id": e.crmId,
         title: `New ${p(ye)(e.object)}`,
-        attributes: D.value,
+        attributes: B.value,
         schema: e.attributes,
         saving: E.value,
         onClose: c[15] || (c[15] = (b) => R.value = !1),
@@ -1579,7 +1578,7 @@ function xr(e) {
   if (customElements.get(e)) return Promise.resolve();
   const o = St.get(e);
   if (o) return o;
-  const t = Promise.resolve().then(() => pa(e, { timeoutMs: Rr })).then(() => {
+  const t = Promise.resolve().then(() => ha(e, { timeoutMs: Rr })).then(() => {
   }).catch((l) => {
     console.warn(`CRM record panel <${e}> is unavailable.`, l);
   });
@@ -1639,10 +1638,10 @@ function Fr(e) {
   const l = Math.floor(t / 60), s = t % 60;
   return s === 0 ? `${l} hr` : `${l} hr ${s} min`;
 }
-function Dr(e) {
+function Br(e) {
   return ne(e.payload?.title) || it(e.activity_type);
 }
-function Br(e) {
+function Dr(e) {
   const t = (ne(e).split("@")[0] ?? "").split(/[._+-]+/).filter((l) => l !== "");
   return t.length ? t.map((l) => l.charAt(0).toUpperCase() + l.slice(1)).join(" ") : ne(e);
 }
@@ -1650,7 +1649,7 @@ function Pr(e, o = "") {
   const t = e.payload?.attendee_emails, l = Array.isArray(t) ? t : [], s = ne(o).toLowerCase(), u = /* @__PURE__ */ new Set(), h = [];
   for (const C of l) {
     const I = ne(typeof C == "string" ? C : C?.email), k = I.toLowerCase();
-    !I || k === s || u.has(k) || (u.add(k), h.push({ name: Br(I), email: I }));
+    !I || k === s || u.has(k) || (u.add(k), h.push({ name: Dr(I), email: I }));
   }
   return h;
 }
@@ -1790,7 +1789,7 @@ const es = {
   },
   emits: ["navigate"],
   setup(e, { emit: o }) {
-    const t = e, l = o, s = $(() => Na(t.fields)), u = $(() => Ta(s.value.reading, t.record.values, t.stated)), h = $(() => La(s.value.reading, s.value.system, t.record.values));
+    const t = e, l = o, s = $(() => Aa(t.fields)), u = $(() => Na(s.value.reading, t.record.values, t.stated)), h = $(() => Ta(s.value.reading, s.value.system, t.record.values));
     function C(I) {
       return Ot(t.record.values[I.attr], I);
     }
@@ -1903,10 +1902,10 @@ const es = {
       const y = Pr(i, t.selfEmail), v = C(i);
       return {
         id: i.activity_id,
-        title: Dr(i),
+        title: Br(i),
         icon: Lr(i.activity_type),
         occurredAt: i.occurred_at || "",
-        when: Dt(i.occurred_at) || "Date unavailable",
+        when: Bt(i.occurred_at) || "Date unavailable",
         facts: Yr(i),
         people: y.slice(0, Rt),
         hidden: Math.max(0, y.length - Rt),
@@ -2146,10 +2145,10 @@ const es = {
 }, Fs = {
   key: 2,
   class: "crm-state"
-}, Ds = {
+}, Bs = {
   key: 3,
   class: "crm-record"
-}, Bs = { class: "crm-record-hero" }, Ps = { class: "crm-avatar large" }, qs = { class: "crm-record-title" }, Ws = { class: "crm-eyebrow" }, Us = { class: "crm-hero-facts" }, zs = {
+}, Ds = { class: "crm-record-hero" }, Ps = { class: "crm-avatar large" }, qs = { class: "crm-record-title" }, Ws = { class: "crm-eyebrow" }, Us = { class: "crm-hero-facts" }, zs = {
   key: 0,
   class: "crm-hero-fact"
 }, Ks = {
@@ -2174,17 +2173,17 @@ const es = {
   },
   emits: ["back", "navigate", "changed"],
   setup(e, { emit: o }) {
-    const t = e, l = o, s = A(null), u = A([]), h = A(xt), C = A(!1), I = A([]), k = A({}), V = A(!0), g = A(!1), i = A(!1), y = A(""), v = $(() => Se(t.attributes, t.object.type)), f = $(() => s.value ? xe(s.value, v.value) : st(t.recordId)), R = $(() => s.value ? Oa(v.value, s.value.values) : {}), E = $(() => Dt(Jr(u.value))), T = $(() => [rt(v.value)?.attr, R.value.status?.attr].filter((D) => !!D)), z = $(() => u.value.length >= h.value), K = $(() => {
-      const D = s.value?.values || {}, S = v.value.find((P) => P.data_type === "email" && Ea(D[P.attr]));
-      return S ? String(D[S.attr] ?? "") : "";
-    }), J = A(/* @__PURE__ */ new Set()), ee = $(() => I.value.filter((D) => J.value.has(D.tag)));
-    async function H(D) {
-      await Promise.all(D.map(async (S) => {
+    const t = e, l = o, s = A(null), u = A([]), h = A(xt), C = A(!1), I = A([]), k = A({}), V = A(!0), g = A(!1), i = A(!1), y = A(""), v = $(() => Se(t.attributes, t.object.type)), f = $(() => s.value ? xe(s.value, v.value) : st(t.recordId)), R = $(() => s.value ? La(v.value, s.value.values) : {}), E = $(() => Bt(Jr(u.value))), T = $(() => [rt(v.value)?.attr, R.value.status?.attr].filter((B) => !!B)), z = $(() => u.value.length >= h.value), K = $(() => {
+      const B = s.value?.values || {}, S = v.value.find((P) => P.data_type === "email" && Oa(B[P.attr]));
+      return S ? String(B[S.attr] ?? "") : "";
+    }), J = A(/* @__PURE__ */ new Set()), ee = $(() => I.value.filter((B) => J.value.has(B.tag)));
+    async function H(B) {
+      await Promise.all(B.map(async (S) => {
         await xr(S.tag), customElements.get(S.tag) && J.value.add(S.tag);
       }));
     }
-    async function U(D, S) {
-      const P = Zr(Ht(D, v.value), t.objects);
+    async function U(B, S) {
+      const P = Zr(Ht(B, v.value), t.objects);
       for (const re of S) {
         const G = Yt(re, t.recordId);
         G && !P.includes(G) && P.push(G);
@@ -2192,8 +2191,8 @@ const es = {
       const me = {};
       P.length && Ue(await Ie(t.crmId, P), t.object.type, me, t.attributes), k.value = me;
     }
-    async function X(D) {
-      const S = D.filter((P) => !k.value[P]);
+    async function X(B) {
+      const S = B.filter((P) => !k.value[P]);
       if (S.length)
         try {
           const P = { ...k.value };
@@ -2202,36 +2201,36 @@ const es = {
           ae.toast({ severity: "error", summary: "Could not read connected record names", detail: se(P, "CRM query failed.") });
         }
     }
-    async function w(D = {}) {
-      D.background || (V.value = !0, y.value = "");
+    async function w(B = {}) {
+      B.background || (V.value = !0, y.value = "");
       try {
         const [S, P, me] = await Promise.all([
-          Fa(t.crmId, t.recordId),
+          Ea(t.crmId, t.recordId),
           Ze(t.crmId, t.recordId, h.value),
-          Da(t.crmId, t.object.type)
+          Fa(t.crmId, t.object.type)
         ]);
         s.value = S, u.value = P, I.value = me, H(me), await U(S, P), y.value = "";
       } catch (S) {
-        D.background || (y.value = se(S, "Record could not load."));
+        B.background || (y.value = se(S, "Record could not load."));
       } finally {
-        D.background || (V.value = !1);
+        B.background || (V.value = !1);
       }
     }
     async function O() {
       if (C.value) return;
       C.value = !0;
-      const D = h.value + xt;
+      const B = h.value + xt;
       try {
-        u.value = await Ze(t.crmId, t.recordId, D), h.value = D, await U(s.value, u.value);
+        u.value = await Ze(t.crmId, t.recordId, B), h.value = B, await U(s.value, u.value);
       } catch (S) {
         ae.toast({ severity: "error", summary: "Could not load earlier activity", detail: se(S, "CRM query failed.") });
       } finally {
         C.value = !1;
       }
     }
-    async function _(D) {
+    async function _(B) {
       if (!s.value) return;
-      const S = ul(t.recordId, t.object.type, v.value, s.value.values, D);
+      const S = ul(t.recordId, t.object.type, v.value, s.value.values, B);
       if (!S.length) {
         i.value = !1;
         return;
@@ -2255,7 +2254,7 @@ const es = {
     }
     return ve(() => t.revision, () => {
       w({ background: !0 });
-    }), Ne(() => w()), (D, S) => V.value ? (n(), r("div", Os, [
+    }), Ne(() => w()), (B, S) => V.value ? (n(), r("div", Os, [
       j(p(x), {
         icon: "tabler:loader-2",
         class: "spin"
@@ -2271,8 +2270,8 @@ const es = {
         class: "crm-button",
         onClick: S[0] || (S[0] = (P) => w())
       }, "Try again")
-    ])) : s.value ? (n(), r("article", Ds, [
-      a("header", Bs, [
+    ])) : s.value ? (n(), r("article", Bs, [
+      a("header", Ds, [
         a("button", {
           class: "crm-icon-button",
           "aria-label": "Back",
@@ -2575,7 +2574,7 @@ const es = {
                 class: Z(["crm-meter", `tone-${i(z)}`])
               }, [
                 a("i", {
-                  style: ya({ width: g(z) + "%" })
+                  style: pa({ width: g(z) + "%" })
                 }, null, 4)
               ], 2),
               a("span", null, d(y(z)), 1),
@@ -2618,17 +2617,17 @@ const es = {
   key: 2,
   class: "crm-state full",
   "data-test": "unresolved-record"
-}, Do = {
+}, Bo = {
   key: 5,
   class: "crm-state full",
   "data-test": "unknown-object"
-}, Bo = {
+}, Do = {
   key: 6,
   class: "crm-state full"
 }, Po = 300, qo = 2e3, Wo = 3e4, Uo = /* @__PURE__ */ ue({
   __name: "CrmSurface",
   setup(e) {
-    const o = ga(), t = ka(), l = A(null), s = A(!0), u = A(""), h = A(!1), C = A(!1), I = A(!0), k = A(null), V = A(""), g = A(0);
+    const o = va(), t = ma(), l = A(null), s = A(!0), u = A(""), h = A(!1), C = A(!1), I = A(!0), k = A(null), V = A(""), g = A(0);
     let i, y = null, v, f = 0, R = Date.now();
     function E(q) {
       return q ? JSON.stringify([q.crm_id, q.workspace_label, q.can_write, q.objects, q.attributes, q.pipelines, q.views]) : "";
@@ -2662,7 +2661,7 @@ const es = {
     }), H = $(() => ee.value.split("/").filter(Boolean)), U = $(() => K.has(H.value[0]) ? H.value[0] : "records"), X = $(() => U.value === "records" ? H.value[0] ?? "" : ""), w = $(() => {
       const q = l.value?.objects || [];
       return U.value !== "records" || X.value === "" ? q[0] : q.find((L) => L.type === X.value);
-    }), O = $(() => X.value !== "" && (l.value?.objects || []).length > 0 && !w.value ? X.value : ""), _ = $(() => w.value !== void 0 && w.value.type === X.value ? Pa(H.value) : { kind: "none" }), M = $(() => _.value.kind === "record" ? _.value.recordId : void 0), D = $(() => _.value.kind === "unresolvable" ? _.value.segment : ""), S = $(() => String(o.value?.entryId || "").trim() || String(o.value?.componentId || "").trim()), P = $(() => V.value || S.value), me = $(() => l.value?.workspace_label || "");
+    }), O = $(() => X.value !== "" && (l.value?.objects || []).length > 0 && !w.value ? X.value : ""), _ = $(() => w.value !== void 0 && w.value.type === X.value ? Da(H.value) : { kind: "none" }), M = $(() => _.value.kind === "record" ? _.value.recordId : void 0), B = $(() => _.value.kind === "unresolvable" ? _.value.segment : ""), S = $(() => String(o.value?.entryId || "").trim() || String(o.value?.componentId || "").trim()), P = $(() => V.value || S.value), me = $(() => l.value?.workspace_label || "");
     function re(q) {
       const L = q.replace(/^\//, "");
       y = L, o.value?.entryId || t("navigate", { route: L }), J.value = L, v && clearTimeout(v), v = setTimeout(() => {
@@ -2679,10 +2678,10 @@ const es = {
           h.value = !0, C.value = L.can_create, l.value = null, i?.();
           return;
         }
-        l.value = L, I.value = L.can_write, i?.(), i = ha(`kickside.thread.${L.crm_id}.projection.kickside.crm:read_model`, () => z.signal());
+        l.value = L, I.value = L.can_write, i?.(), i = ga(`kickside.thread.${L.crm_id}.projection.kickside.crm:read_model`, () => z.signal());
       } catch (L) {
         if (q !== f) return;
-        L instanceof qa ? (k.value = L.candidates, l.value = null) : u.value = se(L, "CRM could not be opened.");
+        L instanceof Pa ? (k.value = L.candidates, l.value = null) : u.value = se(L, "CRM could not be opened.");
       } finally {
         q === f && (s.value = !1);
       }
@@ -2783,13 +2782,13 @@ const es = {
             objects: l.value.objects,
             attributes: l.value.attributes,
             "can-write": I.value
-          }, null, 8, ["crm-id", "objects", "attributes", "can-write"])) : U.value === "model" ? (n(), le(va, {
+          }, null, 8, ["crm-id", "objects", "attributes", "can-write"])) : U.value === "model" ? (n(), le(Ua, {
             key: 1,
             "crm-id": l.value.crm_id,
             initial: l.value,
             "can-write": I.value,
             onChanged: L[0] || (L[0] = (te) => l.value = te)
-          }, null, 8, ["crm-id", "initial", "can-write"])) : w.value && D.value ? (n(), r("div", Fo, [
+          }, null, 8, ["crm-id", "initial", "can-write"])) : w.value && B.value ? (n(), r("div", Fo, [
             j(p(x), { icon: "tabler:file-off" }),
             a("div", null, [
               L[9] || (L[9] = a("strong", null, "Record not found", -1)),
@@ -2823,7 +2822,7 @@ const es = {
             revision: g.value,
             onNavigate: re,
             onChanged: G
-          }, null, 8, ["crm-id", "object", "objects", "attributes", "pipelines", "views", "can-write", "revision"])) : O.value ? (n(), r("div", Do, [
+          }, null, 8, ["crm-id", "object", "objects", "attributes", "pipelines", "views", "can-write", "revision"])) : O.value ? (n(), r("div", Bo, [
             j(p(x), { icon: "tabler:category-off" }),
             a("div", null, [
               L[10] || (L[10] = a("strong", null, "Not found", -1)),
@@ -2834,7 +2833,7 @@ const es = {
               class: "crm-button",
               onClick: L[3] || (L[3] = (te) => re(l.value.objects[0].type))
             }, "Back to " + d(l.value.objects[0].label), 1)) : N("", !0)
-          ])) : (n(), r("div", Bo, [
+          ])) : (n(), r("div", Do, [
             j(p(x), { icon: "tabler:category-off" }),
             L[11] || (L[11] = a("div", null, [
               a("strong", null, "No CRM objects"),
@@ -2845,11 +2844,11 @@ const es = {
       ], 64))
     ], 8, Co));
   }
-}), ti = {
+}), ei = {
   rootComponent: Uo,
-  plugins: [ma]
+  plugins: [ba]
 };
 export {
-  ti as mountConfig
+  ei as mountConfig
 };
-//# sourceMappingURL=surface-mount-id8OKqaL.js.map
+//# sourceMappingURL=surface-mount-BoglZCn2.js.map

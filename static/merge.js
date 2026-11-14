@@ -1,4 +1,4 @@
-import { W as o, u as e } from "./wc-runtime-CNDpK4lj.js";
+import { W as o, u as e } from "./wc-runtime-DKFqZRRO.js";
 import { l as t } from "./lazy-Cfv2E3SG.js";
 import "@iconify/vue";
 import { define as a } from "@wippy-fe/proxy";
@@ -10,7 +10,7 @@ const i = ":host{display:block;color:inherit;font-family:inherit}:host>div:empty
     "data-meta": { type: "string", default: "", description: "Serialized merge-review metadata." }
   }
 }, p = t(
-  () => import("./MergeReview-un_4xLjD.js"),
+  () => import("./MergeReview-Ds6jzj0v.js"),
   { loading: "Loading the merge review…", failed: "Could not load the merge review. Reload the page to try again." },
   e
 );

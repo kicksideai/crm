@@ -1,8 +1,8 @@
-import { _ as g, P as y } from "./CrmSettings.vue_vue_type_script_setup_true_lang-vvRk7aa4.js";
+import { a as g, P as y } from "./wc-runtime-DKFqZRRO.js";
 import { defineComponent as C, ref as r, computed as k, onMounted as b, openBlock as n, createElementBlock as l, createVNode as m, unref as d, createTextVNode as w, createElementVNode as i, toDisplayString as M, createBlock as R } from "vue";
 import { Icon as p } from "@iconify/vue";
-import { a as N } from "./wc-runtime-CNDpK4lj.js";
-import { b as P, m as V } from "./crm-model-BaRhr3mT.js";
+import { b as N, m as P } from "./crm-model-BaRhr3mT.js";
+import { _ as V } from "./CrmSettings.vue_vue_type_script_setup_true_lang-Bb0D-vhh.js";
 const x = { class: "crm-admin-root" }, B = {
   key: 0,
   class: "crm-state full"
@@ -16,18 +16,18 @@ const x = { class: "crm-admin-root" }, B = {
 }, h = /* @__PURE__ */ C({
   __name: "CrmSettingsRoot",
   setup(E) {
-    const v = N(), t = r(null), s = r(!0), a = r(""), c = r(!0), f = k(() => String(v.value?.componentId || "").trim());
+    const v = g(), t = r(null), s = r(!0), a = r(""), c = r(!0), f = k(() => String(v.value?.componentId || "").trim());
     async function u() {
       s.value = !0, a.value = "";
       try {
-        const e = await P(f.value);
+        const e = await N(f.value);
         if ("provisioned" in e) {
           t.value = null;
           return;
         }
         t.value = e, c.value = e.can_write;
       } catch (e) {
-        a.value = V(e, "CRM administration could not load.");
+        a.value = P(e, "CRM administration could not load.");
       } finally {
         s.value = !1;
       }
@@ -49,7 +49,7 @@ const x = { class: "crm-admin-root" }, B = {
           class: "crm-button",
           onClick: u
         }, "Try again")
-      ])) : t.value ? (n(), R(g, {
+      ])) : t.value ? (n(), R(V, {
         key: 3,
         "crm-id": t.value.crm_id,
         initial: t.value,
@@ -65,4 +65,4 @@ const x = { class: "crm-admin-root" }, B = {
 export {
   j as mountConfig
 };
-//# sourceMappingURL=settings-mount-CuIz1vkO.js.map
+//# sourceMappingURL=settings-mount-CcrjJfLN.js.map

@@ -16,6 +16,7 @@ const entries = {
 }
 export default defineConfig({
   plugins: [vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('kickside-') || tag.startsWith('kickside-') || tag.startsWith('wc-') } } }), wippyComponentPlugin()],
+  define: { 'process.env.NODE_ENV': JSON.stringify('production'), 'process.env': '{}' },
   build: {
     target: 'esnext',
     emptyOutDir: true,

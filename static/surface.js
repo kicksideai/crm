@@ -1,4 +1,4 @@
-import { W as o, u as r } from "./wc-runtime-CNDpK4lj.js";
+import { W as o, u as r } from "./wc-runtime-DKFqZRRO.js";
 import { c as i } from "./crmStyles-FURw0f4P.js";
 import { a as n } from "./lazy-Cfv2E3SG.js";
 import "@iconify/vue";
@@ -18,7 +18,7 @@ class e extends o {
   static get vueConfig() {
     return {
       lazyConfig: n(
-        () => import("./surface-mount-id8OKqaL.js").then((t) => t.mountConfig),
+        () => import("./surface-mount-BoglZCn2.js").then((t) => t.mountConfig),
         "Could not load the CRM. Reload the page to try again.",
         r
       )

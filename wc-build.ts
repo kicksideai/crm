@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 
-// Shared Rollup settings for lazily loaded web components. The Host import map
-// is the externals contract: every key stays a bare import in every entry.
-const snapshotPath = fileURLToPath(new URL('./web-host.import-map.snapshot.json', import.meta.url))
-const hostImportMap = JSON.parse(readFileSync(snapshotPath, 'utf8')) as { imports: Record<string, string> }
+// Module updates retain the externals supplied by existing hosts. A newer host
+// snapshot describes available packages, not a module's minimum host contract.
+export const proxyExternals = ['vue', '@wippy-fe/proxy']
+export const hostExternals = [...proxyExternals, '@iconify/vue']
 
-export const hostExternals = Object.keys(hostImportMap.imports)
+type ChunkGraph = {
+  getModuleIds(): IterableIterator<string>
+  getModuleInfo(id: string): { dynamicallyImportedIds: readonly string[] } | null
+}
 
-// The Host requests an entry with a ?declare-tag= query. A chunk that imports the
-// entry back has no query, so it would load a second copy of the wrapper. Keeping
-// the wrapper in its own chunk leaves the entry with nothing a lazy chunk needs.
-export function wcRuntimeChunk(id: string): string | undefined {
-  return id.includes('/@wippy-fe/webcomponent-') ? 'wc-runtime' : undefined
+// Lazy roots and their implementations share wrapper injection keys. Eager
+// builds have no such boundary and keep the wrapper inside the entry. Shared
+// theme dependencies stay with it so Rollup keeps import.meta.url in the entry.
+export function wcRuntimeChunk(id: string, graph: ChunkGraph): string | undefined {
+  if (!id.includes('/@wippy-fe/webcomponent-') && !id.includes('/@wippy-fe/theme/')) return
+  for (const moduleId of graph.getModuleIds()) {
+    if (graph.getModuleInfo(moduleId)?.dynamicallyImportedIds.length) return 'wc-runtime'
+  }
 }

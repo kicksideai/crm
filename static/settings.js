@@ -1,4 +1,4 @@
-import { W as o, u as n } from "./wc-runtime-CNDpK4lj.js";
+import { W as o, u as n } from "./wc-runtime-DKFqZRRO.js";
 import { c as i } from "./crmStyles-FURw0f4P.js";
 import { a as r } from "./lazy-Cfv2E3SG.js";
 import "@iconify/vue";
@@ -11,7 +11,7 @@ class t extends o {
   static get vueConfig() {
     return {
       lazyConfig: r(
-        () => import("./settings-mount-CuIz1vkO.js").then((e) => e.mountConfig),
+        () => import("./settings-mount-CcrjJfLN.js").then((e) => e.mountConfig),
         "Could not load the CRM settings. Reload the page to try again.",
         n
       )
