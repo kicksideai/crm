@@ -295,6 +295,7 @@ local function resume_block(metadata: any, action: string, winner_id: string?, l
     return (executor :: any):with_actor(actor):with_scope(scope):call(RESUME_TARGET, {
         dataflow_id = dataflow_id,
         signal_id = signal_id,
+        arm_id = "kickside.crm.resolution:merge_arm",
         payload = {
             decision = action,
             winner_id = winner_id,
