@@ -1,3 +1,4 @@
+local env = require("env")
 local base64 = require("base64")
 local crypto = require("crypto")
 local cipher = require("secret_cipher")
@@ -16,7 +17,9 @@ local function trim(value: unknown): string
 end
 
 local function encryption_key(): (string?, error?)
-    return cipher.load_key("kickside.crm.env:encryption_key")
+    local variable, err = env.get("kickside.crm.env:encryption_key")
+    if err then return nil, err end
+    return cipher.load_key(variable)
 end
 
 local function encrypt(secret: string): (string?, error?)

@@ -17,8 +17,8 @@ modules:
       version: 0.3.1
       hash: d1f3fc03cda864839d11638180a742df81791279e24fc64b48f8d6be16091f47
     - name: kickside/doc2md
-      version: 0.8.22
-      hash: f7d2155373f5b081fc8334e1a7b7104a819639a0d7f2adb3e9624b7bffb88a3c
+      version: 0.8.24
+      hash: 7cc8af30e6cdbba2f40a77ac2115891311bb91c4227b4c0892dc0be03b29ab72
     - name: kickside/execution
       version: 0.2.7
     - name: kickside/inbox

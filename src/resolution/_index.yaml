@@ -8,7 +8,7 @@ entries:
     meta:
       comment: Alias normalization and keyed HMAC hashing for CRM identity keys.
     source: file://normalize.lua
-    modules: [crypto, base64, sql]
+    modules: [crypto, base64, env, sql]
     imports:
       secret_cipher: kickside.contract:secret_cipher
       types: kickside.crm:types

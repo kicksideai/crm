@@ -7,4 +7,4 @@ entries:
   - name: encryption_key
     kind: env.variable
     storage: kickside.crm.env:storage
-    variable: ENCRYPTION_KEY
+    default: ENCRYPTION_KEY
