@@ -151,7 +151,7 @@ entries:
     kind: security.policy
     policy:
       resources:
-        - kickside.uploads.persist:token_pack_read
+        - kickside.uploads.tokens:pack_read
       actions: [funcs.call, funcs.security]
       effect: allow
 

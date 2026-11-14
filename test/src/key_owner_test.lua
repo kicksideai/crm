@@ -8,6 +8,10 @@ local env=require("env")
 local crypto=require("crypto")
 local base64=require("base64")
 local consts=require("consts")
+local actors=require("actors")
+local contract=require("contract")
+local storage=require("storage")
+local types=require("types")
 
 local function execute(statement,args)
     local db=assert(sql.get("app:db"))
@@ -19,9 +23,14 @@ end
 
 local function probe(args)
     local before,before_err=env.get("ENCRYPTION_KEY")
+    if args.write then
+        local result,err=funcs.call("kickside.crm.resolution:resolve",{crm_id=args.id,record_id=args.record_id,object_type="entity",match={alias_type="email",alias_value="keyless-write@example.test"},values={name="Keyless record"}})
+        local after,after_err=env.get("ENCRYPTION_KEY")
+        return {result=result,error=err,before_denied=before==nil and before_err~=nil,after_denied=after==nil and after_err~=nil}
+    end
     local result,err=funcs.call("kickside.crm.read:alias_lookup",{crm_id=args.id,object_type="entity",alias_type="email",value="key-owner@example.test"})
     local after,after_err=env.get("ENCRYPTION_KEY")
-    return {result=result,error=err and tostring(err),before_denied=before==nil and before_err~=nil,after_denied=after==nil and after_err~=nil}
+    return {result=result,error=err,before_denied=before==nil and before_err~=nil,after_denied=after==nil and after_err~=nil}
 end
 
 local function define()
@@ -51,6 +60,49 @@ local function define()
                 local column=name=="kickside_crm_alias" or name=="kickside_crm_alias_secret"
                 execute("DELETE FROM "..name.." WHERE "..(column and "crm_id" or "component_id").."=$1",{id})
             end
+        end)
+        test.it("writes an aliased record through the real projection without a caller key grant",function()
+            local member=actors.make(uuid.v4())
+            local crm_id=uuid.v7()
+            local threads=assert(contract.get(types.THREADS)):with_actor(member)
+                :with_scope(security.new_scope({assert(security.policy("app:user"))})):open()
+            local _,thread_err=threads:ensure_thread({component_id=crm_id,impl_id=types.CRM_IMPL,thread_class=types.THREAD_CLASS})
+            test.is_nil(thread_err,tostring(thread_err))
+            local db=assert(sql.get("app:db"))
+            local _,schema_err=storage.ensure(db,db:type(),crm_id,{version="keyless-v1",
+                objects={{id="entity",type="entity",label="Entity",plural="Entities"}},
+                attributes={{id="name",object_type="entity",attr="name",data_type="text",config={}},
+                    {id="email",object_type="entity",attr="email",data_type="email",config={alias="email"}}},
+                pipelines={},views={},policies={},merge_config={}})
+            db:release();test.is_nil(schema_err,tostring(schema_err))
+            local scope=security.new_scope({assert(security.policy("app:key_owner_caller"))})
+            local value,err=funcs.new():with_actor(member):with_scope(scope):call("app:key_owner_probe",
+                {id=crm_id,write=true,record_id="keyless-record"})
+            test.is_nil(err,tostring(err));test.not_nil(value)
+            test.is_true(value.before_denied);test.is_true(value.after_denied)
+            test.is_nil(value.error,tostring(value.error));test.not_nil(value.result)
+            db=assert(sql.get("app:db"))
+            local rows=assert(db:query("SELECT record_id FROM kickside_crm_alias WHERE crm_id=$1",{crm_id}))
+            test.eq(#rows,1);test.eq(rows[1].record_id,"keyless-record")
+            local secrets=assert(db:query("SELECT secret_encrypted FROM kickside_crm_alias_secret WHERE crm_id=$1",{crm_id}))
+            test.eq(#secrets,1);test.not_nil(secrets[1].secret_encrypted)
+            local cursors=assert(db:query("SELECT last_seq FROM kickside_projection_cursor WHERE thread_id=$1",{crm_id}))
+            test.eq(#cursors,1);test.is_true(tonumber(cursors[1].last_seq)>0)
+            db:release()
+        end)
+        test.it("denies unauthorized CRM reads and writes despite owner key access",function()
+            local scope=security.new_scope({assert(security.policy("app:key_owner_caller"))})
+            local execute=funcs.new():with_actor(actors.make(uuid.v4())):with_scope(scope)
+            for _,write in ipairs({false,true}) do
+                local value,err=execute:call("app:key_owner_probe",{id=id,write=write,record_id="unauthorized"})
+                test.is_nil(err,tostring(err));test.not_nil(value)
+                test.is_true(value.before_denied);test.is_true(value.after_denied)
+                test.is_true(value.result==nil or value.result==false)
+                test.is_true(errors.is(value.error,errors.PERMISSION_DENIED),tostring(value.error))
+            end
+            local db=assert(sql.get("app:db"))
+            local rows=assert(db:query("SELECT COUNT(*) AS count FROM kickside_crm_alias_secret WHERE crm_id=$1",{id}))
+            db:release();test.eq(tonumber(rows[1].count),0)
         end)
         test.it("decrypts a previous ciphertext in the owning read function",function()
             execute([[INSERT INTO kickside_crm_alias_secret(crm_id,key_version,secret_encrypted,created_at,updated_at) VALUES($1,'v1',$2,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)]],{id,"AAECAwQFBgcICQoLUyh1LT1kFis3XCr6Culd0daQBjitBgrg2Ta47RK0ftfZPjfFJBD+ziRQrUlYHUiI"})
