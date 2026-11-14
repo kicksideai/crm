@@ -1260,6 +1260,7 @@ entries:
       origins: kickside.crm.persist:write_origin
       fixture: app:crm_sink_fixture
       retention_runner: kickside.core.retention.service:runner
+      clock: kickside.core.jobs:clock
 
   - name: crm_retention_cases
     kind: function.lua
@@ -1275,6 +1276,7 @@ entries:
       origins: kickside.crm.persist:write_origin
       fixture: app:crm_sink_fixture
       retention_runner: kickside.core.retention.service:runner
+      clock: kickside.core.jobs:clock
 
   - name: crm_retention_scale_test
     kind: function.lua
@@ -1291,6 +1293,7 @@ entries:
       origins: kickside.crm.persist:write_origin
       fixture: app:crm_sink_fixture
       retention_runner: kickside.core.retention.service:runner
+      clock: kickside.core.jobs:clock
 
   - name: crm_conditional_outcome_migration_test
     kind: function.lua
@@ -1307,6 +1310,7 @@ entries:
       origins: kickside.crm.persist:write_origin
       fixture: app:crm_sink_fixture
       retention_runner: kickside.core.retention.service:runner
+      clock: kickside.core.jobs:clock
 
   - name: crm_merge_resume_writer
     kind: library.lua
