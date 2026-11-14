@@ -1,7 +1,6 @@
 local base64 = require("base64")
 local crypto = require("crypto")
 local cipher = require("secret_cipher")
-local env = require("env")
 local sql = require("sql")
 local types = require("types")
 
@@ -16,41 +15,25 @@ local function trim(value: unknown): string
     return (value:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-local function hex_to_bytes(hex: string): (string?, error?)
-    if #hex ~= 64 then return nil, errors.new({ kind = errors.INTERNAL, message = "ENCRYPTION_KEY must be 64 hex characters" }) end
-    local key, err = cipher.decode_key(hex)
-    if err then return nil, errors.new({kind=errors.INTERNAL,message="ENCRYPTION_KEY contains non-hex characters"}) end
-    return key, nil
-end
-
 local function encryption_key(): (string?, error?)
-    local variable, err = env.get("kickside.crm.env:encryption_key")
-    if err then return nil, errors.wrap(err, "failed to read ENCRYPTION_KEY") end
-    local value
-    value, err = env.get(variable)
-    if err then return nil, errors.wrap(err, "failed to read ENCRYPTION_KEY") end
-    if type(value) ~= "string" or value == "" then return nil, errors.new({ kind = errors.INTERNAL, message = "ENCRYPTION_KEY is required" }) end
-    return hex_to_bytes(value)
+    return cipher.load_key("kickside.crm.env:encryption_key")
 end
 
 local function encrypt(secret: string): (string?, error?)
     local key, err = encryption_key()
     if not key then return nil, err end
     local encrypted
-    encrypted, err = cipher.encrypt(secret, key)
+    encrypted, err = cipher.seal(secret, key)
     if err then return nil, errors.wrap(err, "alias secret encryption failed") end
-    return base64.encode(encrypted :: string), nil
+    return encrypted, nil
 end
 
 local function decrypt(value: unknown): (string?, error?)
     if type(value) ~= "string" or value == "" then return nil, errors.new({ kind = errors.INTERNAL, message = "alias secret is empty" }) end
     local key, err = encryption_key()
     if not key then return nil, err end
-    local encrypted
-    encrypted, err = base64.decode(value)
-    if err then return nil, errors.wrap(err, "alias secret is not valid base64") end
     local secret
-    secret, err = cipher.decrypt(encrypted, key)
+    secret, err = cipher.open(value, key)
     if err then return nil, errors.wrap(err, "alias secret decryption failed") end
     return secret, nil
 end

@@ -26,6 +26,8 @@ workspace:
     kickside/realtime: ../../kickside/platform/realtime
     kickside/realtime-dispatch: ../../kickside/core/realtime-dispatch
 override:
+  kickside.crm.env:encryption_key:storage: app:env_storage
+  kickside.crm.env:encryption_key:default: abababababababababababababababababababababababababababababababab
   app:db:file: ${sqlite_path}
   app:shared_fixture_db:file: ${sqlite_path}
   kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false

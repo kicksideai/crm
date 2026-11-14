@@ -168,8 +168,7 @@ entries:
     kind: ns.requirement
     default: ENCRYPTION_KEY
     targets:
-      - {entry: kickside.crm.env:encryption_key, path: .default}
-      - {entry: kickside.crm:secret_key_access, path: '.policy.resources +='}
+      - {entry: kickside.crm.env:encryption_key, path: .variable}
 
   - name: secret_key_access
     kind: security.policy
