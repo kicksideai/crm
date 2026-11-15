@@ -1,6 +1,7 @@
+local env = require("env")
 local base64 = require("base64")
 local crypto = require("crypto")
-local env = require("env")
+local cipher = require("secret_cipher")
 local sql = require("sql")
 local types = require("types")
 
@@ -15,42 +16,32 @@ local function trim(value: unknown): string
     return (value:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-local function hex_to_bytes(hex: string): (string?, error?)
-    if #hex ~= 64 then return nil, errors.new({ kind = errors.INTERNAL, message = "ENCRYPTION_KEY must be 64 hex characters" }) end
-    local bytes = {}
-    for index = 1, #hex, 2 do
-        local byte = tonumber(hex:sub(index, index + 1), 16)
-        if not byte then return nil, errors.new({ kind = errors.INTERNAL, message = "ENCRYPTION_KEY contains non-hex characters" }) end
-        bytes[#bytes + 1] = string.char(byte :: integer)
-    end
-    return table.concat(bytes), nil
-end
+local key_variable: string?
 
 local function encryption_key(): (string?, error?)
-    local value, err = env.get("ENCRYPTION_KEY")
-    if err then return nil, errors.wrap(err, "failed to read ENCRYPTION_KEY") end
-    if type(value) ~= "string" or value == "" then return nil, errors.new({ kind = errors.INTERNAL, message = "ENCRYPTION_KEY is required" }) end
-    return hex_to_bytes(value)
+    if not key_variable then
+        local variable, err = env.get("kickside.crm.env:encryption_key")
+        if err then return nil, err end
+        key_variable = variable
+    end
+    return cipher.load_key(key_variable :: string)
 end
 
 local function encrypt(secret: string): (string?, error?)
     local key, err = encryption_key()
     if not key then return nil, err end
     local encrypted
-    encrypted, err = crypto.encrypt.aes(secret, key)
+    encrypted, err = cipher.seal(secret, key)
     if err then return nil, errors.wrap(err, "alias secret encryption failed") end
-    return base64.encode(encrypted), nil
+    return encrypted, nil
 end
 
 local function decrypt(value: unknown): (string?, error?)
     if type(value) ~= "string" or value == "" then return nil, errors.new({ kind = errors.INTERNAL, message = "alias secret is empty" }) end
     local key, err = encryption_key()
     if not key then return nil, err end
-    local encrypted
-    encrypted, err = base64.decode(value)
-    if err then return nil, errors.wrap(err, "alias secret is not valid base64") end
     local secret
-    secret, err = crypto.decrypt.aes(encrypted, key)
+    secret, err = cipher.open(value, key)
     if err then return nil, errors.wrap(err, "alias secret decryption failed") end
     return secret, nil
 end

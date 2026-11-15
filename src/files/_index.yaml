@@ -3,6 +3,7 @@ version: "1.0"
 namespace: kickside.crm.files
 
 entries:
+
   - name: files
     kind: library.lua
     meta:
@@ -45,6 +46,9 @@ entries:
     source: file://functions.lua
     method: backfill
     imports: *download_imports
+    security:
+      policies:
+      - kickside.crm:upload_callback_token_call
 
   - name: attachments_write
     kind: function.lua
@@ -53,6 +57,9 @@ entries:
     source: file://functions.lua
     method: write
     imports: *download_imports
+    security:
+      policies:
+      - kickside.crm:upload_callback_token_call
 
   - name: attachments_sink
     kind: contract.binding

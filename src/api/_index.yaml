@@ -2,6 +2,7 @@ version: "1.0"
 namespace: kickside.crm.api
 
 entries:
+
   - name: access
     kind: library.lua
     meta:
@@ -101,6 +102,9 @@ entries:
     imports:
       api_access: kickside.crm.api:access
       writer: kickside.crm.command:writer
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: apply.endpoint
     kind: http.endpoint
@@ -229,6 +233,9 @@ entries:
       api_access: kickside.crm.api:access
       resolver: kickside.crm.resolution:resolve_lib
       http_errors: kickside.contract:http_errors
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: resolve.endpoint
     kind: http.endpoint

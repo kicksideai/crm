@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: key_configuration_test
+  kind: function.lua
+  meta: {type: test, suite: key_configuration}
+  source: file://key_configuration_test.lua
+  method: run
+  modules: [sql, uuid, env]
+  imports:
+    test: wippy.test:test
+    normalize: app:key_configuration_normalize
+    configuration: app:key_configuration_env
+- name: key_configuration_normalize
+  kind: library.lua
+  meta: {type: test_helper}
+  source: file://key_configuration_normalize.lua
+  modules: [crypto, base64, sql]
+  imports:
+    env: app:key_configuration_env
+    secret_cipher: kickside.contract:secret_cipher
+    types: kickside.crm:types
+- name: key_configuration_env
+  kind: library.lua
+  meta: {type: test_helper}
+  source: file://key_configuration_env.lua
+  modules: [env]

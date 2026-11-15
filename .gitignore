@@ -14,3 +14,5 @@ coverage/
 /test/src/resolve_handler_source.lua
 
 /test/src/merge_arm_source.lua
+
+/test/src/key_configuration_normalize.lua
