@@ -23,3 +23,5 @@ cp "$HERE/../src/api/query.lua" "$HERE/src/query_handler_source.lua"
 cp "$HERE/../src/api/resolve.lua" "$HERE/src/resolve_handler_source.lua"
 
 cp "$HERE/../src/resolution/merge_arm.lua" "$HERE/src/merge_arm_source.lua"
+
+cp "$HERE/../src/resolution/normalize.lua" "$HERE/src/key_configuration_normalize.lua"

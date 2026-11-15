@@ -16,10 +16,15 @@ local function trim(value: unknown): string
     return (value:gsub("^%s*(.-)%s*$", "%1"))
 end
 
+local key_variable: string?
+
 local function encryption_key(): (string?, error?)
-    local variable, err = env.get("kickside.crm.env:encryption_key")
-    if err then return nil, err end
-    return cipher.load_key(variable)
+    if not key_variable then
+        local variable, err = env.get("kickside.crm.env:encryption_key")
+        if err then return nil, err end
+        key_variable = variable
+    end
+    return cipher.load_key(key_variable :: string)
 end
 
 local function encrypt(secret: string): (string?, error?)
