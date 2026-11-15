@@ -11,8 +11,7 @@ modules:
       version: 0.1.52
       hash: ea4aeaa38732f7cb2be2e3a8372da6e3322556e58ea29eab0867694f24e3c81f
     - name: kickside/core
-      version: 0.1.125
-      hash: a548914d5a1ed440197db9afb674f594b86bc903610d9347774408a920f38b74
+      version: 0.3.17
     - name: kickside/crm
       version: 0.3.1
       hash: d1f3fc03cda864839d11638180a742df81791279e24fc64b48f8d6be16091f47
