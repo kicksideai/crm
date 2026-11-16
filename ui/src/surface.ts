@@ -1,7 +1,7 @@
-import { WippyVueElement, define } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
-import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
 import { crmStyles } from './crmStyles'
+import { lazyPage } from './lazy'
 
 interface Props { route?: string; componentId?: string; entryId?: string }
 interface Events { navigate: { route: string } }
@@ -15,13 +15,21 @@ const propsSchema: WippyPropsSchema = {
   },
 }
 
-// Stable-named stub; `CrmSurface.vue` lands in its own content-hashed chunk
-// (shared with index.ts, which dynamic-imports the same specifier).
+// Stable-named stub; `CrmSurface.vue` lands in its own content-hashed chunk, loaded
+// through `surface-mount.ts` behind the lazy page boundary.
 class kicksideCrmSurfaceElement extends WippyVueElement<Props, Events> {
   static get wippyConfig(): WippyElementConfig<Props> {
     return { propsSchema, hostCssKeys: ['themeConfigUrl', 'primeVueCssUrl'] as const, inlineCss: crmStyles }
   }
-  static get vueConfig() { return { lazyConfig: () => import('./app/CrmSurface.vue').then((m) => ({ rootComponent: m.default, plugins: [PrimeVuePlugin] })) } }
+  static get vueConfig() {
+    return {
+      lazyConfig: lazyPage(
+        () => import('./surface-mount').then((module) => module.mountConfig),
+        'Could not load the CRM. Reload the page to try again.',
+        useEvents,
+      ),
+    }
+  }
 }
 
 export async function webComponent() { return kicksideCrmSurfaceElement }

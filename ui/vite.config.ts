@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import { wippyComponentPlugin } from '@wippy-fe/vite-plugin'
 import { defineConfig } from 'vite'
+import { hostExternals, wcRuntimeChunk } from '../wc-build'
 
 // The complete Vue surface set builds into ui/dist. The sync step copies only
 // this build's JS and sourcemaps into the checked-in served static directory,
@@ -15,6 +16,7 @@ const entries = {
 }
 export default defineConfig({
   plugins: [vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('kickside-') || tag.startsWith('kickside-') || tag.startsWith('wc-') } } }), wippyComponentPlugin()],
+  define: { 'process.env.NODE_ENV': JSON.stringify('production'), 'process.env': '{}' },
   build: {
     target: 'esnext',
     emptyOutDir: true,
@@ -25,9 +27,10 @@ export default defineConfig({
     },
     rollupOptions: {
       input: entries,
-      preserveEntrySignatures: false,
-      external: ['vue', '@iconify/vue', '@wippy-fe/proxy'],
+      preserveEntrySignatures: 'strict',
+      external: hostExternals,
       output: {
+        manualChunks: wcRuntimeChunk,
         entryFileNames: '[name].js',
         chunkFileNames: '[name]-[hash].js',
         assetFileNames: '[name]-[hash][extname]',

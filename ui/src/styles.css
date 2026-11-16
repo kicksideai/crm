@@ -2,6 +2,9 @@
    card 14px, buttons/inputs 8px, chips 6px. Compact for a review queue — the host
    owns the outer chrome (icon, title, priority, time); this fills the body. */
 :host { display: block; color: inherit; font-family: inherit; }
+/* Reserved only while the implementation loads, so a loaded card keeps its own size.
+   The card height depends on the notice content, so this is a small estimate. */
+:host > div:empty, :host > div:has(> [data-lazy-state]) { min-height: 120px; }
 * { box-sizing: border-box; }
 
 .cm {
