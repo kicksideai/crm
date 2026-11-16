@@ -2,6 +2,7 @@ version: "1.0"
 namespace: kickside.crm.persist
 
 entries:
+
   - name: config
     kind: registry.entry
     meta:
@@ -64,6 +65,9 @@ entries:
     modules: [sql]
     imports:
       materializer: kickside.crm.persist:materializer
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: write_origin
     kind: library.lua

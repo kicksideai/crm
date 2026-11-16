@@ -16,6 +16,7 @@ namespace: kickside.crm.read
 # that imported these libraries would be a consumer that refuses to install
 # without a CRM. Reached by id, absence is an answer instead.
 entries:
+
   - name: alias_lookup
     kind: function.lua
     meta:
@@ -28,6 +29,9 @@ entries:
     imports:
       aliases: kickside.crm.resolution:aliases
       reader: kickside.crm:crm
+    security:
+      policies:
+        - kickside.crm:secret_key_access
 
   - name: references
     kind: function.lua
