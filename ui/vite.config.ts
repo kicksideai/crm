@@ -15,7 +15,7 @@ const entries = {
   surface: resolve(__dirname, 'src/surface.ts'),
 }
 export default defineConfig({
-  plugins: [vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('kickside-') || tag.startsWith('kickside-') || tag.startsWith('wc-') } } }), wippyComponentPlugin()],
+  plugins: [vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('kickside-') || tag.startsWith('kickside-') || tag.startsWith('wc-') } } }), wippyComponentPlugin({ required: true, lazyEntries: ['create', 'settings', 'picker', 'merge', 'surface'] })],
   define: { 'process.env.NODE_ENV': JSON.stringify('production'), 'process.env': '{}' },
   build: {
     target: 'esnext',

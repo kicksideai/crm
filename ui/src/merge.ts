@@ -1,6 +1,6 @@
-import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, lazyVueConfig } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
-import { lazyControl } from './lazy'
+
 import stylesText from './styles.css?inline'
 
 // The inbox host mounts this by tag inside an item's body, sets item-id / content
@@ -25,11 +25,7 @@ const PROPS_SCHEMA: WippyPropsSchema = {
   },
 }
 
-const Root = lazyControl(
-  () => import('./app/MergeReview.vue'),
-  { loading: 'Loading the merge review…', failed: 'Could not load the merge review. Reload the page to try again.' },
-  useEvents,
-)
+
 
 // Stable-named stub; `MergeReview.vue` lands in its own content-hashed chunk.
 class kicksideCrmMergeReviewElement extends WippyVueElement<Props, Events> {
@@ -42,7 +38,7 @@ class kicksideCrmMergeReviewElement extends WippyVueElement<Props, Events> {
   }
 
   static get vueConfig() {
-    return { rootComponent: Root }
+    return lazyVueConfig(() => (() => import('./app/MergeReview.vue'))().then(module => ({ rootComponent: module.default })), { surface: 'compact', loading: 'Loading the merge review…', failed: 'Could not load the merge review. Reload the page to try again.', delay: 200, timeout: 30000 })
   }
 }
 

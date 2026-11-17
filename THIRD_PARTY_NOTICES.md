@@ -131,19 +131,19 @@ Lockfiles: `ui/package-lock.json`
 
 LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c)
 
-### npm: @wippy-fe/theme@0.0.61
+### npm: @wippy-fe/theme@0.0.70
 
 License: UNLICENSED
 
 Lockfiles: `ui/package-lock.json`
 
-### npm: @wippy-fe/webcomponent-core@0.0.60
+### npm: @wippy-fe/webcomponent-core@0.0.70
 
 License: UNLICENSED
 
 Lockfiles: `ui/package-lock.json`
 
-### npm: @wippy-fe/webcomponent-vue@0.0.60
+### npm: @wippy-fe/webcomponent-vue@0.0.70
 
 License: UNLICENSED
 

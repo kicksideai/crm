@@ -1,0 +1,1 @@
+{"version":3,"file":"crmStyles-bezepf8D.js","sources":["../src/crmStyles.ts"],"sourcesContent":["import surfaceCss from './surface.css?inline'\n\n// Wippy web components render in a shadow root, so every style they need travels\n// through this one source-owned stylesheet.\nexport const crmStyles = surfaceCss\n"],"names":["crmStyles","surfaceCss"],"mappings":";AAIO,MAAMA,IAAYC;"}
