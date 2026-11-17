@@ -1,28 +1,22 @@
-import { W as o, u as n } from "./wc-runtime-DKFqZRRO.js";
-import { c as i } from "./crmStyles-FURw0f4P.js";
-import { a as r } from "./lazy-Cfv2E3SG.js";
-import "@iconify/vue";
-import { define as s } from "@wippy-fe/proxy";
-const p = { type: "object", properties: { "component-id": { type: "string", default: "", description: "CRM component id." } } };
-class t extends o {
+import { W as o, l as n } from "./wc-runtime-Be-ICKk2.js";
+import { c as i } from "./crmStyles-bezepf8D.js";
+import { define as r } from "@wippy-fe/proxy";
+const s = { type: "object", properties: { "component-id": { type: "string", default: "", description: "CRM component id." } } };
+class e extends o {
   static get wippyConfig() {
-    return { propsSchema: p, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: i };
+    return { propsSchema: s, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: i };
   }
   static get vueConfig() {
     return {
-      lazyConfig: r(
-        () => import("./settings-mount-CcrjJfLN.js").then((e) => e.mountConfig),
-        "Could not load the CRM settings. Reload the page to try again.",
-        n
-      )
+      ...n(() => import("./settings-mount-CEN73qYZ.js").then((t) => t.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the CRM settings. Reload the page to try again.", timeout: 3e4 })
     };
   }
 }
-async function C() {
-  return t;
+async function g() {
+  return e;
 }
-s(import.meta.url, t);
+r(import.meta.url, e);
 export {
-  C as webComponent
+  g as webComponent
 };
 //# sourceMappingURL=settings.js.map

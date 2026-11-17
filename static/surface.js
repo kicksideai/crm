@@ -1,8 +1,6 @@
-import { W as o, u as r } from "./wc-runtime-DKFqZRRO.js";
-import { c as i } from "./crmStyles-FURw0f4P.js";
-import { a as n } from "./lazy-Cfv2E3SG.js";
-import "@iconify/vue";
-import { define as s } from "@wippy-fe/proxy";
+import { W as o, l as i } from "./wc-runtime-Be-ICKk2.js";
+import { c as r } from "./crmStyles-bezepf8D.js";
+import { define as n } from "@wippy-fe/proxy";
 const p = {
   type: "object",
   properties: {
@@ -13,23 +11,19 @@ const p = {
 };
 class e extends o {
   static get wippyConfig() {
-    return { propsSchema: p, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: i };
+    return { propsSchema: p, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"], inlineCss: r };
   }
   static get vueConfig() {
     return {
-      lazyConfig: n(
-        () => import("./surface-mount-BoglZCn2.js").then((t) => t.mountConfig),
-        "Could not load the CRM. Reload the page to try again.",
-        r
-      )
+      ...i(() => import("./surface-mount-COTEwtYl.js").then((t) => t.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the CRM. Reload the page to try again.", timeout: 3e4 })
     };
   }
 }
-async function f() {
+async function d() {
   return e;
 }
-s(import.meta.url, e);
+n(import.meta.url, e);
 export {
-  f as webComponent
+  d as webComponent
 };
 //# sourceMappingURL=surface.js.map

@@ -1,7 +1,7 @@
-import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, lazyVueConfig } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
 import { crmStyles } from './crmStyles'
-import { lazyControl } from './lazy'
+
 
 interface Props {
   parentId?: string
@@ -23,11 +23,7 @@ const propsSchema: WippyPropsSchema = {
   },
 }
 
-const Root = lazyControl(
-  () => import('./app/CrmCreate.vue'),
-  { loading: 'Loading the CRM creation form…', failed: 'Could not load the CRM creation form. Reload the page to try again.' },
-  useEvents,
-)
+
 
 class kicksideCrmCreateElement extends WippyVueElement<Props, Events> {
   static get wippyConfig(): WippyElementConfig<Props> {
@@ -35,7 +31,7 @@ class kicksideCrmCreateElement extends WippyVueElement<Props, Events> {
   }
 
   static get vueConfig() {
-    return { rootComponent: Root }
+    return lazyVueConfig(() => (() => import('./app/CrmCreate.vue'))().then(module => ({ rootComponent: module.default })), { surface: 'compact', loading: 'Loading the CRM creation form…', failed: 'Could not load the CRM creation form. Reload the page to try again.', delay: 200, timeout: 30000 })
   }
 }
 

@@ -1,7 +1,7 @@
-import { WippyVueElement, define, useEvents } from '@wippy-fe/webcomponent-vue'
+import { WippyVueElement, define, lazyVueConfig } from '@wippy-fe/webcomponent-vue'
 import type { WippyElementConfig, WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
 import { crmStyles } from './crmStyles'
-import { lazyPage } from './lazy'
+
 
 interface Props { route?: string; componentId?: string; entryId?: string }
 interface Events { navigate: { route: string } }
@@ -23,11 +23,7 @@ class kicksideCrmSurfaceElement extends WippyVueElement<Props, Events> {
   }
   static get vueConfig() {
     return {
-      lazyConfig: lazyPage(
-        () => import('./surface-mount').then((module) => module.mountConfig),
-        'Could not load the CRM. Reload the page to try again.',
-        useEvents,
-      ),
+      ...lazyVueConfig(() => import('./surface-mount').then((module) => module.mountConfig), { surface: 'page', loading: 'Loading…', failed: 'Could not load the CRM. Reload the page to try again.', timeout: 30000 }),
     }
   }
 }

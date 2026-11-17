@@ -1,7 +1,7 @@
 import { defineComponent as x, useAttrs as E, computed as p, ref as i, openBlock as c, createElementBlock as u, withModifiers as I, createElementVNode as a, withDirectives as N, vModelText as S, createVNode as f, unref as v, createTextVNode as C, toDisplayString as b, createCommentVNode as y, normalizeClass as V } from "vue";
 import { Icon as _ } from "@iconify/vue";
 import { api as D } from "@wippy-fe/proxy";
-import { a as U, u as B } from "./wc-runtime-DKFqZRRO.js";
+import { u as U, a as B } from "./wc-runtime-Be-ICKk2.js";
 const T = { class: "crm-create-field" }, j = {
   key: 0,
   class: "crm-create-error",
@@ -92,4 +92,4 @@ const T = { class: "crm-create-field" }, j = {
 export {
   J as _
 };
-//# sourceMappingURL=CrmCreate.vue_vue_type_script_setup_true_lang-DNTvvDdX.js.map
+//# sourceMappingURL=CrmCreate.vue_vue_type_script_setup_true_lang-DwR5ZdoX.js.map

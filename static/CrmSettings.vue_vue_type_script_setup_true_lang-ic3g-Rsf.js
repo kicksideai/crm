@@ -2,7 +2,7 @@ import { openBlock as u, createElementBlock as m, mergeProps as P, createElement
 import { Icon as S } from "@iconify/vue";
 import { loadByTagName as oe, host as E } from "@wippy-fe/proxy";
 import { G as tt, y as Ot, o as St, q as re, Z as ae, _ as ie, b as le, m as H, $ as se, a0 as de, a1 as ue, a2 as ce } from "./crm-model-BaRhr3mT.js";
-import { s as mt, B as ft, l as Mt, b as Ft, c as $t, f as at, R as Tt, L as be, d as J, v as rt, e as pe, U as me, I as jt, g as fe, r as Rt, h as ge, i as ye, j as ve, C as he, k as ke, S as Ce, _ as we, x as yt, m as xe } from "./wc-runtime-DKFqZRRO.js";
+import { s as mt, B as ft, b as Mt, c as Ft, d as $t, f as at, R as Tt, L as be, e as J, v as rt, g as pe, U as me, I as jt, h as fe, r as Rt, i as ge, j as ye, k as ve, C as he, m as ke, S as Ce, _ as we, x as yt, n as xe } from "./wc-runtime-Be-ICKk2.js";
 var Vt = {
   name: "TimesIcon",
   extends: mt
@@ -3183,4 +3183,4 @@ export {
   Cr as _,
   gt as s
 };
-//# sourceMappingURL=CrmSettings.vue_vue_type_script_setup_true_lang-Bb0D-vhh.js.map
+//# sourceMappingURL=CrmSettings.vue_vue_type_script_setup_true_lang-ic3g-Rsf.js.map
