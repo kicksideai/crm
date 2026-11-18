@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.13](https://github.com/kicksideai/crm/compare/crm-v0.6.12...crm-v0.6.13) (2026-11-17)
+
+
+### Bug Fixes
+
+* keep alias encryption keys in CRM owner frames ([#45](https://github.com/kicksideai/crm/issues/45)) ([423db99](https://github.com/kicksideai/crm/commit/423db99b094e18c58ce6dda40da1a874e0c8c37e))
+* preserve web component host contracts and eager bundles ([#33](https://github.com/kicksideai/crm/issues/33)) ([9ba4af6](https://github.com/kicksideai/crm/commit/9ba4af69179388f4b89dd2af3fc0c637bbcbd540))
+* **ui:** use SDK 0.0.70 lifecycle helpers ([#50](https://github.com/kicksideai/crm/issues/50)) ([21692b8](https://github.com/kicksideai/crm/commit/21692b8c5f39a1b755a5c3e6faf0d9a61748a6b3))
+
 ## [0.6.12](https://github.com/kicksideai/crm/compare/crm-v0.6.11...crm-v0.6.12) (2026-11-14)
 
 
