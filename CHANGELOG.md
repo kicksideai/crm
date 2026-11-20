@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.14](https://github.com/kicksideai/crm/compare/crm-v0.6.13...crm-v0.6.14) (2026-11-20)
+
+
+### Bug Fixes
+
+* **crm:** preserve stored field settings and choose attachment providers ([#53](https://github.com/kicksideai/crm/issues/53)) ([eb0e504](https://github.com/kicksideai/crm/commit/eb0e504ebe290e6b1aeec6de83e6037db98a8cba))
+
 ## [0.6.13](https://github.com/kicksideai/crm/compare/crm-v0.6.12...crm-v0.6.13) (2026-11-17)
 
 
