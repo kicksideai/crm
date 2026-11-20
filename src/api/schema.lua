@@ -1,6 +1,7 @@
 local http = require("http")
 local json = require("json")
 local api_access = require("api_access")
+local files = require("files")
 local mutation = require("mutation")
 local schema = require("schema")
 local writer = require("writer")
@@ -26,7 +27,8 @@ function M.get()
         write(res, http.STATUS.BAD_REQUEST, { success = false, code = "schema_read_failed", error = tostring(err) })
         return
     end
-    res:write_json({ success = true, revision = current.revision, declaration = current.declaration })
+    res:write_json({ success = true, revision = current.revision, declaration = current.declaration,
+        attachment_providers = files.attachment_providers() })
 end
 
 function M.apply()

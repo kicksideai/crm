@@ -22,6 +22,7 @@ const editingObject = ref<CrmObject | null>(null)
 const editingField = ref<CrmAttribute | null>(null)
 const retention = ref(365)
 const revision = ref('')
+const attachmentProviders = ref<string[]>([])
 const currentObject = computed(() => data.value?.objects.find((object) => object.type === selected.value))
 const currentFields = computed(() => objectAttributes(data.value?.attributes || [], selected.value))
 const currentPipeline = computed(() => currentObject.value ? objectPipeline(data.value?.pipelines || [], currentObject.value) : undefined)
@@ -33,6 +34,7 @@ async function load(prefer = selected.value) {
     const [schema, stored, workspace] = await Promise.all([getSchema(crmId), readSettings(), bootstrap(crmId)])
     if ('provisioned' in workspace) throw new Error('No CRM workspace has been created yet.')
     revision.value = schema.revision
+    attachmentProviders.value = schema.attachmentProviders
     const fresh: CrmBootstrap = { success: true, crm_id: crmId, workspace_label: workspace.workspace_label, can_write: props.canWrite, ...schema.declaration }
     data.value = fresh; retention.value = Number(stored.thread_event_retention_days || 365)
     selected.value = fresh.objects.some((object) => object.type === prefer) ? prefer : fresh.objects[0]?.type || ''
@@ -180,7 +182,7 @@ onMounted(() => load())
     </div>
 
     <SettingsObjectDialog v-if="dialog === 'object'" :object="editingObject" :busy="busy" @close="closeDialog" @save="saveObject" />
-    <SettingsFieldDialog v-else-if="dialog === 'field'" :field="editingField" :objects="data.objects" :selected="selected" :busy="busy" @close="closeDialog" @save="saveField" />
+    <SettingsFieldDialog v-else-if="dialog === 'field'" :field="editingField" :objects="data.objects" :selected="selected" :attachment-providers="attachmentProviders" :busy="busy" @close="closeDialog" @save="saveField" />
     <SettingsPipelineDialog v-else-if="dialog === 'pipeline'" :pipeline="currentPipeline" :object-label="currentObject?.label || 'CRM'" :selected="selected" :busy="busy" @close="closeDialog" @save="savePipeline" />
   </section>
 </template>

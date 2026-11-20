@@ -140,7 +140,8 @@ function N(r) {
   if (t?.success !== !0) throw new Error(t?.error || "CRM schema request failed.");
   if (typeof t.revision != "string" && typeof t.revision != "number" || !e || !Array.isArray(e.objects) || !Array.isArray(e.attributes) || !Array.isArray(e.pipelines) || !Array.isArray(e.views))
     throw new Error("CRM returned an invalid schema response.");
-  return { revision: String(t.revision), declaration: e };
+  const n = Array.isArray(t.attachment_providers) ? t.attachment_providers.filter((o) => typeof o == "string") : [];
+  return { revision: String(t.revision), declaration: e, attachmentProviders: n };
 }
 async function mr(r) {
   try {
@@ -223,7 +224,7 @@ function M(r) {
   for (const n of t) e += String.fromCharCode(n);
   return btoa(e).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-function T(r) {
+function P(r) {
   if (!/^[A-Za-z0-9_-]+$/.test(r)) return;
   const t = r.replace(/-/g, "+").replace(/_/g, "/"), e = t + "=".repeat((4 - t.length % 4) % 4);
   try {
@@ -233,15 +234,15 @@ function T(r) {
     return;
   }
 }
-function P(r, t) {
+function T(r, t) {
   return `${r}/${b}${M(t)}`;
 }
 function x(r) {
   if (r.length !== 2 || !r[1]?.startsWith(b)) return;
-  const t = r[1].slice(b.length), e = T(t);
+  const t = r[1].slice(b.length), e = P(t);
   return e !== void 0 && M(e) === t ? e : void 0;
 }
-function Rr(r) {
+function Ar(r) {
   if (r.length < 2) return { kind: "none" };
   if (r.length > 2) return { kind: "unresolvable", segment: r.slice(1).join("/") };
   const t = r[1] ?? "";
@@ -257,7 +258,7 @@ function Rr(r) {
     return { kind: "unresolvable", segment: t };
   }
 }
-function Ar(r) {
+function Rr(r) {
   return r.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 function Er(r) {
@@ -351,7 +352,7 @@ function z(r, t) {
     if (!Number.isNaN(e.getTime()))
       return t.data_type === "date" ? new Intl.DateTimeFormat(void 0, { year: "numeric", month: "short", day: "numeric" }).format(e) : new Intl.DateTimeFormat(void 0, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(e);
   }
-  return typeof r == "object" ? "" : typeof r == "string" && t?.data_type === "select" ? Y(r) : typeof r == "string" && t?.data_type === "text" ? G(r) : String(r);
+  return typeof r == "object" ? "" : typeof r == "string" && t?.data_type === "select" ? Y(r) : typeof r == "string" && t?.data_type === "text" ? B(r) : String(r);
 }
 function Fr(r) {
   return String(r || "?").trim().split(/\s+/).slice(0, 2).map((t) => t[0] || "").join("").toUpperCase() || "?";
@@ -364,28 +365,28 @@ function Y(r) {
   const t = String(r ?? "").trim();
   return S.test(t) && $(t) ? l(t.toLowerCase()) : t;
 }
-const B = 5;
-function G(r) {
-  return S.test(r) ? r.includes("_") ? $(r) ? l(r.toLowerCase()) : r : r.length >= B && r === r.toUpperCase() && !/\d/.test(r) ? l(r.toLowerCase()) : r : r;
+const v = 5;
+function B(r) {
+  return S.test(r) ? r.includes("_") ? $(r) ? l(r.toLowerCase()) : r : r.length >= v && r === r.toUpperCase() && !/\d/.test(r) ? l(r.toLowerCase()) : r : r;
 }
-const K = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, q = /^[0-9A-HJKMNP-TV-Z]{26}$/i, W = /(^\d+$)|:/;
-function v(r) {
+const G = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, K = /^[0-9A-HJKMNP-TV-Z]{26}$/i, q = /(^\d+$)|:/;
+function W(r) {
   const t = String(r ?? ""), e = t.indexOf(":");
   return e > 0 ? { type: t.slice(0, e), slug: t.slice(e + 1) } : { type: "", slug: t };
 }
-function R(r) {
-  const { type: t, slug: e } = v(r);
-  return K.test(e) || q.test(e) || W.test(e) ? t ? l(t) : e : l(e);
+function A(r) {
+  const { type: t, slug: e } = W(r);
+  return G.test(e) || K.test(e) || q.test(e) ? t ? l(t) : e : l(e);
 }
 function Z(r) {
   return typeof r == "string" && /^[a-z][a-z0-9_]*:[^\s]/i.test(r) && !r.includes(" ");
 }
 function Ur(r) {
-  return r == null ? "" : Z(r) ? R(r) : String(r);
+  return r == null ? "" : Z(r) ? A(r) : String(r);
 }
 function Q(r, t = []) {
   const e = I(t), n = e ? r.values?.[e.attr] : void 0;
-  return n != null && String(n).trim() !== "" ? z(n, e) : R(r.record_id);
+  return n != null && String(n).trim() !== "" ? z(n, e) : A(r.record_id);
 }
 function Dr(r, t, e = {}, n = []) {
   for (const o of r) e[o.record_id] = { name: Q(o, n.filter((s) => s.object_type === (o.object_type || t))), type: o.object_type || t };
@@ -402,9 +403,9 @@ function Or(r) {
 }
 function Lr(r, t, e) {
   return F(r).map((n) => {
-    const o = n.kind === "record" ? t?.[n.id] : void 0, s = n.label || o?.name || R(n.id);
+    const o = n.kind === "record" ? t?.[n.id] : void 0, s = n.label || o?.name || A(n.id);
     let i, a;
-    if (n.kind === "record") i = P(n.type, n.id);
+    if (n.kind === "record") i = T(n.type, n.id);
     else if (e?.route) {
       const f = e.route.split("{id}").join(encodeURIComponent(n.id)).split("{type}").join(encodeURIComponent(n.type));
       /^https?:\/\//i.test(f) ? a = f : i = f.replace(/^\/+/, "");
@@ -440,20 +441,20 @@ function rr(r) {
 function tr(r) {
   return r.startsWith("declared:") ? r.slice(9) : X[r] ?? r;
 }
-function A(r) {
+function R(r) {
   return r.data_type === "relation";
 }
-function Tr(r, t, e = []) {
+function Pr(r, t, e = []) {
   const n = /* @__PURE__ */ new Map();
   for (const o of r) {
-    if (A(o) || e.includes(o.attr) || !w(t[o.attr])) continue;
+    if (R(o) || e.includes(o.attr) || !w(t[o.attr])) continue;
     const s = rr(o), i = n.get(s);
     i ? i.push(o) : n.set(s, [o]);
   }
   return [...n].map(([o, s]) => ({ key: o, label: tr(o), fields: s }));
 }
-function Pr(r, t, e) {
-  const n = [...t, ...r.filter((o) => !w(e[o.attr]))].filter((o) => !A(o));
+function Tr(r, t, e) {
+  const n = [...t, ...r.filter((o) => !w(e[o.attr]))].filter((o) => !R(o));
   return [
     ...n.filter((o) => w(e[o.attr])),
     ...n.filter((o) => !w(e[o.attr]))
@@ -462,7 +463,7 @@ function Pr(r, t, e) {
 function xr(r, t) {
   const e = r.filter((n) => g(n) !== "hidden" && w(t[n.attr]));
   return {
-    relation: e.find(A),
+    relation: e.find(R),
     status: e.find((n) => n.data_type === "select")
   };
 }
@@ -486,7 +487,7 @@ function Yr(r) {
   const e = Math.floor((Date.now() - t.getTime()) / 1e3);
   return e < 60 ? "just now" : e < 3600 ? `${Math.floor(e / 60)}m ago` : e < 86400 ? `${Math.floor(e / 3600)}h ago` : e < 604800 ? `${Math.floor(e / 86400)}d ago` : t.toLocaleDateString(void 0, { month: "short", day: "numeric", year: t.getFullYear() !== (/* @__PURE__ */ new Date()).getFullYear() ? "numeric" : void 0 });
 }
-function Br(r) {
+function vr(r) {
   if (!r) return "";
   const t = new Date(r);
   return Number.isNaN(t.getTime()) ? r : new Intl.DateTimeFormat(void 0, {
@@ -497,7 +498,7 @@ function Br(r) {
     minute: "2-digit"
   }).format(t);
 }
-function Gr(r) {
+function Br(r) {
   return `${r}:${crypto.randomUUID()}`;
 }
 export {
@@ -506,17 +507,17 @@ export {
   ur as B,
   fr as C,
   ar as D,
-  Gr as E,
+  Br as E,
   pr as F,
-  Ar as G,
+  Rr as G,
   wr as H,
   Dr as I,
   Or as J,
   gr as K,
   u as L,
   Vr as M,
-  Tr as N,
-  Pr as O,
+  Pr as N,
+  Tr as O,
   Yr as P,
   Ur as Q,
   xr as R,
@@ -524,7 +525,7 @@ export {
   cr as T,
   dr as U,
   g as V,
-  Rr as W,
+  Ar as W,
   nr as X,
   _ as Y,
   mr as Z,
@@ -535,7 +536,7 @@ export {
   yr as a2,
   or as b,
   sr as c,
-  R as d,
+  A as d,
   Q as e,
   kr as f,
   Lr as g,
@@ -554,9 +555,9 @@ export {
   I as t,
   zr as u,
   Er as v,
-  P as w,
+  T as w,
   Fr as x,
   Sr as y,
-  Br as z
+  vr as z
 };
-//# sourceMappingURL=crm-model-BaRhr3mT.js.map
+//# sourceMappingURL=crm-model-BAtPi1Pd.js.map

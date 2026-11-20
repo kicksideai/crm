@@ -34,6 +34,7 @@ type Map = { [string]: any }
 type FileField = { attr: string, provider: string }
 type Expected = { provider: string, ref: string, field: string }
 type Fetcher = { fetch_func: string, parse_func: string }
+type FetcherSelection = { fetcher: Fetcher?, err: error? }
 
 local function trim(value: any): string
     if type(value) == "number" then value = tostring(value) end
@@ -82,27 +83,50 @@ function M.file_fields(crm_id: string, object_type: string): ({ FileField }?, er
     return out, nil
 end
 
--- fetcher(provider) -> the provider's attachment.fetcher functions.
-function M.fetcher(provider: string): (Fetcher?, error?)
+local function registered_fetchers(wanted_provider: string?): ({ [string]: FetcherSelection }?, error?)
     local entries, err = M.deps.registry.find({ [".kind"] = "registry.entry", ["meta.type"] = M.FETCHER_META })
     if err then return nil, err end
     if type(entries) ~= "table" then return nil, errors.new({ kind = errors.INTERNAL, message = "attachment fetcher registry returned invalid data" }) end
-    local found: Fetcher? = nil
+    local found: { [string]: FetcherSelection } = {}
     for _, entry in ipairs(entries) do
         local data = (entry :: any).data or entry
-        if trim(data.provider) == provider then
-            local candidate = { fetch_func = trim(data.fetch_func), parse_func = trim(data.parse_func) }
-            if candidate.parse_func == "" or candidate.fetch_func == "" then
-                return nil, invalid("attachment fetcher of " .. provider .. " declares no fetch_func or parse_func")
+        local provider = trim(data.provider)
+        if provider ~= "" and (wanted_provider == nil or provider == wanted_provider) then
+            local previous = found[provider]
+            if not previous or not previous.err then
+                local candidate = { fetch_func = trim(data.fetch_func), parse_func = trim(data.parse_func) }
+                local current = previous and previous.fetcher
+                if candidate.parse_func == "" or candidate.fetch_func == "" then
+                    found[provider] = { err = invalid("attachment fetcher of " .. provider .. " declares no fetch_func or parse_func") }
+                elseif current and (current.fetch_func ~= candidate.fetch_func or current.parse_func ~= candidate.parse_func) then
+                    found[provider] = { err = invalid("multiple attachment fetchers declared for provider " .. provider) }
+                else
+                    found[provider] = { fetcher = candidate }
+                end
             end
-            if found and (found.fetch_func ~= candidate.fetch_func or found.parse_func ~= candidate.parse_func) then
-                return nil, invalid("multiple attachment fetchers declared for provider " .. provider)
-            end
-            found = candidate
         end
     end
-    if found then return found, nil end
+    return found, nil
+end
+
+-- fetcher(provider) -> the provider's attachment.fetcher functions.
+function M.fetcher(provider: string): (Fetcher?, error?)
+    local found, err = registered_fetchers(provider)
+    if not found then return nil, err end
+    local choice = found[provider]
+    if choice then return choice.fetcher, choice.err end
     return nil, errors.new({ kind = errors.NOT_FOUND, message = "no attachment fetcher for provider " .. provider })
+end
+
+function M.attachment_providers(): ({ string }?, error?)
+    local found, err = registered_fetchers()
+    if not found then return nil, err end
+    local providers: { string } = {}
+    for provider, choice in pairs(found) do
+        if choice.fetcher then providers[#providers + 1] = provider end
+    end
+    table.sort(providers)
+    return providers, nil
 end
 
 -- parse(provider, value) -> the file refs in the value, in order.

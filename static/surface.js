@@ -15,7 +15,7 @@ class e extends o {
   }
   static get vueConfig() {
     return {
-      ...i(() => import("./surface-mount-COTEwtYl.js").then((t) => t.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the CRM. Reload the page to try again.", timeout: 3e4 })
+      ...i(() => import("./surface-mount-D7wp43hf.js").then((t) => t.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the CRM. Reload the page to try again.", timeout: 3e4 })
     };
   }
 }

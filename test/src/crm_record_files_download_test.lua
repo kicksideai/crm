@@ -119,6 +119,25 @@ local function define_tests()
             test.not_nil(err)
         end)
 
+        test.it("offers only usable registered attachment providers", function()
+            files.deps = { registry = { find = function(query)
+                test.eq(query[".kind"], "registry.entry")
+                test.eq(query["meta.type"], "attachment.fetcher")
+                return {
+                    { data = { provider = "zeta", fetch_func = "test:zeta", parse_func = "test:parse" } },
+                    { data = { provider = "alpha", fetch_func = "test:alpha", parse_func = "test:parse" } },
+                    { data = { provider = "alpha", fetch_func = "test:alpha", parse_func = "test:parse" } },
+                    { data = { provider = "no_parser", fetch_func = "test:fetch" } },
+                    { data = { provider = "ambiguous", fetch_func = "test:one", parse_func = "test:parse" } },
+                    { data = { provider = "ambiguous", fetch_func = "test:two", parse_func = "test:parse" } },
+                }, nil
+            end } }
+            local providers = assert(files.attachment_providers())
+            test.eq(#providers, 2)
+            test.eq(providers[1], "alpha")
+            test.eq(providers[2], "zeta")
+        end)
+
         test.it("authorizes a backfill before reading records or schema", function()
             local scanned = false
             local denied = errors.new({ kind = errors.PERMISSION_DENIED, message = "write required" })

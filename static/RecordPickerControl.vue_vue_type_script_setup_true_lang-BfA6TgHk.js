@@ -1,6 +1,6 @@
 import { defineComponent as P, ref as m, computed as G, watch as j, onBeforeUnmount as H, openBlock as u, createElementBlock as n, createElementVNode as y, normalizeClass as S, toDisplayString as h, unref as p, createBlock as J, createVNode as V, createCommentVNode as x, createTextVNode as B, Fragment as Q, renderList as W, withModifiers as X } from "vue";
 import { Icon as k } from "@iconify/vue";
-import { o as Y, x as D, e as Z, p as ee, i as ae, T as te, m as E, A as le, b as oe } from "./crm-model-BaRhr3mT.js";
+import { o as Y, x as D, e as Z, p as ee, i as ae, T as te, m as E, A as le, b as oe } from "./crm-model-BAtPi1Pd.js";
 const re = {
   key: 0,
   class: "crm-avatar small"
@@ -169,4 +169,4 @@ const re = {
 export {
   be as _
 };
-//# sourceMappingURL=RecordPickerControl.vue_vue_type_script_setup_true_lang-DqL5RXQ_.js.map
+//# sourceMappingURL=RecordPickerControl.vue_vue_type_script_setup_true_lang-BfA6TgHk.js.map

@@ -8,7 +8,7 @@ class e extends o {
   }
   static get vueConfig() {
     return {
-      ...n(() => import("./settings-mount-CEN73qYZ.js").then((t) => t.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the CRM settings. Reload the page to try again.", timeout: 3e4 })
+      ...n(() => import("./settings-mount-CJ7m_q06.js").then((t) => t.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the CRM settings. Reload the page to try again.", timeout: 3e4 })
     };
   }
 }
