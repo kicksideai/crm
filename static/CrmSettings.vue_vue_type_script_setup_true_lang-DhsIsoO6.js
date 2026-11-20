@@ -1,181 +1,181 @@
-import { openBlock as u, createElementBlock as m, mergeProps as P, createElementVNode as o, renderSlot as M, createTextVNode as I, toDisplayString as _, resolveComponent as bt, resolveDirective as Bt, withDirectives as $, createBlock as T, resolveDynamicComponent as vt, withCtx as Z, createCommentVNode as C, normalizeClass as G, computed as W, createVNode as w, Transition as ee, Fragment as K, defineComponent as pt, reactive as xt, onMounted as At, unref as y, withKeys as ne, vModelText as B, renderList as Q, vModelSelect as X, vModelCheckbox as ct, ref as V } from "vue";
+import { openBlock as c, createElementBlock as m, mergeProps as z, createElementVNode as o, renderSlot as T, createTextVNode as B, toDisplayString as j, resolveComponent as vt, resolveDirective as Ut, withDirectives as $, createBlock as U, resolveDynamicComponent as jt, withCtx as G, createCommentVNode as h, normalizeClass as tt, computed as K, createVNode as w, Transition as ne, Fragment as q, defineComponent as ht, reactive as Dt, onMounted as Nt, unref as v, withKeys as oe, vModelText as A, renderList as Q, vModelSelect as X, vModelCheckbox as yt, ref as H } from "vue";
 import { Icon as S } from "@iconify/vue";
-import { loadByTagName as oe, host as E } from "@wippy-fe/proxy";
-import { G as tt, y as Ot, o as St, q as re, Z as ae, _ as ie, b as le, m as H, $ as se, a0 as de, a1 as ue, a2 as ce } from "./crm-model-BaRhr3mT.js";
-import { s as mt, B as ft, b as Mt, c as Ft, d as $t, f as at, R as Tt, L as be, e as J, v as rt, g as pe, U as me, I as jt, h as fe, r as Rt, i as ge, j as ye, k as ve, C as he, m as ke, S as Ce, _ as we, x as yt, n as xe } from "./wc-runtime-Be-ICKk2.js";
-var Vt = {
+import { loadByTagName as re, host as I } from "@wippy-fe/proxy";
+import { G as rt, y as Ht, o as It, q as ie, Z as ae, _ as le, b as se, m as Z, $ as de, a0 as ue, a1 as ce, a2 as be } from "./crm-model-BAtPi1Pd.js";
+import { s as kt, B as Ct, b as Wt, c as Kt, d as Et, f as dt, R as qt, L as pe, e as ot, v as st, g as me, U as fe, I as Bt, h as ge, r as Zt, i as ye, j as ve, k as he, C as ke, m as Ce, S as we, _ as xe, x as St, n as $e } from "./wc-runtime-Be-ICKk2.js";
+var Yt = {
   name: "TimesIcon",
-  extends: mt
+  extends: kt
 };
-function $e(t) {
-  return _e(t) || Le(t) || je(t) || Se();
+function Se(t) {
+  return Pe(t) || Le(t) || _e(t) || je();
 }
-function Se() {
+function je() {
   throw new TypeError(`Invalid attempt to spread non-iterable instance.
 In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
 }
-function je(t, e) {
+function _e(t, e) {
   if (t) {
-    if (typeof t == "string") return ht(t, e);
+    if (typeof t == "string") return _t(t, e);
     var n = {}.toString.call(t).slice(8, -1);
-    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? ht(t, e) : void 0;
+    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? _t(t, e) : void 0;
   }
 }
 function Le(t) {
   if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
 }
-function _e(t) {
-  if (Array.isArray(t)) return ht(t);
+function Pe(t) {
+  if (Array.isArray(t)) return _t(t);
 }
-function ht(t, e) {
+function _t(t, e) {
   (e == null || e > t.length) && (e = t.length);
   for (var n = 0, i = Array(e); n < e; n++) i[n] = t[n];
   return i;
 }
-function ze(t, e, n, i, s, l) {
-  return u(), m("svg", P({
+function ze(t, e, n, i, s, a) {
+  return c(), m("svg", z({
     width: "14",
     height: "14",
     viewBox: "0 0 14 14",
     fill: "none",
     xmlns: "http://www.w3.org/2000/svg"
-  }, t.pti()), $e(e[0] || (e[0] = [o("path", {
+  }, t.pti()), Se(e[0] || (e[0] = [o("path", {
     d: "M8.01186 7.00933L12.27 2.75116C12.341 2.68501 12.398 2.60524 12.4375 2.51661C12.4769 2.42798 12.4982 2.3323 12.4999 2.23529C12.5016 2.13827 12.4838 2.0419 12.4474 1.95194C12.4111 1.86197 12.357 1.78024 12.2884 1.71163C12.2198 1.64302 12.138 1.58893 12.0481 1.55259C11.9581 1.51625 11.8617 1.4984 11.7647 1.50011C11.6677 1.50182 11.572 1.52306 11.4834 1.56255C11.3948 1.60204 11.315 1.65898 11.2488 1.72997L6.99067 5.98814L2.7325 1.72997C2.59553 1.60234 2.41437 1.53286 2.22718 1.53616C2.03999 1.53946 1.8614 1.61529 1.72901 1.74767C1.59663 1.88006 1.5208 2.05865 1.5175 2.24584C1.5142 2.43303 1.58368 2.61419 1.71131 2.75116L5.96948 7.00933L1.71131 11.2675C1.576 11.403 1.5 11.5866 1.5 11.7781C1.5 11.9696 1.576 12.1532 1.71131 12.2887C1.84679 12.424 2.03043 12.5 2.2219 12.5C2.41338 12.5 2.59702 12.424 2.7325 12.2887L6.99067 8.03052L11.2488 12.2887C11.3843 12.424 11.568 12.5 11.7594 12.5C11.9509 12.5 12.1346 12.424 12.27 12.2887C12.4053 12.1532 12.4813 11.9696 12.4813 11.7781C12.4813 11.5866 12.4053 11.403 12.27 11.2675L8.01186 7.00933Z",
     fill: "currentColor"
   }, null, -1)])), 16);
 }
-Vt.render = ze;
-var Ut = {
+Yt.render = ze;
+var Xt = {
   name: "WindowMaximizeIcon",
-  extends: mt
+  extends: kt
 };
-function Pe(t) {
-  return Be(t) || Ie(t) || Ee(t) || De();
+function De(t) {
+  return Ae(t) || Be(t) || Ie(t) || Ee();
 }
-function De() {
+function Ee() {
   throw new TypeError(`Invalid attempt to spread non-iterable instance.
 In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
 }
-function Ee(t, e) {
+function Ie(t, e) {
   if (t) {
-    if (typeof t == "string") return kt(t, e);
+    if (typeof t == "string") return Lt(t, e);
     var n = {}.toString.call(t).slice(8, -1);
-    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? kt(t, e) : void 0;
+    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? Lt(t, e) : void 0;
   }
 }
-function Ie(t) {
+function Be(t) {
   if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
 }
-function Be(t) {
-  if (Array.isArray(t)) return kt(t);
+function Ae(t) {
+  if (Array.isArray(t)) return Lt(t);
 }
-function kt(t, e) {
+function Lt(t, e) {
   (e == null || e > t.length) && (e = t.length);
   for (var n = 0, i = Array(e); n < e; n++) i[n] = t[n];
   return i;
 }
-function Ae(t, e, n, i, s, l) {
-  return u(), m("svg", P({
+function Oe(t, e, n, i, s, a) {
+  return c(), m("svg", z({
     width: "14",
     height: "14",
     viewBox: "0 0 14 14",
     fill: "none",
     xmlns: "http://www.w3.org/2000/svg"
-  }, t.pti()), Pe(e[0] || (e[0] = [o("path", {
+  }, t.pti()), De(e[0] || (e[0] = [o("path", {
     "fill-rule": "evenodd",
     "clip-rule": "evenodd",
     d: "M7 14H11.8C12.3835 14 12.9431 13.7682 13.3556 13.3556C13.7682 12.9431 14 12.3835 14 11.8V2.2C14 1.61652 13.7682 1.05694 13.3556 0.644365C12.9431 0.231785 12.3835 0 11.8 0H2.2C1.61652 0 1.05694 0.231785 0.644365 0.644365C0.231785 1.05694 0 1.61652 0 2.2V7C0 7.15913 0.063214 7.31174 0.175736 7.42426C0.288258 7.53679 0.44087 7.6 0.6 7.6C0.75913 7.6 0.911742 7.53679 1.02426 7.42426C1.13679 7.31174 1.2 7.15913 1.2 7V2.2C1.2 1.93478 1.30536 1.68043 1.49289 1.49289C1.68043 1.30536 1.93478 1.2 2.2 1.2H11.8C12.0652 1.2 12.3196 1.30536 12.5071 1.49289C12.6946 1.68043 12.8 1.93478 12.8 2.2V11.8C12.8 12.0652 12.6946 12.3196 12.5071 12.5071C12.3196 12.6946 12.0652 12.8 11.8 12.8H7C6.84087 12.8 6.68826 12.8632 6.57574 12.9757C6.46321 13.0883 6.4 13.2409 6.4 13.4C6.4 13.5591 6.46321 13.7117 6.57574 13.8243C6.68826 13.9368 6.84087 14 7 14ZM9.77805 7.42192C9.89013 7.534 10.0415 7.59788 10.2 7.59995C10.3585 7.59788 10.5099 7.534 10.622 7.42192C10.7341 7.30985 10.798 7.15844 10.8 6.99995V3.94242C10.8066 3.90505 10.8096 3.86689 10.8089 3.82843C10.8079 3.77159 10.7988 3.7157 10.7824 3.6623C10.756 3.55552 10.701 3.45698 10.622 3.37798C10.5099 3.2659 10.3585 3.20202 10.2 3.19995H7.00002C6.84089 3.19995 6.68828 3.26317 6.57576 3.37569C6.46324 3.48821 6.40002 3.64082 6.40002 3.79995C6.40002 3.95908 6.46324 4.11169 6.57576 4.22422C6.68828 4.33674 6.84089 4.39995 7.00002 4.39995H8.80006L6.19997 7.00005C6.10158 7.11005 6.04718 7.25246 6.04718 7.40005C6.04718 7.54763 6.10158 7.69004 6.19997 7.80005C6.30202 7.91645 6.44561 7.98824 6.59997 8.00005C6.75432 7.98824 6.89791 7.91645 6.99997 7.80005L9.60002 5.26841V6.99995C9.6021 7.15844 9.66598 7.30985 9.77805 7.42192ZM1.4 14H3.8C4.17066 13.9979 4.52553 13.8498 4.78763 13.5877C5.04973 13.3256 5.1979 12.9707 5.2 12.6V10.2C5.1979 9.82939 5.04973 9.47452 4.78763 9.21242C4.52553 8.95032 4.17066 8.80215 3.8 8.80005H1.4C1.02934 8.80215 0.674468 8.95032 0.412371 9.21242C0.150274 9.47452 0.00210008 9.82939 0 10.2V12.6C0.00210008 12.9707 0.150274 13.3256 0.412371 13.5877C0.674468 13.8498 1.02934 13.9979 1.4 14ZM1.25858 10.0586C1.29609 10.0211 1.34696 10 1.4 10H3.8C3.85304 10 3.90391 10.0211 3.94142 10.0586C3.97893 10.0961 4 10.147 4 10.2V12.6C4 12.6531 3.97893 12.704 3.94142 12.7415C3.90391 12.779 3.85304 12.8 3.8 12.8H1.4C1.34696 12.8 1.29609 12.779 1.25858 12.7415C1.22107 12.704 1.2 12.6531 1.2 12.6V10.2C1.2 10.147 1.22107 10.0961 1.25858 10.0586Z",
     fill: "currentColor"
   }, null, -1)])), 16);
 }
-Ut.render = Ae;
-var Nt = {
+Xt.render = Oe;
+var Gt = {
   name: "WindowMinimizeIcon",
-  extends: mt
+  extends: kt
 };
-function Oe(t) {
-  return Re(t) || Te(t) || Fe(t) || Me();
+function Me(t) {
+  return Ve(t) || Re(t) || Te(t) || Fe();
 }
-function Me() {
+function Fe() {
   throw new TypeError(`Invalid attempt to spread non-iterable instance.
 In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
 }
-function Fe(t, e) {
+function Te(t, e) {
   if (t) {
-    if (typeof t == "string") return Ct(t, e);
+    if (typeof t == "string") return Pt(t, e);
     var n = {}.toString.call(t).slice(8, -1);
-    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? Ct(t, e) : void 0;
+    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? Pt(t, e) : void 0;
   }
 }
-function Te(t) {
+function Re(t) {
   if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
 }
-function Re(t) {
-  if (Array.isArray(t)) return Ct(t);
+function Ve(t) {
+  if (Array.isArray(t)) return Pt(t);
 }
-function Ct(t, e) {
+function Pt(t, e) {
   (e == null || e > t.length) && (e = t.length);
   for (var n = 0, i = Array(e); n < e; n++) i[n] = t[n];
   return i;
 }
-function Ve(t, e, n, i, s, l) {
-  return u(), m("svg", P({
+function Ue(t, e, n, i, s, a) {
+  return c(), m("svg", z({
     width: "14",
     height: "14",
     viewBox: "0 0 14 14",
     fill: "none",
     xmlns: "http://www.w3.org/2000/svg"
-  }, t.pti()), Oe(e[0] || (e[0] = [o("path", {
+  }, t.pti()), Me(e[0] || (e[0] = [o("path", {
     "fill-rule": "evenodd",
     "clip-rule": "evenodd",
     d: "M11.8 0H2.2C1.61652 0 1.05694 0.231785 0.644365 0.644365C0.231785 1.05694 0 1.61652 0 2.2V7C0 7.15913 0.063214 7.31174 0.175736 7.42426C0.288258 7.53679 0.44087 7.6 0.6 7.6C0.75913 7.6 0.911742 7.53679 1.02426 7.42426C1.13679 7.31174 1.2 7.15913 1.2 7V2.2C1.2 1.93478 1.30536 1.68043 1.49289 1.49289C1.68043 1.30536 1.93478 1.2 2.2 1.2H11.8C12.0652 1.2 12.3196 1.30536 12.5071 1.49289C12.6946 1.68043 12.8 1.93478 12.8 2.2V11.8C12.8 12.0652 12.6946 12.3196 12.5071 12.5071C12.3196 12.6946 12.0652 12.8 11.8 12.8H7C6.84087 12.8 6.68826 12.8632 6.57574 12.9757C6.46321 13.0883 6.4 13.2409 6.4 13.4C6.4 13.5591 6.46321 13.7117 6.57574 13.8243C6.68826 13.9368 6.84087 14 7 14H11.8C12.3835 14 12.9431 13.7682 13.3556 13.3556C13.7682 12.9431 14 12.3835 14 11.8V2.2C14 1.61652 13.7682 1.05694 13.3556 0.644365C12.9431 0.231785 12.3835 0 11.8 0ZM6.368 7.952C6.44137 7.98326 6.52025 7.99958 6.6 8H9.8C9.95913 8 10.1117 7.93678 10.2243 7.82426C10.3368 7.71174 10.4 7.55913 10.4 7.4C10.4 7.24087 10.3368 7.08826 10.2243 6.97574C10.1117 6.86321 9.95913 6.8 9.8 6.8H8.048L10.624 4.224C10.73 4.11026 10.7877 3.95982 10.7849 3.80438C10.7822 3.64894 10.7192 3.50063 10.6093 3.3907C10.4994 3.28077 10.3511 3.2178 10.1956 3.21506C10.0402 3.21232 9.88974 3.27002 9.776 3.376L7.2 5.952V4.2C7.2 4.04087 7.13679 3.88826 7.02426 3.77574C6.91174 3.66321 6.75913 3.6 6.6 3.6C6.44087 3.6 6.28826 3.66321 6.17574 3.77574C6.06321 3.88826 6 4.04087 6 4.2V7.4C6.00042 7.47975 6.01674 7.55862 6.048 7.632C6.07656 7.70442 6.11971 7.7702 6.17475 7.82524C6.2298 7.88029 6.29558 7.92344 6.368 7.952ZM1.4 8.80005H3.8C4.17066 8.80215 4.52553 8.95032 4.78763 9.21242C5.04973 9.47452 5.1979 9.82939 5.2 10.2V12.6C5.1979 12.9707 5.04973 13.3256 4.78763 13.5877C4.52553 13.8498 4.17066 13.9979 3.8 14H1.4C1.02934 13.9979 0.674468 13.8498 0.412371 13.5877C0.150274 13.3256 0.00210008 12.9707 0 12.6V10.2C0.00210008 9.82939 0.150274 9.47452 0.412371 9.21242C0.674468 8.95032 1.02934 8.80215 1.4 8.80005ZM3.94142 12.7415C3.97893 12.704 4 12.6531 4 12.6V10.2C4 10.147 3.97893 10.0961 3.94142 10.0586C3.90391 10.0211 3.85304 10 3.8 10H1.4C1.34696 10 1.29609 10.0211 1.25858 10.0586C1.22107 10.0961 1.2 10.147 1.2 10.2V12.6C1.2 12.6531 1.22107 12.704 1.25858 12.7415C1.29609 12.779 1.34696 12.8 1.4 12.8H3.8C3.85304 12.8 3.90391 12.779 3.94142 12.7415Z",
     fill: "currentColor"
   }, null, -1)])), 16);
 }
-Nt.render = Ve;
-var Ht = {
+Gt.render = Ue;
+var Jt = {
   name: "SpinnerIcon",
-  extends: mt
+  extends: kt
 };
-function Ue(t) {
-  return Ke(t) || We(t) || He(t) || Ne();
+function Ne(t) {
+  return qe(t) || Ke(t) || We(t) || He();
 }
-function Ne() {
+function He() {
   throw new TypeError(`Invalid attempt to spread non-iterable instance.
 In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
 }
-function He(t, e) {
+function We(t, e) {
   if (t) {
-    if (typeof t == "string") return wt(t, e);
+    if (typeof t == "string") return zt(t, e);
     var n = {}.toString.call(t).slice(8, -1);
-    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? wt(t, e) : void 0;
+    return n === "Object" && t.constructor && (n = t.constructor.name), n === "Map" || n === "Set" ? Array.from(t) : n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n) ? zt(t, e) : void 0;
   }
 }
-function We(t) {
+function Ke(t) {
   if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
 }
-function Ke(t) {
-  if (Array.isArray(t)) return wt(t);
+function qe(t) {
+  if (Array.isArray(t)) return zt(t);
 }
-function wt(t, e) {
+function zt(t, e) {
   (e == null || e > t.length) && (e = t.length);
   for (var n = 0, i = Array(e); n < e; n++) i[n] = t[n];
   return i;
 }
-function qe(t, e, n, i, s, l) {
-  return u(), m("svg", P({
+function Ze(t, e, n, i, s, a) {
+  return c(), m("svg", z({
     width: "14",
     height: "14",
     viewBox: "0 0 14 14",
     fill: "none",
     xmlns: "http://www.w3.org/2000/svg"
-  }, t.pti()), Ue(e[0] || (e[0] = [o("path", {
+  }, t.pti()), Ne(e[0] || (e[0] = [o("path", {
     d: "M6.99701 14C5.85441 13.999 4.72939 13.7186 3.72012 13.1832C2.71084 12.6478 1.84795 11.8737 1.20673 10.9284C0.565504 9.98305 0.165424 8.89526 0.041387 7.75989C-0.0826496 6.62453 0.073125 5.47607 0.495122 4.4147C0.917119 3.35333 1.59252 2.4113 2.46241 1.67077C3.33229 0.930247 4.37024 0.413729 5.4857 0.166275C6.60117 -0.0811796 7.76026 -0.0520535 8.86188 0.251112C9.9635 0.554278 10.9742 1.12227 11.8057 1.90555C11.915 2.01493 11.9764 2.16319 11.9764 2.31778C11.9764 2.47236 11.915 2.62062 11.8057 2.73C11.7521 2.78503 11.688 2.82877 11.6171 2.85864C11.5463 2.8885 11.4702 2.90389 11.3933 2.90389C11.3165 2.90389 11.2404 2.8885 11.1695 2.85864C11.0987 2.82877 11.0346 2.78503 10.9809 2.73C9.9998 1.81273 8.73246 1.26138 7.39226 1.16876C6.05206 1.07615 4.72086 1.44794 3.62279 2.22152C2.52471 2.99511 1.72683 4.12325 1.36345 5.41602C1.00008 6.70879 1.09342 8.08723 1.62775 9.31926C2.16209 10.5513 3.10478 11.5617 4.29713 12.1803C5.48947 12.7989 6.85865 12.988 8.17414 12.7157C9.48963 12.4435 10.6711 11.7264 11.5196 10.6854C12.3681 9.64432 12.8319 8.34282 12.8328 7C12.8328 6.84529 12.8943 6.69692 13.0038 6.58752C13.1132 6.47812 13.2616 6.41667 13.4164 6.41667C13.5712 6.41667 13.7196 6.47812 13.8291 6.58752C13.9385 6.69692 14 6.84529 14 7C14 8.85651 13.2622 10.637 11.9489 11.9497C10.6356 13.2625 8.85432 14 6.99701 14Z",
     fill: "currentColor"
   }, null, -1)])), 16);
 }
-Ht.render = qe;
-var Ze = `
+Jt.render = Ze;
+var Ye = `
     .p-badge {
         display: inline-flex;
         border-radius: dt('badge.border.radius');
@@ -250,12 +250,12 @@ var Ze = `
         min-width: dt('badge.xl.min.width');
         height: dt('badge.xl.height');
     }
-`, Ye = {
+`, Xe = {
   root: function(e) {
     var n = e.props, i = e.instance;
     return ["p-badge p-component", {
-      "p-badge-circle": Ft(n.value) && String(n.value).length === 1,
-      "p-badge-dot": Mt(n.value) && !i.$slots.default,
+      "p-badge-circle": Kt(n.value) && String(n.value).length === 1,
+      "p-badge-dot": Wt(n.value) && !i.$slots.default,
       "p-badge-sm": n.size === "small",
       "p-badge-lg": n.size === "large",
       "p-badge-xl": n.size === "xlarge",
@@ -267,13 +267,13 @@ var Ze = `
       "p-badge-contrast": n.severity === "contrast"
     }];
   }
-}, Xe = ft.extend({
+}, Ge = Ct.extend({
   name: "badge",
-  style: Ze,
-  classes: Ye
-}), Ge = {
+  style: Ye,
+  classes: Xe
+}), Je = {
   name: "BaseBadge",
-  extends: $t,
+  extends: Et,
   props: {
     value: {
       type: [String, Number],
@@ -288,7 +288,7 @@ var Ze = `
       default: null
     }
   },
-  style: Xe,
+  style: Ge,
   provide: function() {
     return {
       $pcBadge: this,
@@ -296,54 +296,54 @@ var Ze = `
     };
   }
 };
-function it(t) {
+function ut(t) {
   "@babel/helpers - typeof";
-  return it = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+  return ut = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
     return typeof e;
   } : function(e) {
     return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-  }, it(t);
+  }, ut(t);
 }
-function Lt(t, e, n) {
-  return (e = Je(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
+function At(t, e, n) {
+  return (e = Qe(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
 }
-function Je(t) {
-  var e = Qe(t, "string");
-  return it(e) == "symbol" ? e : e + "";
+function Qe(t) {
+  var e = tn(t, "string");
+  return ut(e) == "symbol" ? e : e + "";
 }
-function Qe(t, e) {
-  if (it(t) != "object" || !t) return t;
+function tn(t, e) {
+  if (ut(t) != "object" || !t) return t;
   var n = t[Symbol.toPrimitive];
   if (n !== void 0) {
     var i = n.call(t, e);
-    if (it(i) != "object") return i;
+    if (ut(i) != "object") return i;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (e === "string" ? String : Number)(t);
 }
-var Wt = {
+var Qt = {
   name: "Badge",
-  extends: Ge,
+  extends: Je,
   inheritAttrs: !1,
   computed: {
     dataP: function() {
-      return at(Lt(Lt({
+      return dt(At(At({
         circle: this.value != null && String(this.value).length === 1,
         empty: this.value == null && !this.$slots.default
       }, this.severity, this.severity), this.size, this.size));
     }
   }
-}, tn = ["data-p"];
-function en(t, e, n, i, s, l) {
-  return u(), m("span", P({
+}, en = ["data-p"];
+function nn(t, e, n, i, s, a) {
+  return c(), m("span", z({
     class: t.cx("root"),
-    "data-p": l.dataP
-  }, t.ptmi("root")), [M(t.$slots, "default", {}, function() {
-    return [I(_(t.value), 1)];
-  })], 16, tn);
+    "data-p": a.dataP
+  }, t.ptmi("root")), [T(t.$slots, "default", {}, function() {
+    return [B(j(t.value), 1)];
+  })], 16, en);
 }
-Wt.render = en;
-var nn = `
+Qt.render = nn;
+var on = `
     .p-button {
         display: inline-flex;
         cursor: pointer;
@@ -994,35 +994,35 @@ var nn = `
         color: dt('button.link.active.color');
     }
 `;
-function lt(t) {
+function ct(t) {
   "@babel/helpers - typeof";
-  return lt = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+  return ct = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
     return typeof e;
   } : function(e) {
     return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-  }, lt(t);
+  }, ct(t);
 }
-function U(t, e, n) {
-  return (e = on(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
+function W(t, e, n) {
+  return (e = rn(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
 }
-function on(t) {
-  var e = rn(t, "string");
-  return lt(e) == "symbol" ? e : e + "";
+function rn(t) {
+  var e = an(t, "string");
+  return ct(e) == "symbol" ? e : e + "";
 }
-function rn(t, e) {
-  if (lt(t) != "object" || !t) return t;
+function an(t, e) {
+  if (ct(t) != "object" || !t) return t;
   var n = t[Symbol.toPrimitive];
   if (n !== void 0) {
     var i = n.call(t, e);
-    if (lt(i) != "object") return i;
+    if (ct(i) != "object") return i;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (e === "string" ? String : Number)(t);
 }
-var an = {
+var ln = {
   root: function(e) {
     var n = e.instance, i = e.props;
-    return ["p-button p-component", U(U(U(U(U(U(U(U(U({
+    return ["p-button p-component", W(W(W(W(W(W(W(W(W({
       "p-button-icon-only": n.hasIcon && !i.label && !i.badge,
       "p-button-vertical": (i.iconPos === "top" || i.iconPos === "bottom") && i.label,
       "p-button-loading": i.loading,
@@ -1032,16 +1032,16 @@ var an = {
   loadingIcon: "p-button-loading-icon",
   icon: function(e) {
     var n = e.props;
-    return ["p-button-icon", U({}, "p-button-icon-".concat(n.iconPos), n.label)];
+    return ["p-button-icon", W({}, "p-button-icon-".concat(n.iconPos), n.label)];
   },
   label: "p-button-label"
-}, ln = ft.extend({
+}, sn = Ct.extend({
   name: "button",
-  style: nn,
-  classes: an
-}), sn = {
+  style: on,
+  classes: ln
+}), dn = {
   name: "BaseButton",
-  extends: $t,
+  extends: Et,
   props: {
     label: {
       type: String,
@@ -1128,7 +1128,7 @@ var an = {
       default: null
     }
   },
-  style: ln,
+  style: sn,
   provide: function() {
     return {
       $pcButton: this,
@@ -1136,34 +1136,34 @@ var an = {
     };
   }
 };
-function st(t) {
+function bt(t) {
   "@babel/helpers - typeof";
-  return st = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+  return bt = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
     return typeof e;
   } : function(e) {
     return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-  }, st(t);
+  }, bt(t);
 }
-function O(t, e, n) {
-  return (e = dn(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
+function F(t, e, n) {
+  return (e = un(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
 }
-function dn(t) {
-  var e = un(t, "string");
-  return st(e) == "symbol" ? e : e + "";
+function un(t) {
+  var e = cn(t, "string");
+  return bt(e) == "symbol" ? e : e + "";
 }
-function un(t, e) {
-  if (st(t) != "object" || !t) return t;
+function cn(t, e) {
+  if (bt(t) != "object" || !t) return t;
   var n = t[Symbol.toPrimitive];
   if (n !== void 0) {
     var i = n.call(t, e);
-    if (st(i) != "object") return i;
+    if (bt(i) != "object") return i;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (e === "string" ? String : Number)(t);
 }
-var Kt = {
+var te = {
   name: "Button",
-  extends: sn,
+  extends: dn,
   inheritAttrs: !1,
   inject: {
     $pcFluid: {
@@ -1191,7 +1191,7 @@ var Kt = {
       return this.icon || this.$slots.icon;
     },
     attrs: function() {
-      return P(this.asAttrs, this.a11yAttrs, this.getPTOptions("root"));
+      return z(this.asAttrs, this.a11yAttrs, this.getPTOptions("root"));
     },
     asAttrs: function() {
       return this.as === "BUTTON" ? {
@@ -1208,93 +1208,93 @@ var Kt = {
       };
     },
     hasFluid: function() {
-      return Mt(this.fluid) ? !!this.$pcFluid : this.fluid;
+      return Wt(this.fluid) ? !!this.$pcFluid : this.fluid;
     },
     dataP: function() {
-      return at(O(O(O(O(O(O(O(O(O(O({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge), "loading", this.loading), "fluid", this.hasFluid), "rounded", this.rounded), "raised", this.raised), "outlined", this.outlined || this.variant === "outlined"), "text", this.text || this.variant === "text"), "link", this.link || this.variant === "link"), "vertical", (this.iconPos === "top" || this.iconPos === "bottom") && this.label));
+      return dt(F(F(F(F(F(F(F(F(F(F({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge), "loading", this.loading), "fluid", this.hasFluid), "rounded", this.rounded), "raised", this.raised), "outlined", this.outlined || this.variant === "outlined"), "text", this.text || this.variant === "text"), "link", this.link || this.variant === "link"), "vertical", (this.iconPos === "top" || this.iconPos === "bottom") && this.label));
     },
     dataIconP: function() {
-      return at(O(O({}, this.iconPos, this.iconPos), this.size, this.size));
+      return dt(F(F({}, this.iconPos, this.iconPos), this.size, this.size));
     },
     dataLabelP: function() {
-      return at(O(O({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge));
+      return dt(F(F({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge));
     }
   },
   components: {
-    SpinnerIcon: Ht,
-    Badge: Wt
+    SpinnerIcon: Jt,
+    Badge: Qt
   },
   directives: {
-    ripple: Tt
+    ripple: qt
   }
-}, cn = ["data-p"], bn = ["data-p"];
-function pn(t, e, n, i, s, l) {
-  var x = bt("SpinnerIcon"), v = bt("Badge"), r = Bt("ripple");
-  return t.asChild ? M(t.$slots, "default", {
+}, bn = ["data-p"], pn = ["data-p"];
+function mn(t, e, n, i, s, a) {
+  var x = vt("SpinnerIcon"), k = vt("Badge"), g = Ut("ripple");
+  return t.asChild ? T(t.$slots, "default", {
     key: 1,
-    class: G(t.cx("root")),
-    a11yAttrs: l.a11yAttrs
-  }) : $((u(), T(vt(t.as), P({
+    class: tt(t.cx("root")),
+    a11yAttrs: a.a11yAttrs
+  }) : $((c(), U(jt(t.as), z({
     key: 0,
     class: t.cx("root"),
-    "data-p": l.dataP
-  }, l.attrs), {
-    default: Z(function() {
-      return [M(t.$slots, "default", {}, function() {
-        return [t.loading ? M(t.$slots, "loadingicon", P({
+    "data-p": a.dataP
+  }, a.attrs), {
+    default: G(function() {
+      return [T(t.$slots, "default", {}, function() {
+        return [t.loading ? T(t.$slots, "loadingicon", z({
           key: 0,
           class: [t.cx("loadingIcon"), t.cx("icon")]
         }, t.ptm("loadingIcon")), function() {
-          return [t.loadingIcon ? (u(), m("span", P({
+          return [t.loadingIcon ? (c(), m("span", z({
             key: 0,
             class: [t.cx("loadingIcon"), t.cx("icon"), t.loadingIcon]
-          }, t.ptm("loadingIcon")), null, 16)) : (u(), T(x, P({
+          }, t.ptm("loadingIcon")), null, 16)) : (c(), U(x, z({
             key: 1,
             class: [t.cx("loadingIcon"), t.cx("icon")],
             spin: ""
           }, t.ptm("loadingIcon")), null, 16, ["class"]))];
-        }) : M(t.$slots, "icon", P({
+        }) : T(t.$slots, "icon", z({
           key: 1,
           class: [t.cx("icon")]
         }, t.ptm("icon")), function() {
-          return [t.icon ? (u(), m("span", P({
+          return [t.icon ? (c(), m("span", z({
             key: 0,
             class: [t.cx("icon"), t.icon, t.iconClass],
-            "data-p": l.dataIconP
-          }, t.ptm("icon")), null, 16, cn)) : C("", !0)];
-        }), t.label ? (u(), m("span", P({
+            "data-p": a.dataIconP
+          }, t.ptm("icon")), null, 16, bn)) : h("", !0)];
+        }), t.label ? (c(), m("span", z({
           key: 2,
           class: t.cx("label")
         }, t.ptm("label"), {
-          "data-p": l.dataLabelP
-        }), _(t.label), 17, bn)) : C("", !0), t.badge ? (u(), T(v, {
+          "data-p": a.dataLabelP
+        }), j(t.label), 17, pn)) : h("", !0), t.badge ? (c(), U(k, {
           key: 3,
           value: t.badge,
-          class: G(t.badgeClass),
+          class: tt(t.badgeClass),
           severity: t.badgeSeverity,
           unstyled: t.unstyled,
           pt: t.ptm("pcBadge")
-        }, null, 8, ["value", "class", "severity", "unstyled", "pt"])) : C("", !0)];
+        }, null, 8, ["value", "class", "severity", "unstyled", "pt"])) : h("", !0)];
       })];
     }),
     _: 3
-  }, 16, ["class", "data-p"])), [[r]]);
+  }, 16, ["class", "data-p"])), [[g]]);
 }
-Kt.render = pn;
-var mn = ft.extend({
+te.render = mn;
+var fn = Ct.extend({
   name: "focustrap-directive"
-}), fn = pe.extend({
-  style: mn
+}), gn = me.extend({
+  style: fn
 });
-function dt(t) {
+function pt(t) {
   "@babel/helpers - typeof";
-  return dt = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+  return pt = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
     return typeof e;
   } : function(e) {
     return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-  }, dt(t);
+  }, pt(t);
 }
-function _t(t, e) {
+function Ot(t, e) {
   var n = Object.keys(t);
   if (Object.getOwnPropertySymbols) {
     var i = Object.getOwnPropertySymbols(t);
@@ -1304,35 +1304,35 @@ function _t(t, e) {
   }
   return n;
 }
-function zt(t) {
+function Mt(t) {
   for (var e = 1; e < arguments.length; e++) {
     var n = arguments[e] != null ? arguments[e] : {};
-    e % 2 ? _t(Object(n), !0).forEach(function(i) {
-      gn(t, i, n[i]);
-    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(t, Object.getOwnPropertyDescriptors(n)) : _t(Object(n)).forEach(function(i) {
+    e % 2 ? Ot(Object(n), !0).forEach(function(i) {
+      yn(t, i, n[i]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(t, Object.getOwnPropertyDescriptors(n)) : Ot(Object(n)).forEach(function(i) {
       Object.defineProperty(t, i, Object.getOwnPropertyDescriptor(n, i));
     });
   }
   return t;
 }
-function gn(t, e, n) {
-  return (e = yn(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
+function yn(t, e, n) {
+  return (e = vn(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
 }
-function yn(t) {
-  var e = vn(t, "string");
-  return dt(e) == "symbol" ? e : e + "";
+function vn(t) {
+  var e = hn(t, "string");
+  return pt(e) == "symbol" ? e : e + "";
 }
-function vn(t, e) {
-  if (dt(t) != "object" || !t) return t;
+function hn(t, e) {
+  if (pt(t) != "object" || !t) return t;
   var n = t[Symbol.toPrimitive];
   if (n !== void 0) {
     var i = n.call(t, e);
-    if (dt(i) != "object") return i;
+    if (pt(i) != "object") return i;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (e === "string" ? String : Number)(t);
 }
-var hn = fn.extend("focustrap", {
+var kn = gn.extend("focustrap", {
   mounted: function(e, n) {
     var i = n.value || {}, s = i.disabled;
     s || (this.createHiddenFocusableElements(e, n), this.bind(e, n), this.autoElementFocus(e, n)), e.setAttribute("data-pd-focustrap", !0), this.$el = e;
@@ -1349,23 +1349,23 @@ var hn = fn.extend("focustrap", {
       return ':not(.p-hidden-focusable):not([data-p-hidden-focusable="true"])'.concat(e ?? "");
     },
     bind: function(e, n) {
-      var i = this, s = n.value || {}, l = s.onFocusIn, x = s.onFocusOut;
-      e.$_pfocustrap_mutationobserver = new MutationObserver(function(v) {
-        v.forEach(function(r) {
-          if (r.type === "childList" && !e.contains(document.activeElement)) {
-            var h = function(g) {
-              var k = jt(g) ? jt(g, i.getComputedSelector(e.$_pfocustrap_focusableselector)) ? g : rt(e, i.getComputedSelector(e.$_pfocustrap_focusableselector)) : rt(g);
-              return Ft(k) ? k : g.nextSibling && h(g.nextSibling);
+      var i = this, s = n.value || {}, a = s.onFocusIn, x = s.onFocusOut;
+      e.$_pfocustrap_mutationobserver = new MutationObserver(function(k) {
+        k.forEach(function(g) {
+          if (g.type === "childList" && !e.contains(document.activeElement)) {
+            var l = function(y) {
+              var C = Bt(y) ? Bt(y, i.getComputedSelector(e.$_pfocustrap_focusableselector)) ? y : st(e, i.getComputedSelector(e.$_pfocustrap_focusableselector)) : st(y);
+              return Kt(C) ? C : y.nextSibling && l(y.nextSibling);
             };
-            J(h(r.nextSibling));
+            ot(l(g.nextSibling));
           }
         });
       }), e.$_pfocustrap_mutationobserver.disconnect(), e.$_pfocustrap_mutationobserver.observe(e, {
         childList: !0
-      }), e.$_pfocustrap_focusinlistener = function(v) {
-        return l && l(v);
-      }, e.$_pfocustrap_focusoutlistener = function(v) {
-        return x && x(v);
+      }), e.$_pfocustrap_focusinlistener = function(k) {
+        return a && a(k);
+      }, e.$_pfocustrap_focusoutlistener = function(k) {
+        return x && x(k);
       }, e.addEventListener("focusin", e.$_pfocustrap_focusinlistener), e.addEventListener("focusout", e.$_pfocustrap_focusoutlistener);
     },
     unbind: function(e) {
@@ -1373,50 +1373,50 @@ var hn = fn.extend("focustrap", {
     },
     autoFocus: function(e) {
       this.autoElementFocus(this.$el, {
-        value: zt(zt({}, e), {}, {
+        value: Mt(Mt({}, e), {}, {
           autoFocus: !0
         })
       });
     },
     autoElementFocus: function(e, n) {
-      var i = n.value || {}, s = i.autoFocusSelector, l = s === void 0 ? "" : s, x = i.firstFocusableSelector, v = x === void 0 ? "" : x, r = i.autoFocus, h = r === void 0 ? !1 : r, f = rt(e, "[autofocus]".concat(this.getComputedSelector(l)));
-      h && !f && (f = rt(e, this.getComputedSelector(v))), J(f);
+      var i = n.value || {}, s = i.autoFocusSelector, a = s === void 0 ? "" : s, x = i.firstFocusableSelector, k = x === void 0 ? "" : x, g = i.autoFocus, l = g === void 0 ? !1 : g, f = st(e, "[autofocus]".concat(this.getComputedSelector(a)));
+      l && !f && (f = st(e, this.getComputedSelector(k))), ot(f);
     },
     onFirstHiddenElementFocus: function(e) {
-      var n, i = e.currentTarget, s = e.relatedTarget, l = s === i.$_pfocustrap_lasthiddenfocusableelement || !((n = this.$el) !== null && n !== void 0 && n.contains(s)) ? rt(i.parentElement, this.getComputedSelector(i.$_pfocustrap_focusableselector)) : i.$_pfocustrap_lasthiddenfocusableelement;
-      J(l);
+      var n, i = e.currentTarget, s = e.relatedTarget, a = s === i.$_pfocustrap_lasthiddenfocusableelement || !((n = this.$el) !== null && n !== void 0 && n.contains(s)) ? st(i.parentElement, this.getComputedSelector(i.$_pfocustrap_focusableselector)) : i.$_pfocustrap_lasthiddenfocusableelement;
+      ot(a);
     },
     onLastHiddenElementFocus: function(e) {
-      var n, i = e.currentTarget, s = e.relatedTarget, l = s === i.$_pfocustrap_firsthiddenfocusableelement || !((n = this.$el) !== null && n !== void 0 && n.contains(s)) ? be(i.parentElement, this.getComputedSelector(i.$_pfocustrap_focusableselector)) : i.$_pfocustrap_firsthiddenfocusableelement;
-      J(l);
+      var n, i = e.currentTarget, s = e.relatedTarget, a = s === i.$_pfocustrap_firsthiddenfocusableelement || !((n = this.$el) !== null && n !== void 0 && n.contains(s)) ? pe(i.parentElement, this.getComputedSelector(i.$_pfocustrap_focusableselector)) : i.$_pfocustrap_firsthiddenfocusableelement;
+      ot(a);
     },
     createHiddenFocusableElements: function(e, n) {
-      var i = this, s = n.value || {}, l = s.tabIndex, x = l === void 0 ? 0 : l, v = s.firstFocusableSelector, r = v === void 0 ? "" : v, h = s.lastFocusableSelector, f = h === void 0 ? "" : h, g = function(A) {
-        return me("span", {
+      var i = this, s = n.value || {}, a = s.tabIndex, x = a === void 0 ? 0 : a, k = s.firstFocusableSelector, g = k === void 0 ? "" : k, l = s.lastFocusableSelector, f = l === void 0 ? "" : l, y = function(D) {
+        return fe("span", {
           class: "p-hidden-accessible p-hidden-focusable",
           tabIndex: x,
           role: "presentation",
           "aria-hidden": !0,
           "data-p-hidden-accessible": !0,
           "data-p-hidden-focusable": !0,
-          onFocus: A?.bind(i)
+          onFocus: D?.bind(i)
         });
-      }, k = g(this.onFirstHiddenElementFocus), L = g(this.onLastHiddenElementFocus);
-      k.$_pfocustrap_lasthiddenfocusableelement = L, k.$_pfocustrap_focusableselector = r, k.setAttribute("data-pc-section", "firstfocusableelement"), L.$_pfocustrap_firsthiddenfocusableelement = k, L.$_pfocustrap_focusableselector = f, L.setAttribute("data-pc-section", "lastfocusableelement"), e.prepend(k), e.append(L);
+      }, C = y(this.onFirstHiddenElementFocus), L = y(this.onLastHiddenElementFocus);
+      C.$_pfocustrap_lasthiddenfocusableelement = L, C.$_pfocustrap_focusableselector = g, C.setAttribute("data-pc-section", "firstfocusableelement"), L.$_pfocustrap_firsthiddenfocusableelement = C, L.$_pfocustrap_focusableselector = f, L.setAttribute("data-pc-section", "lastfocusableelement"), e.prepend(C), e.append(L);
     }
   }
 });
-function Pt() {
+function Ft() {
+  ye({
+    variableName: Zt("scrollbar.width").name
+  });
+}
+function Tt() {
   ge({
-    variableName: Rt("scrollbar.width").name
+    variableName: Zt("scrollbar.width").name
   });
 }
-function Dt() {
-  fe({
-    variableName: Rt("scrollbar.width").name
-  });
-}
-var kn = `
+var Cn = `
     .p-dialog {
         max-height: 90%;
         transform: scale(1);
@@ -1514,7 +1514,7 @@ var kn = `
             transform: scale(0.93);
         }
     }
-`, Cn = {
+`, wn = {
   mask: function(e) {
     var n = e.position, i = e.modal;
     return {
@@ -1534,10 +1534,10 @@ var kn = `
     flexDirection: "column",
     pointerEvents: "auto"
   }
-}, wn = {
+}, xn = {
   mask: function(e) {
-    var n = e.props, i = ["left", "right", "top", "topleft", "topright", "bottom", "bottomleft", "bottomright"], s = i.find(function(l) {
-      return l === n.position;
+    var n = e.props, i = ["left", "right", "top", "topleft", "topright", "bottom", "bottomleft", "bottomright"], s = i.find(function(a) {
+      return a === n.position;
     });
     return ["p-dialog-mask", {
       "p-overlay-mask p-overlay-mask-enter-active": n.modal
@@ -1556,14 +1556,14 @@ var kn = `
   pcCloseButton: "p-dialog-close-button",
   content: "p-dialog-content",
   footer: "p-dialog-footer"
-}, xn = ft.extend({
+}, $n = Ct.extend({
   name: "dialog",
-  style: kn,
-  classes: wn,
-  inlineStyles: Cn
-}), $n = {
+  style: Cn,
+  classes: xn,
+  inlineStyles: wn
+}), Sn = {
   name: "BaseDialog",
-  extends: $t,
+  extends: Et,
   props: {
     header: {
       type: null,
@@ -1687,22 +1687,22 @@ var kn = `
     },
     _instance: null
   },
-  style: xn,
+  style: $n,
   provide: function() {
     return {
       $pcDialog: this,
       $parentInstance: this
     };
   }
-}, gt = {
+}, wt = {
   name: "Dialog",
-  extends: $n,
+  extends: Sn,
   inheritAttrs: !1,
   emits: ["update:visible", "show", "hide", "after-hide", "maximize", "unmaximize", "dragstart", "dragend"],
   provide: function() {
     var e = this;
     return {
-      dialogRef: W(function() {
+      dialogRef: K(function() {
         return e._instance;
       })
     };
@@ -1735,7 +1735,7 @@ var kn = `
     this.visible && (this.containerVisible = this.visible);
   },
   beforeUnmount: function() {
-    this.unbindDocumentState(), this.unbindGlobalListeners(), this.destroyStyle(), this.mask && this.autoZIndex && yt.clear(this.mask), this.container = null, this.mask = null;
+    this.unbindDocumentState(), this.unbindGlobalListeners(), this.destroyStyle(), this.mask && this.autoZIndex && St.clear(this.mask), this.container = null, this.mask = null;
   },
   mounted: function() {
     this.breakpoints && this.createStyle();
@@ -1745,19 +1745,19 @@ var kn = `
       this.$emit("update:visible", !1);
     },
     onEnter: function() {
-      this.$emit("show"), this.target = document.activeElement, this.enableDocumentSettings(), this.bindGlobalListeners(), this.autoZIndex && yt.set("modal", this.mask, this.baseZIndex || this.$primevue.config.zIndex.modal);
+      this.$emit("show"), this.target = document.activeElement, this.enableDocumentSettings(), this.bindGlobalListeners(), this.autoZIndex && St.set("modal", this.mask, this.baseZIndex || this.$primevue.config.zIndex.modal);
     },
     onAfterEnter: function() {
       this.focus();
     },
     onBeforeLeave: function() {
-      this.modal && !this.isUnstyled && xe(this.mask, "p-overlay-mask-leave-active"), this.dragging && this.documentDragEndListener && this.documentDragEndListener();
+      this.modal && !this.isUnstyled && $e(this.mask, "p-overlay-mask-leave-active"), this.dragging && this.documentDragEndListener && this.documentDragEndListener();
     },
     onLeave: function() {
-      this.$emit("hide"), J(this.target), this.target = null, this.focusableClose = null, this.focusableMax = null;
+      this.$emit("hide"), ot(this.target), this.target = null, this.focusableClose = null, this.focusableMax = null;
     },
     onAfterLeave: function() {
-      this.autoZIndex && yt.clear(this.mask), this.containerVisible = !1, this.unbindDocumentState(), this.unbindGlobalListeners(), this.$emit("after-hide");
+      this.autoZIndex && St.clear(this.mask), this.containerVisible = !1, this.unbindDocumentState(), this.unbindGlobalListeners(), this.$emit("after-hide");
     },
     onMaskMouseDown: function(e) {
       this.maskMouseDownTarget = e.target;
@@ -1769,18 +1769,18 @@ var kn = `
       var e = function(s) {
         return s && s.querySelector("[autofocus]");
       }, n = this.$slots.footer && e(this.footerContainer);
-      n || (n = this.$slots.header && e(this.headerContainer), n || (n = this.$slots.default && e(this.content), n || (this.maximizable ? (this.focusableMax = !0, n = this.maximizableButton) : (this.focusableClose = !0, n = this.closeButton)))), n && J(n, {
+      n || (n = this.$slots.header && e(this.headerContainer), n || (n = this.$slots.default && e(this.content), n || (this.maximizable ? (this.focusableMax = !0, n = this.maximizableButton) : (this.focusableClose = !0, n = this.closeButton)))), n && ot(n, {
         focusVisible: !0
       });
     },
     maximize: function(e) {
-      this.maximized ? (this.maximized = !1, this.$emit("unmaximize", e)) : (this.maximized = !0, this.$emit("maximize", e)), this.modal || (this.maximized ? Pt() : Dt());
+      this.maximized ? (this.maximized = !1, this.$emit("unmaximize", e)) : (this.maximized = !0, this.$emit("maximize", e)), this.modal || (this.maximized ? Ft() : Tt());
     },
     enableDocumentSettings: function() {
-      (this.modal || !this.modal && this.blockScroll || this.maximizable && this.maximized) && Pt();
+      (this.modal || !this.modal && this.blockScroll || this.maximizable && this.maximized) && Ft();
     },
     unbindDocumentState: function() {
-      (this.modal || !this.modal && this.blockScroll || this.maximizable && this.maximized) && Dt();
+      (this.modal || !this.modal && this.blockScroll || this.maximizable && this.maximized) && Tt();
     },
     onKeyDown: function(e) {
       e.code === "Escape" && this.closeOnEscape && !e.isComposing && this.close();
@@ -1815,7 +1815,7 @@ var kn = `
     createStyle: function() {
       if (!this.styleElement && !this.isUnstyled) {
         var e;
-        this.styleElement = document.createElement("style"), this.styleElement.type = "text/css", we(this.styleElement, "nonce", (e = this.$primevue) === null || e === void 0 || (e = e.config) === null || e === void 0 || (e = e.csp) === null || e === void 0 ? void 0 : e.nonce), document.head.appendChild(this.styleElement);
+        this.styleElement = document.createElement("style"), this.styleElement.type = "text/css", xe(this.styleElement, "nonce", (e = this.$primevue) === null || e === void 0 || (e = e.config) === null || e === void 0 || (e = e.csp) === null || e === void 0 ? void 0 : e.nonce), document.head.appendChild(this.styleElement);
         var n = "";
         for (var i in this.breakpoints)
           n += `
@@ -1832,7 +1832,7 @@ var kn = `
       this.styleElement && (document.head.removeChild(this.styleElement), this.styleElement = null);
     },
     initDrag: function(e) {
-      e.target.closest("div").getAttribute("data-pc-section") !== "headeractions" && this.draggable && (this.dragging = !0, this.lastPageX = e.pageX, this.lastPageY = e.pageY, this.container.style.margin = "0", document.body.setAttribute("data-p-unselectable-text", "true"), !this.isUnstyled && Ce(document.body, {
+      e.target.closest("div").getAttribute("data-pc-section") !== "headeractions" && this.draggable && (this.dragging = !0, this.lastPageX = e.pageX, this.lastPageY = e.pageY, this.container.style.margin = "0", document.body.setAttribute("data-p-unselectable-text", "true"), !this.isUnstyled && we(document.body, {
         "user-select": "none"
       }), this.$emit("dragstart", e));
     },
@@ -1846,8 +1846,8 @@ var kn = `
       var e = this;
       this.documentDragListener = function(n) {
         if (e.dragging) {
-          var i = ve(e.container), s = he(e.container), l = n.pageX - e.lastPageX, x = n.pageY - e.lastPageY, v = e.container.getBoundingClientRect(), r = v.left + l, h = v.top + x, f = ke(), g = getComputedStyle(e.container), k = parseFloat(g.marginLeft), L = parseFloat(g.marginTop);
-          e.container.style.position = "fixed", e.keepInViewport ? (r >= e.minX && r + i < f.width && (e.lastPageX = n.pageX, e.container.style.left = r - k + "px"), h >= e.minY && h + s < f.height && (e.lastPageY = n.pageY, e.container.style.top = h - L + "px")) : (e.lastPageX = n.pageX, e.container.style.left = r - k + "px", e.lastPageY = n.pageY, e.container.style.top = h - L + "px");
+          var i = he(e.container), s = ke(e.container), a = n.pageX - e.lastPageX, x = n.pageY - e.lastPageY, k = e.container.getBoundingClientRect(), g = k.left + a, l = k.top + x, f = Ce(), y = getComputedStyle(e.container), C = parseFloat(y.marginLeft), L = parseFloat(y.marginTop);
+          e.container.style.position = "fixed", e.keepInViewport ? (g >= e.minX && g + i < f.width && (e.lastPageX = n.pageX, e.container.style.left = g - C + "px"), l >= e.minY && l + s < f.height && (e.lastPageY = n.pageY, e.container.style.top = l - L + "px")) : (e.lastPageX = n.pageX, e.container.style.left = g - C + "px", e.lastPageY = n.pageY, e.container.style.top = l - L + "px");
         }
       }, window.document.addEventListener("mousemove", this.documentDragListener);
     },
@@ -1875,33 +1875,33 @@ var kn = `
       return this.$primevue.config.locale.aria ? this.$primevue.config.locale.aria.close : void 0;
     },
     dataP: function() {
-      return at({
+      return dt({
         maximized: this.maximized,
         modal: this.modal
       });
     }
   },
   directives: {
-    ripple: Tt,
-    focustrap: hn
+    ripple: qt,
+    focustrap: kn
   },
   components: {
-    Button: Kt,
-    Portal: ye,
-    WindowMinimizeIcon: Nt,
-    WindowMaximizeIcon: Ut,
-    TimesIcon: Vt
+    Button: te,
+    Portal: ve,
+    WindowMinimizeIcon: Gt,
+    WindowMaximizeIcon: Xt,
+    TimesIcon: Yt
   }
 };
-function ut(t) {
+function mt(t) {
   "@babel/helpers - typeof";
-  return ut = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
+  return mt = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(e) {
     return typeof e;
   } : function(e) {
     return e && typeof Symbol == "function" && e.constructor === Symbol && e !== Symbol.prototype ? "symbol" : typeof e;
-  }, ut(t);
+  }, mt(t);
 }
-function Et(t, e) {
+function Rt(t, e) {
   var n = Object.keys(t);
   if (Object.getOwnPropertySymbols) {
     var i = Object.getOwnPropertySymbols(t);
@@ -1911,180 +1911,180 @@ function Et(t, e) {
   }
   return n;
 }
-function It(t) {
+function Vt(t) {
   for (var e = 1; e < arguments.length; e++) {
     var n = arguments[e] != null ? arguments[e] : {};
-    e % 2 ? Et(Object(n), !0).forEach(function(i) {
-      Sn(t, i, n[i]);
-    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(t, Object.getOwnPropertyDescriptors(n)) : Et(Object(n)).forEach(function(i) {
+    e % 2 ? Rt(Object(n), !0).forEach(function(i) {
+      jn(t, i, n[i]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(t, Object.getOwnPropertyDescriptors(n)) : Rt(Object(n)).forEach(function(i) {
       Object.defineProperty(t, i, Object.getOwnPropertyDescriptor(n, i));
     });
   }
   return t;
 }
-function Sn(t, e, n) {
-  return (e = jn(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
+function jn(t, e, n) {
+  return (e = _n(e)) in t ? Object.defineProperty(t, e, { value: n, enumerable: !0, configurable: !0, writable: !0 }) : t[e] = n, t;
 }
-function jn(t) {
+function _n(t) {
   var e = Ln(t, "string");
-  return ut(e) == "symbol" ? e : e + "";
+  return mt(e) == "symbol" ? e : e + "";
 }
 function Ln(t, e) {
-  if (ut(t) != "object" || !t) return t;
+  if (mt(t) != "object" || !t) return t;
   var n = t[Symbol.toPrimitive];
   if (n !== void 0) {
     var i = n.call(t, e);
-    if (ut(i) != "object") return i;
+    if (mt(i) != "object") return i;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (e === "string" ? String : Number)(t);
 }
-var _n = ["data-p"], zn = ["aria-labelledby", "aria-modal", "data-p"], Pn = ["id"], Dn = ["data-p"];
-function En(t, e, n, i, s, l) {
-  var x = bt("Button"), v = bt("Portal"), r = Bt("focustrap");
-  return u(), T(v, {
+var Pn = ["data-p"], zn = ["aria-labelledby", "aria-modal", "data-p"], Dn = ["id"], En = ["data-p"];
+function In(t, e, n, i, s, a) {
+  var x = vt("Button"), k = vt("Portal"), g = Ut("focustrap");
+  return c(), U(k, {
     appendTo: t.appendTo
   }, {
-    default: Z(function() {
-      return [s.containerVisible ? (u(), m("div", P({
+    default: G(function() {
+      return [s.containerVisible ? (c(), m("div", z({
         key: 0,
-        ref: l.maskRef,
+        ref: a.maskRef,
         class: t.cx("mask"),
         style: t.sx("mask", !0, {
           position: t.position,
           modal: t.modal
         }),
         onMousedown: e[1] || (e[1] = function() {
-          return l.onMaskMouseDown && l.onMaskMouseDown.apply(l, arguments);
+          return a.onMaskMouseDown && a.onMaskMouseDown.apply(a, arguments);
         }),
         onMouseup: e[2] || (e[2] = function() {
-          return l.onMaskMouseUp && l.onMaskMouseUp.apply(l, arguments);
+          return a.onMaskMouseUp && a.onMaskMouseUp.apply(a, arguments);
         }),
-        "data-p": l.dataP
-      }, t.ptm("mask")), [w(ee, P({
+        "data-p": a.dataP
+      }, t.ptm("mask")), [w(ne, z({
         name: "p-dialog",
-        onEnter: l.onEnter,
-        onAfterEnter: l.onAfterEnter,
-        onBeforeLeave: l.onBeforeLeave,
-        onLeave: l.onLeave,
-        onAfterLeave: l.onAfterLeave,
+        onEnter: a.onEnter,
+        onAfterEnter: a.onAfterEnter,
+        onBeforeLeave: a.onBeforeLeave,
+        onLeave: a.onLeave,
+        onAfterLeave: a.onAfterLeave,
         appear: ""
       }, t.ptm("transition")), {
-        default: Z(function() {
-          return [t.visible ? $((u(), m("div", P({
+        default: G(function() {
+          return [t.visible ? $((c(), m("div", z({
             key: 0,
-            ref: l.containerRef,
+            ref: a.containerRef,
             class: t.cx("root"),
             style: t.sx("root"),
             role: "dialog",
-            "aria-labelledby": l.ariaLabelledById,
+            "aria-labelledby": a.ariaLabelledById,
             "aria-modal": t.modal,
-            "data-p": l.dataP
-          }, t.ptmi("root")), [t.$slots.container ? M(t.$slots, "container", {
+            "data-p": a.dataP
+          }, t.ptmi("root")), [t.$slots.container ? T(t.$slots, "container", {
             key: 0,
-            closeCallback: l.close,
+            closeCallback: a.close,
             maximizeCallback: function(f) {
-              return l.maximize(f);
+              return a.maximize(f);
             },
-            initDragCallback: l.initDrag
-          }) : (u(), m(K, {
+            initDragCallback: a.initDrag
+          }) : (c(), m(q, {
             key: 1
-          }, [t.showHeader ? (u(), m("div", P({
+          }, [t.showHeader ? (c(), m("div", z({
             key: 0,
-            ref: l.headerContainerRef,
+            ref: a.headerContainerRef,
             class: t.cx("header"),
             onMousedown: e[0] || (e[0] = function() {
-              return l.initDrag && l.initDrag.apply(l, arguments);
+              return a.initDrag && a.initDrag.apply(a, arguments);
             })
-          }, t.ptm("header")), [M(t.$slots, "header", {
-            class: G(t.cx("title"))
+          }, t.ptm("header")), [T(t.$slots, "header", {
+            class: tt(t.cx("title"))
           }, function() {
-            return [t.header ? (u(), m("span", P({
+            return [t.header ? (c(), m("span", z({
               key: 0,
-              id: l.ariaLabelledById,
+              id: a.ariaLabelledById,
               class: t.cx("title")
-            }, t.ptm("title")), _(t.header), 17, Pn)) : C("", !0)];
-          }), o("div", P({
+            }, t.ptm("title")), j(t.header), 17, Dn)) : h("", !0)];
+          }), o("div", z({
             class: t.cx("headerActions")
-          }, t.ptm("headerActions")), [t.maximizable ? M(t.$slots, "maximizebutton", {
+          }, t.ptm("headerActions")), [t.maximizable ? T(t.$slots, "maximizebutton", {
             key: 0,
             maximized: s.maximized,
             maximizeCallback: function(f) {
-              return l.maximize(f);
+              return a.maximize(f);
             }
           }, function() {
-            return [w(x, P({
-              ref: l.maximizableRef,
+            return [w(x, z({
+              ref: a.maximizableRef,
               autofocus: s.focusableMax,
               class: t.cx("pcMaximizeButton"),
-              onClick: l.maximize,
+              onClick: a.maximize,
               tabindex: t.maximizable ? "0" : "-1",
               unstyled: t.unstyled
             }, t.maximizeButtonProps, {
               pt: t.ptm("pcMaximizeButton"),
               "data-pc-group-section": "headericon"
             }), {
-              icon: Z(function(h) {
-                return [M(t.$slots, "maximizeicon", {
+              icon: G(function(l) {
+                return [T(t.$slots, "maximizeicon", {
                   maximized: s.maximized
                 }, function() {
-                  return [(u(), T(vt(l.maximizeIconComponent), P({
-                    class: [h.class, s.maximized ? t.minimizeIcon : t.maximizeIcon]
+                  return [(c(), U(jt(a.maximizeIconComponent), z({
+                    class: [l.class, s.maximized ? t.minimizeIcon : t.maximizeIcon]
                   }, t.ptm("pcMaximizeButton").icon), null, 16, ["class"]))];
                 })];
               }),
               _: 3
             }, 16, ["autofocus", "class", "onClick", "tabindex", "unstyled", "pt"])];
-          }) : C("", !0), t.closable ? M(t.$slots, "closebutton", {
+          }) : h("", !0), t.closable ? T(t.$slots, "closebutton", {
             key: 1,
-            closeCallback: l.close
+            closeCallback: a.close
           }, function() {
-            return [w(x, P({
-              ref: l.closeButtonRef,
+            return [w(x, z({
+              ref: a.closeButtonRef,
               autofocus: s.focusableClose,
               class: t.cx("pcCloseButton"),
-              onClick: l.close,
-              "aria-label": l.closeAriaLabel,
+              onClick: a.close,
+              "aria-label": a.closeAriaLabel,
               unstyled: t.unstyled
             }, t.closeButtonProps, {
               pt: t.ptm("pcCloseButton"),
               "data-pc-group-section": "headericon"
             }), {
-              icon: Z(function(h) {
-                return [M(t.$slots, "closeicon", {}, function() {
-                  return [(u(), T(vt(t.closeIcon ? "span" : "TimesIcon"), P({
-                    class: [t.closeIcon, h.class]
+              icon: G(function(l) {
+                return [T(t.$slots, "closeicon", {}, function() {
+                  return [(c(), U(jt(t.closeIcon ? "span" : "TimesIcon"), z({
+                    class: [t.closeIcon, l.class]
                   }, t.ptm("pcCloseButton").icon), null, 16, ["class"]))];
                 })];
               }),
               _: 3
             }, 16, ["autofocus", "class", "onClick", "aria-label", "unstyled", "pt"])];
-          }) : C("", !0)], 16)], 16)) : C("", !0), o("div", P({
-            ref: l.contentRef,
+          }) : h("", !0)], 16)], 16)) : h("", !0), o("div", z({
+            ref: a.contentRef,
             class: [t.cx("content"), t.contentClass],
             style: t.contentStyle,
-            "data-p": l.dataP
-          }, It(It({}, t.contentProps), t.ptm("content"))), [M(t.$slots, "default")], 16, Dn), t.footer || t.$slots.footer ? (u(), m("div", P({
+            "data-p": a.dataP
+          }, Vt(Vt({}, t.contentProps), t.ptm("content"))), [T(t.$slots, "default")], 16, En), t.footer || t.$slots.footer ? (c(), m("div", z({
             key: 1,
-            ref: l.footerContainerRef,
+            ref: a.footerContainerRef,
             class: t.cx("footer")
-          }, t.ptm("footer")), [M(t.$slots, "footer", {}, function() {
-            return [I(_(t.footer), 1)];
-          })], 16)) : C("", !0)], 64))], 16, zn)), [[r, {
+          }, t.ptm("footer")), [T(t.$slots, "footer", {}, function() {
+            return [B(j(t.footer), 1)];
+          })], 16)) : h("", !0)], 64))], 16, zn)), [[g, {
             disabled: !t.modal
-          }]]) : C("", !0)];
+          }]]) : h("", !0)];
         }),
         _: 3
-      }, 16, ["onEnter", "onAfterEnter", "onBeforeLeave", "onLeave", "onAfterLeave"])], 16, _n)) : C("", !0)];
+      }, 16, ["onEnter", "onAfterEnter", "onBeforeLeave", "onLeave", "onAfterLeave"])], 16, Pn)) : h("", !0)];
     }),
     _: 3
   }, 8, ["appendTo"]);
 }
-gt.render = En;
-const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form-grid" }, An = { class: "crm-field" }, On = { class: "crm-field" }, Mn = ["disabled", "placeholder"], Fn = {
+wt.render = In;
+const Bn = { class: "crm-dialog-head" }, An = { class: "crm-dialog-body crm-form-grid" }, On = { class: "crm-field" }, Mn = { class: "crm-field" }, Fn = ["disabled", "placeholder"], Tn = {
   key: 0,
   class: "crm-field full"
-}, Tn = { class: "crm-field full" }, Rn = ["value"], Vn = { class: "crm-dialog-foot" }, Un = ["disabled"], Nn = /* @__PURE__ */ pt({
+}, Rn = { class: "crm-field full" }, Vn = ["value"], Un = { class: "crm-dialog-foot" }, Nn = ["disabled"], Hn = /* @__PURE__ */ ht({
   __name: "SettingsObjectDialog",
   props: {
     object: {},
@@ -2092,16 +2092,16 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
   },
   emits: ["close", "save"],
   setup(t, { emit: e }) {
-    const n = t, i = e, s = xt({ label: n.object?.label || "", type: n.object?.type || "", icon: n.object?.icon || "tabler:category", titleLabel: "" }), l = () => i("close"), x = { content: { class: "crm-dialog-content" } };
-    At(() => oe("wc-icon-picker", { timeoutMs: 8e3 }));
-    function v(h) {
-      const f = h.detail;
+    const n = t, i = e, s = Dt({ label: n.object?.label || "", type: n.object?.type || "", icon: n.object?.icon || "tabler:category", titleLabel: "" }), a = () => i("close"), x = { content: { class: "crm-dialog-content" } };
+    Nt(() => re("wc-icon-picker", { timeoutMs: 8e3 }));
+    function k(l) {
+      const f = l.detail;
       typeof f == "string" && (s.icon = f);
     }
-    function r() {
+    function g() {
       s.label.trim() && (!n.object && !s.titleLabel.trim() || i("save", { label: s.label.trim(), type: s.type.trim(), icon: s.icon.trim() || "tabler:category", titleLabel: s.titleLabel.trim() }));
     }
-    return (h, f) => (u(), T(y(gt), {
+    return (l, f) => (c(), U(v(wt), {
       visible: !0,
       modal: "",
       "dismissable-mask": !0,
@@ -2109,381 +2109,421 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
       class: "crm-dialog",
       pt: x,
       "aria-label": "Object",
-      "onUpdate:visible": f[3] || (f[3] = (g) => {
-        g || l();
+      "onUpdate:visible": f[3] || (f[3] = (y) => {
+        y || a();
       })
     }, {
-      default: Z(() => [
-        o("header", In, [
+      default: G(() => [
+        o("header", Bn, [
           o("div", null, [
-            o("h2", null, _(t.object ? "Edit object" : "New object"), 1),
+            o("h2", null, j(t.object ? "Edit object" : "New object"), 1),
             f[4] || (f[4] = o("p", null, "One reusable record type.", -1))
           ]),
           o("button", {
             type: "button",
             class: "crm-icon-button",
             "aria-label": "Close",
-            onClick: l
+            onClick: a
           }, [
-            w(y(S), { icon: "tabler:x" })
+            w(v(S), { icon: "tabler:x" })
           ])
         ]),
-        o("div", Bn, [
-          o("label", An, [
+        o("div", An, [
+          o("label", On, [
             f[5] || (f[5] = o("span", { class: "crm-field-label" }, "Name", -1)),
             $(o("input", {
-              "onUpdate:modelValue": f[0] || (f[0] = (g) => s.label = g),
+              "onUpdate:modelValue": f[0] || (f[0] = (y) => s.label = y),
               class: "crm-input",
               placeholder: "Companies",
-              onKeyup: ne(r, ["enter"])
+              onKeyup: oe(g, ["enter"])
             }, null, 544), [
-              [B, s.label]
+              [A, s.label]
             ])
           ]),
-          o("label", On, [
+          o("label", Mn, [
             f[6] || (f[6] = o("span", { class: "crm-field-label" }, "API name", -1)),
             $(o("input", {
-              "onUpdate:modelValue": f[1] || (f[1] = (g) => s.type = g),
+              "onUpdate:modelValue": f[1] || (f[1] = (y) => s.type = y),
               class: "crm-input",
               disabled: !!t.object,
-              placeholder: y(tt)(s.label)
-            }, null, 8, Mn), [
-              [B, s.type]
+              placeholder: v(rt)(s.label)
+            }, null, 8, Fn), [
+              [A, s.type]
             ])
           ]),
-          t.object ? C("", !0) : (u(), m("label", Fn, [
+          t.object ? h("", !0) : (c(), m("label", Tn, [
             f[7] || (f[7] = o("span", { class: "crm-field-label" }, "Record title field", -1)),
             f[8] || (f[8] = o("span", { class: "crm-field-help" }, "The field used to identify records throughout CRM.", -1)),
             $(o("input", {
-              "onUpdate:modelValue": f[2] || (f[2] = (g) => s.titleLabel = g),
+              "onUpdate:modelValue": f[2] || (f[2] = (y) => s.titleLabel = y),
               class: "crm-input",
               placeholder: "Display name"
             }, null, 512), [
-              [B, s.titleLabel]
+              [A, s.titleLabel]
             ])
           ])),
-          o("label", Tn, [
+          o("label", Rn, [
             f[9] || (f[9] = o("span", { class: "crm-field-label" }, "Icon", -1)),
             o("wc-icon-picker", {
               value: s.icon,
               fallback: "tabler:category",
-              onSelect: v
-            }, null, 40, Rn)
+              onSelect: k
+            }, null, 40, Vn)
           ])
         ]),
-        o("footer", Vn, [
+        o("footer", Un, [
           o("button", {
             type: "button",
             class: "crm-button",
-            onClick: l
+            onClick: a
           }, "Cancel"),
           o("button", {
             type: "button",
             class: "crm-button primary",
             disabled: t.busy || !s.label.trim() || !t.object && !s.titleLabel.trim(),
-            onClick: r
+            onClick: g
           }, [
-            w(y(S), {
+            w(v(S), {
               icon: t.busy ? "tabler:loader-2" : "tabler:check",
-              class: G({ spin: t.busy })
+              class: tt({ spin: t.busy })
             }, null, 8, ["icon", "class"]),
-            I(_(t.busy ? "Saving…" : "Save"), 1)
-          ], 8, Un)
+            B(j(t.busy ? "Saving…" : "Save"), 1)
+          ], 8, Nn)
         ])
       ]),
       _: 1
     }));
   }
-}), Hn = { class: "crm-dialog-head" }, Wn = { class: "crm-dialog-body crm-form-grid" }, Kn = { class: "crm-field" }, qn = { class: "crm-field" }, Zn = ["disabled", "placeholder"], Yn = { class: "crm-field" }, Xn = ["disabled"], Gn = ["value"], Jn = { class: "crm-field" }, Qn = {
-  key: 0,
-  class: "crm-field full"
-}, to = { class: "crm-field" }, eo = {
+}), Wn = { class: "crm-dialog-head" }, Kn = { class: "crm-dialog-body crm-form-grid" }, qn = { class: "crm-field" }, Zn = { class: "crm-field" }, Yn = ["disabled", "placeholder"], Xn = { class: "crm-field" }, Gn = ["disabled"], Jn = ["value"], Qn = { class: "crm-field" }, to = {
   key: 0,
   class: "crm-field"
-}, no = ["value"], oo = {
+}, eo = ["value"], no = ["value"], oo = {
+  key: 0,
+  class: "crm-field-help"
+}, ro = {
+  key: 1,
+  class: "crm-field full"
+}, io = { class: "crm-field" }, ao = {
+  key: 0,
+  class: "crm-field"
+}, lo = ["value"], so = {
   key: 1,
   class: "crm-field"
-}, ro = {
-  key: 2,
-  class: "crm-field"
-}, ao = {
-  key: 3,
-  class: "crm-field"
-}, io = {
-  key: 4,
-  class: "crm-field"
-}, lo = { class: "crm-field" }, so = {
-  key: 2,
-  class: "crm-field"
 }, uo = {
+  key: 2,
+  class: "crm-field"
+}, co = {
   key: 3,
   class: "crm-field"
-}, co = { class: "crm-field" }, bo = { class: "crm-field" }, po = { class: "crm-field" }, mo = { class: "crm-field" }, fo = { class: "crm-check" }, go = { class: "crm-check" }, yo = { class: "crm-check" }, vo = {
+}, bo = {
   key: 4,
+  class: "crm-field"
+}, po = { class: "crm-field" }, mo = {
+  key: 3,
+  class: "crm-field"
+}, fo = {
+  key: 4,
+  class: "crm-field"
+}, go = { class: "crm-field" }, yo = { class: "crm-field" }, vo = { class: "crm-field" }, ho = { class: "crm-field" }, ko = { class: "crm-check" }, Co = { class: "crm-check" }, wo = { class: "crm-check" }, xo = {
+  key: 5,
   class: "crm-check"
-}, ho = { class: "crm-dialog-foot" }, ko = ["disabled"], Co = /* @__PURE__ */ pt({
+}, $o = { class: "crm-dialog-foot" }, So = ["disabled"], jo = /* @__PURE__ */ ht({
   __name: "SettingsFieldDialog",
   props: {
     field: {},
     objects: {},
     selected: {},
+    attachmentProviders: {},
     busy: { type: Boolean }
   },
   emits: ["close", "save"],
   setup(t, { emit: e }) {
-    const n = t, i = e, s = ["text", "email", "phone", "url", "number", "currency", "boolean", "date", "time", "datetime", "select", "multi_select", "relation", "ai"], l = n.field?.config || {}, x = l.ui || {}, v = l.target || {}, r = xt({
+    const n = t, i = e, s = ["text", "email", "phone", "url", "number", "currency", "boolean", "date", "time", "datetime", "select", "multi_select", "relation", "ai"], a = n.field?.config || {}, x = a.ui || {}, k = a.target || {}, g = {
       label: n.field?.label || "",
       attr: n.field?.attr || "",
       data_type: n.field?.data_type || "text",
-      help: String(l.help || ""),
-      required: l.required === !0,
-      unique: l.unique === !0,
-      choices: (l.choices || []).join(`
+      help: String(a.help || ""),
+      required: a.required === !0,
+      unique: a.unique === !0,
+      choices: (a.choices || []).join(`
 `),
-      record_type: String(v.object_type || ""),
-      target_kind: String(v.kind || "record"),
-      target_class: String(v.class || ""),
-      target_contract: String(v.contract || ""),
-      target_types: (v.kinds || ["user"]).join(", "),
-      target_route: String(v.route || ""),
-      cardinality: l.cardinality === "many" ? "many" : "one",
-      min: l.min == null ? "" : String(l.min),
-      max: l.max == null ? "" : String(l.max),
+      record_type: String(k.object_type || ""),
+      target_kind: String(k.kind || "record"),
+      target_class: String(k.class || ""),
+      target_contract: String(k.contract || ""),
+      target_types: (k.kinds || ["user"]).join(", "),
+      target_route: String(k.route || ""),
+      cardinality: a.cardinality === "many" ? "many" : "one",
+      min: a.min == null ? "" : String(a.min),
+      max: a.max == null ? "" : String(a.max),
+      attachment_provider: a.attachment?.provider || "",
       sort_order: Number(n.field?.sort_order || 10),
       ui_section: String(x.section || "main"),
       ui_form: x.form !== !1,
       ui_list: x.list !== !1,
       ui_role: String(x.role || ""),
       ui_span: Number(x.span || 2)
-    }), h = W(() => n.objects), f = W(() => ["select", "multi_select"].includes(r.data_type)), g = W(() => ["number", "currency"].includes(r.data_type)), k = W(() => r.data_type !== "relation"), L = W(() => r.label.trim() ? r.data_type !== "relation" ? !0 : r.target_kind === "record" ? r.record_type.trim() !== "" : r.target_kind === "component" ? r.target_class.trim() !== "" : r.target_types.split(",").some((R) => R.trim() !== "") : !1), D = () => i("close"), A = { content: { class: "crm-dialog-content" } };
-    function N() {
-      return n.field?.attr || tt(r.attr || r.label);
+    }, l = Dt({ ...g }), f = (E) => E === "text" || E === "url", y = K(() => g.attachment_provider && !n.attachmentProviders.includes(g.attachment_provider) ? g.attachment_provider : ""), C = K(() => n.objects), L = K(() => ["select", "multi_select"].includes(l.data_type)), O = K(() => ["number", "currency"].includes(l.data_type)), D = K(() => l.data_type !== "relation"), et = K(() => l.label.trim() ? l.data_type !== "relation" ? !0 : l.target_kind === "record" ? l.record_type.trim() !== "" : l.target_kind === "component" ? l.target_class.trim() !== "" : l.target_types.split(",").some((E) => E.trim() !== "") : !1), N = () => i("close"), it = { content: { class: "crm-dialog-content" } };
+    function Y() {
+      return n.field?.attr || rt(l.attr || l.label);
     }
-    function et(R) {
-      const a = {};
-      if (r.help.trim() && (a.help = r.help.trim()), r.required && (a.required = !0), k.value && r.unique && (a.unique = !0), f.value && (a.choices = r.choices.split(/\n|,/).map((p) => p.trim()).filter(Boolean)), r.data_type === "relation") {
-        let p;
-        r.target_kind === "record" ? p = { kind: "record", object_type: r.record_type } : r.target_kind === "component" ? p = { kind: "component", class: r.target_class.trim(), contract: r.target_contract.trim() || void 0, route: r.target_route.trim() || void 0 } : p = { kind: "principal", kinds: r.target_types.split(",").map((Y) => Y.trim()).filter(Boolean) }, a.target = p, a.relation = `${n.selected}_${R}`, a.cardinality = r.cardinality;
+    function nt(E, r) {
+      const u = {};
+      if (r.help.trim() && (u.help = r.help.trim()), r.required && (u.required = !0), r.data_type !== "relation" && r.unique && (u.unique = !0), ["select", "multi_select"].includes(r.data_type) && (u.choices = r.choices.split(/\n|,/).map((M) => M.trim()).filter(Boolean)), r.data_type === "relation") {
+        let M;
+        r.target_kind === "record" ? M = { kind: "record", object_type: r.record_type } : r.target_kind === "component" ? M = { kind: "component", class: r.target_class.trim(), contract: r.target_contract.trim() || void 0, route: r.target_route.trim() || void 0 } : M = { kind: "principal", kinds: r.target_types.split(",").map((R) => R.trim()).filter(Boolean) }, u.target = M, u.relation = `${n.selected}_${E}`, u.cardinality = r.cardinality;
       }
-      return r.min !== "" && (a.min = Number(r.min)), r.max !== "" && (a.max = Number(r.max)), a.ui = {
+      return r.min !== "" && (u.min = Number(r.min)), r.max !== "" && (u.max = Number(r.max)), f(r.data_type) && r.attachment_provider && (u.attachment = { provider: r.attachment_provider }), u.ui = {
         section: r.ui_section,
         form: r.ui_form,
         list: r.ui_list,
         span: r.ui_span,
         ...r.ui_role ? { role: r.ui_role } : {}
-      }, a;
+      }, u;
     }
-    function q() {
-      if (!L.value) return;
-      const R = N();
-      i("save", { label: r.label.trim(), attr: R, data_type: r.data_type, config: et(R), sort_order: r.sort_order });
+    function at(E, r, u) {
+      const M = { ...E };
+      for (const R of Object.keys({ ...r, ...u }))
+        JSON.stringify(r[R]) !== JSON.stringify(u[R]) && (u[R] === void 0 ? delete M[R] : M[R] = u[R]);
+      return M;
     }
-    return (R, a) => (u(), T(y(gt), {
+    function xt(E) {
+      const r = nt(E, l);
+      if (!n.field) return r;
+      const { ui: u, ...M } = nt(E, g), { ui: R, ...$t } = r, ft = at(a, M, $t), gt = at(x, u || {}, R || {});
+      return (a.ui || Object.keys(gt).length) && (ft.ui = gt), ft;
+    }
+    function J() {
+      if (!et.value) return;
+      const E = Y();
+      i("save", { label: l.label.trim(), attr: E, data_type: l.data_type, config: xt(E), sort_order: l.sort_order });
+    }
+    return (E, r) => (c(), U(v(wt), {
       visible: !0,
       modal: "",
       "dismissable-mask": !0,
       "show-header": !1,
       class: "crm-dialog crm-dialog-wide",
-      pt: A,
+      pt: it,
       "aria-label": "Field",
-      "onUpdate:visible": a[22] || (a[22] = (p) => {
-        p || D();
+      "onUpdate:visible": r[23] || (r[23] = (u) => {
+        u || N();
       })
     }, {
-      default: Z(() => [
-        o("header", Hn, [
+      default: G(() => [
+        o("header", Wn, [
           o("div", null, [
-            o("h2", null, _(t.field ? "Edit field" : "New field"), 1),
-            a[23] || (a[23] = o("p", null, "A schema-backed value on every record.", -1))
+            o("h2", null, j(t.field ? "Edit field" : "New field"), 1),
+            r[24] || (r[24] = o("p", null, "A schema-backed value on every record.", -1))
           ]),
           o("button", {
             type: "button",
             class: "crm-icon-button",
             "aria-label": "Close",
-            onClick: D
+            onClick: N
           }, [
-            w(y(S), { icon: "tabler:x" })
+            w(v(S), { icon: "tabler:x" })
           ])
         ]),
-        o("div", Wn, [
-          o("label", Kn, [
-            a[24] || (a[24] = o("span", { class: "crm-field-label" }, "Field label", -1)),
+        o("div", Kn, [
+          o("label", qn, [
+            r[25] || (r[25] = o("span", { class: "crm-field-label" }, "Field label", -1)),
             $(o("input", {
-              "onUpdate:modelValue": a[0] || (a[0] = (p) => r.label = p),
+              "onUpdate:modelValue": r[0] || (r[0] = (u) => l.label = u),
               class: "crm-input"
             }, null, 512), [
-              [B, r.label]
+              [A, l.label]
             ])
           ]),
-          o("label", qn, [
-            a[25] || (a[25] = o("span", { class: "crm-field-label" }, "API name", -1)),
+          o("label", Zn, [
+            r[26] || (r[26] = o("span", { class: "crm-field-label" }, "API name", -1)),
             $(o("input", {
-              "onUpdate:modelValue": a[1] || (a[1] = (p) => r.attr = p),
+              "onUpdate:modelValue": r[1] || (r[1] = (u) => l.attr = u),
               class: "crm-input",
               disabled: !!t.field,
-              placeholder: y(tt)(r.label)
-            }, null, 8, Zn), [
-              [B, r.attr]
+              placeholder: v(rt)(l.label)
+            }, null, 8, Yn), [
+              [A, l.attr]
             ])
           ]),
-          o("label", Yn, [
-            a[26] || (a[26] = o("span", { class: "crm-field-label" }, "Type", -1)),
+          o("label", Xn, [
+            r[27] || (r[27] = o("span", { class: "crm-field-label" }, "Type", -1)),
             $(o("select", {
-              "onUpdate:modelValue": a[2] || (a[2] = (p) => r.data_type = p),
+              "onUpdate:modelValue": r[2] || (r[2] = (u) => l.data_type = u),
               class: "crm-input",
               disabled: !!t.field
             }, [
-              (u(), m(K, null, Q(s, (p) => o("option", {
-                key: p,
-                value: p
-              }, _(p.replace("_", " ")), 9, Gn)), 64))
-            ], 8, Xn), [
-              [X, r.data_type]
+              (c(), m(q, null, Q(s, (u) => o("option", {
+                key: u,
+                value: u
+              }, j(u.replace("_", " ")), 9, Jn)), 64))
+            ], 8, Gn), [
+              [X, l.data_type]
             ])
           ]),
-          o("label", Jn, [
-            a[27] || (a[27] = o("span", { class: "crm-field-label" }, "Help text", -1)),
+          o("label", Qn, [
+            r[28] || (r[28] = o("span", { class: "crm-field-label" }, "Help text", -1)),
             $(o("input", {
-              "onUpdate:modelValue": a[3] || (a[3] = (p) => r.help = p),
+              "onUpdate:modelValue": r[3] || (r[3] = (u) => l.help = u),
               class: "crm-input"
             }, null, 512), [
-              [B, r.help]
+              [A, l.help]
             ])
           ]),
-          f.value ? (u(), m("label", Qn, [
-            a[28] || (a[28] = o("span", { class: "crm-field-label" }, "Choices", -1)),
-            a[29] || (a[29] = o("span", { class: "crm-field-help" }, "One per line.", -1)),
+          f(l.data_type) ? (c(), m("label", to, [
+            r[30] || (r[30] = o("span", { class: "crm-field-label" }, "Holds files from", -1)),
+            $(o("select", {
+              "onUpdate:modelValue": r[4] || (r[4] = (u) => l.attachment_provider = u),
+              class: "crm-input"
+            }, [
+              r[29] || (r[29] = o("option", { value: "" }, "None", -1)),
+              y.value ? (c(), m("option", {
+                key: 0,
+                value: y.value
+              }, j(y.value) + " (unavailable)", 9, eo)) : h("", !0),
+              (c(!0), m(q, null, Q(t.attachmentProviders, (u) => (c(), m("option", {
+                key: u,
+                value: u
+              }, j(u), 9, no))), 128))
+            ], 512), [
+              [X, l.attachment_provider]
+            ]),
+            t.attachmentProviders.length ? h("", !0) : (c(), m("small", oo, "No attachment providers are available."))
+          ])) : h("", !0),
+          L.value ? (c(), m("label", ro, [
+            r[31] || (r[31] = o("span", { class: "crm-field-label" }, "Choices", -1)),
+            r[32] || (r[32] = o("span", { class: "crm-field-help" }, "One per line.", -1)),
             $(o("textarea", {
-              "onUpdate:modelValue": a[4] || (a[4] = (p) => r.choices = p),
+              "onUpdate:modelValue": r[5] || (r[5] = (u) => l.choices = u),
               class: "crm-input crm-textarea"
             }, null, 512), [
-              [B, r.choices]
+              [A, l.choices]
             ])
-          ])) : C("", !0),
-          r.data_type === "relation" ? (u(), m(K, { key: 1 }, [
-            o("label", to, [
-              a[31] || (a[31] = o("span", { class: "crm-field-label" }, "Target kind", -1)),
+          ])) : h("", !0),
+          l.data_type === "relation" ? (c(), m(q, { key: 2 }, [
+            o("label", io, [
+              r[34] || (r[34] = o("span", { class: "crm-field-label" }, "Target kind", -1)),
               $(o("select", {
-                "onUpdate:modelValue": a[5] || (a[5] = (p) => r.target_kind = p),
+                "onUpdate:modelValue": r[6] || (r[6] = (u) => l.target_kind = u),
                 class: "crm-input"
-              }, [...a[30] || (a[30] = [
+              }, [...r[33] || (r[33] = [
                 o("option", { value: "record" }, "CRM record", -1),
                 o("option", { value: "component" }, "Application component", -1),
                 o("option", { value: "principal" }, "Person or group directory", -1)
               ])], 512), [
-                [X, r.target_kind]
+                [X, l.target_kind]
               ])
             ]),
-            r.target_kind === "record" ? (u(), m("label", eo, [
-              a[33] || (a[33] = o("span", { class: "crm-field-label" }, "Related object", -1)),
+            l.target_kind === "record" ? (c(), m("label", ao, [
+              r[36] || (r[36] = o("span", { class: "crm-field-label" }, "Related object", -1)),
               $(o("select", {
-                "onUpdate:modelValue": a[6] || (a[6] = (p) => r.record_type = p),
+                "onUpdate:modelValue": r[7] || (r[7] = (u) => l.record_type = u),
                 class: "crm-input"
               }, [
-                a[32] || (a[32] = o("option", { value: "" }, "Select…", -1)),
-                (u(!0), m(K, null, Q(h.value, (p) => (u(), m("option", {
-                  key: p.type,
-                  value: p.type
-                }, _(p.label), 9, no))), 128))
+                r[35] || (r[35] = o("option", { value: "" }, "Select…", -1)),
+                (c(!0), m(q, null, Q(C.value, (u) => (c(), m("option", {
+                  key: u.type,
+                  value: u.type
+                }, j(u.label), 9, lo))), 128))
               ], 512), [
-                [X, r.record_type]
+                [X, l.record_type]
               ])
-            ])) : r.target_kind === "component" ? (u(), m("label", oo, [
-              a[34] || (a[34] = o("span", { class: "crm-field-label" }, "Component class", -1)),
+            ])) : l.target_kind === "component" ? (c(), m("label", so, [
+              r[37] || (r[37] = o("span", { class: "crm-field-label" }, "Component class", -1)),
               $(o("input", {
-                "onUpdate:modelValue": a[7] || (a[7] = (p) => r.target_class = p),
+                "onUpdate:modelValue": r[8] || (r[8] = (u) => l.target_class = u),
                 class: "crm-input",
                 placeholder: "knowledge_base"
               }, null, 512), [
-                [B, r.target_class]
+                [A, l.target_class]
               ])
-            ])) : (u(), m("label", ro, [
-              a[35] || (a[35] = o("span", { class: "crm-field-label" }, "Principal kinds", -1)),
+            ])) : (c(), m("label", uo, [
+              r[38] || (r[38] = o("span", { class: "crm-field-label" }, "Principal kinds", -1)),
               $(o("input", {
-                "onUpdate:modelValue": a[8] || (a[8] = (p) => r.target_types = p),
+                "onUpdate:modelValue": r[9] || (r[9] = (u) => l.target_types = u),
                 class: "crm-input",
                 placeholder: "user, group"
               }, null, 512), [
-                [B, r.target_types]
+                [A, l.target_types]
               ])
             ])),
-            r.target_kind === "component" ? (u(), m("label", ao, [
-              a[36] || (a[36] = o("span", { class: "crm-field-label" }, "Required contract", -1)),
+            l.target_kind === "component" ? (c(), m("label", co, [
+              r[39] || (r[39] = o("span", { class: "crm-field-label" }, "Required contract", -1)),
               $(o("input", {
-                "onUpdate:modelValue": a[9] || (a[9] = (p) => r.target_contract = p),
+                "onUpdate:modelValue": r[10] || (r[10] = (u) => l.target_contract = u),
                 class: "crm-input",
                 placeholder: "module:contract"
               }, null, 512), [
-                [B, r.target_contract]
+                [A, l.target_contract]
               ])
-            ])) : C("", !0),
-            r.target_kind === "component" ? (u(), m("label", io, [
-              a[37] || (a[37] = o("span", { class: "crm-field-label" }, "Open route", -1)),
-              a[38] || (a[38] = o("span", { class: "crm-field-help" }, "Use {id} for the selected component.", -1)),
+            ])) : h("", !0),
+            l.target_kind === "component" ? (c(), m("label", bo, [
+              r[40] || (r[40] = o("span", { class: "crm-field-label" }, "Open route", -1)),
+              r[41] || (r[41] = o("span", { class: "crm-field-help" }, "Use {id} for the selected component.", -1)),
               $(o("input", {
-                "onUpdate:modelValue": a[10] || (a[10] = (p) => r.target_route = p),
+                "onUpdate:modelValue": r[11] || (r[11] = (u) => l.target_route = u),
                 class: "crm-input",
                 placeholder: "knowledge/{id}"
               }, null, 512), [
-                [B, r.target_route]
+                [A, l.target_route]
               ])
-            ])) : C("", !0),
-            o("label", lo, [
-              a[40] || (a[40] = o("span", { class: "crm-field-label" }, "Cardinality", -1)),
+            ])) : h("", !0),
+            o("label", po, [
+              r[43] || (r[43] = o("span", { class: "crm-field-label" }, "Cardinality", -1)),
               $(o("select", {
-                "onUpdate:modelValue": a[11] || (a[11] = (p) => r.cardinality = p),
+                "onUpdate:modelValue": r[12] || (r[12] = (u) => l.cardinality = u),
                 class: "crm-input"
-              }, [...a[39] || (a[39] = [
+              }, [...r[42] || (r[42] = [
                 o("option", { value: "one" }, "One item", -1),
                 o("option", { value: "many" }, "Many items", -1)
               ])], 512), [
-                [X, r.cardinality]
+                [X, l.cardinality]
               ])
             ])
-          ], 64)) : C("", !0),
-          g.value ? (u(), m("label", so, [
-            a[41] || (a[41] = o("span", { class: "crm-field-label" }, "Minimum", -1)),
+          ], 64)) : h("", !0),
+          O.value ? (c(), m("label", mo, [
+            r[44] || (r[44] = o("span", { class: "crm-field-label" }, "Minimum", -1)),
             $(o("input", {
-              "onUpdate:modelValue": a[12] || (a[12] = (p) => r.min = p),
+              "onUpdate:modelValue": r[13] || (r[13] = (u) => l.min = u),
               class: "crm-input",
               type: "number"
             }, null, 512), [
-              [B, r.min]
+              [A, l.min]
             ])
-          ])) : C("", !0),
-          g.value ? (u(), m("label", uo, [
-            a[42] || (a[42] = o("span", { class: "crm-field-label" }, "Maximum", -1)),
+          ])) : h("", !0),
+          O.value ? (c(), m("label", fo, [
+            r[45] || (r[45] = o("span", { class: "crm-field-label" }, "Maximum", -1)),
             $(o("input", {
-              "onUpdate:modelValue": a[13] || (a[13] = (p) => r.max = p),
+              "onUpdate:modelValue": r[14] || (r[14] = (u) => l.max = u),
               class: "crm-input",
               type: "number"
             }, null, 512), [
-              [B, r.max]
+              [A, l.max]
             ])
-          ])) : C("", !0),
-          a[54] || (a[54] = o("div", { class: "crm-form-section full" }, [
+          ])) : h("", !0),
+          r[57] || (r[57] = o("div", { class: "crm-form-section full" }, [
             o("strong", null, "Presentation"),
             o("span", null, "Declarative placement used by every CRM surface.")
           ], -1)),
-          o("label", co, [
-            a[44] || (a[44] = o("span", { class: "crm-field-label" }, "Detail section", -1)),
+          o("label", go, [
+            r[47] || (r[47] = o("span", { class: "crm-field-label" }, "Detail section", -1)),
             $(o("select", {
-              "onUpdate:modelValue": a[14] || (a[14] = (p) => r.ui_section = p),
+              "onUpdate:modelValue": r[15] || (r[15] = (u) => l.ui_section = u),
               class: "crm-input"
-            }, [...a[43] || (a[43] = [
+            }, [...r[46] || (r[46] = [
               o("option", { value: "main" }, "Main details", -1),
               o("option", { value: "collapsed" }, "Collapsed details", -1),
               o("option", { value: "hidden" }, "Hidden", -1)
             ])], 512), [
-              [X, r.ui_section]
+              [X, l.ui_section]
             ])
           ]),
-          o("label", bo, [
-            a[46] || (a[46] = o("span", { class: "crm-field-label" }, "Width", -1)),
+          o("label", yo, [
+            r[49] || (r[49] = o("span", { class: "crm-field-label" }, "Width", -1)),
             $(o("select", {
-              "onUpdate:modelValue": a[15] || (a[15] = (p) => r.ui_span = p),
+              "onUpdate:modelValue": r[16] || (r[16] = (u) => l.ui_span = u),
               class: "crm-input"
-            }, [...a[45] || (a[45] = [
+            }, [...r[48] || (r[48] = [
               o("option", { value: 1 }, "Quarter", -1),
               o("option", { value: 2 }, "Half", -1),
               o("option", { value: 3 }, "Three quarters", -1),
@@ -2491,115 +2531,115 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
             ])], 512), [
               [
                 X,
-                r.ui_span,
+                l.ui_span,
                 void 0,
                 { number: !0 }
               ]
             ])
           ]),
-          o("label", po, [
-            a[48] || (a[48] = o("span", { class: "crm-field-label" }, "Semantic role", -1)),
+          o("label", vo, [
+            r[51] || (r[51] = o("span", { class: "crm-field-label" }, "Semantic role", -1)),
             $(o("select", {
-              "onUpdate:modelValue": a[16] || (a[16] = (p) => r.ui_role = p),
+              "onUpdate:modelValue": r[17] || (r[17] = (u) => l.ui_role = u),
               class: "crm-input"
-            }, [...a[47] || (a[47] = [
+            }, [...r[50] || (r[50] = [
               o("option", { value: "" }, "Standard field", -1),
               o("option", { value: "title" }, "Record title", -1),
               o("option", { value: "subtitle" }, "Record subtitle", -1)
             ])], 512), [
-              [X, r.ui_role]
+              [X, l.ui_role]
             ])
           ]),
-          o("label", mo, [
-            a[49] || (a[49] = o("span", { class: "crm-field-label" }, "Position", -1)),
+          o("label", ho, [
+            r[52] || (r[52] = o("span", { class: "crm-field-label" }, "Position", -1)),
             $(o("input", {
-              "onUpdate:modelValue": a[17] || (a[17] = (p) => r.sort_order = p),
+              "onUpdate:modelValue": r[18] || (r[18] = (u) => l.sort_order = u),
               class: "crm-input",
               type: "number",
               min: "0",
               step: "10"
             }, null, 512), [
               [
-                B,
-                r.sort_order,
+                A,
+                l.sort_order,
                 void 0,
                 { number: !0 }
               ]
             ])
           ]),
-          o("label", fo, [
+          o("label", ko, [
             $(o("input", {
-              "onUpdate:modelValue": a[18] || (a[18] = (p) => r.ui_form = p),
+              "onUpdate:modelValue": r[19] || (r[19] = (u) => l.ui_form = u),
               type: "checkbox"
             }, null, 512), [
-              [ct, r.ui_form]
+              [yt, l.ui_form]
             ]),
-            a[50] || (a[50] = o("span", null, [
+            r[53] || (r[53] = o("span", null, [
               o("strong", null, "Show in forms"),
               o("small", null, "Available while creating or editing a record.")
             ], -1))
           ]),
-          o("label", go, [
+          o("label", Co, [
             $(o("input", {
-              "onUpdate:modelValue": a[19] || (a[19] = (p) => r.ui_list = p),
+              "onUpdate:modelValue": r[20] || (r[20] = (u) => l.ui_list = u),
               type: "checkbox"
             }, null, 512), [
-              [ct, r.ui_list]
+              [yt, l.ui_list]
             ]),
-            a[51] || (a[51] = o("span", null, [
+            r[54] || (r[54] = o("span", null, [
               o("strong", null, "Show in default lists"),
               o("small", null, "Eligible for the default table columns.")
             ], -1))
           ]),
-          o("label", yo, [
+          o("label", wo, [
             $(o("input", {
-              "onUpdate:modelValue": a[20] || (a[20] = (p) => r.required = p),
+              "onUpdate:modelValue": r[21] || (r[21] = (u) => l.required = u),
               type: "checkbox"
             }, null, 512), [
-              [ct, r.required]
+              [yt, l.required]
             ]),
-            a[52] || (a[52] = o("span", null, [
+            r[55] || (r[55] = o("span", null, [
               o("strong", null, "Required"),
               o("small", null, "Records cannot omit this value.")
             ], -1))
           ]),
-          k.value ? (u(), m("label", vo, [
+          D.value ? (c(), m("label", xo, [
             $(o("input", {
-              "onUpdate:modelValue": a[21] || (a[21] = (p) => r.unique = p),
+              "onUpdate:modelValue": r[22] || (r[22] = (u) => l.unique = u),
               type: "checkbox"
             }, null, 512), [
-              [ct, r.unique]
+              [yt, l.unique]
             ]),
-            a[53] || (a[53] = o("span", null, [
+            r[56] || (r[56] = o("span", null, [
               o("strong", null, "Unique"),
               o("small", null, "No two records may share it.")
             ], -1))
-          ])) : C("", !0)
+          ])) : h("", !0)
         ]),
-        o("footer", ho, [
+        o("footer", $o, [
           o("button", {
             type: "button",
             class: "crm-button",
-            onClick: D
+            onClick: N
           }, "Cancel"),
           o("button", {
             type: "button",
             class: "crm-button primary",
-            disabled: t.busy || !L.value,
-            onClick: q
+            disabled: t.busy || !et.value,
+            onClick: J
           }, [
-            w(y(S), {
+            w(v(S), {
               icon: t.busy ? "tabler:loader-2" : "tabler:check",
-              class: G({ spin: t.busy })
+              class: tt({ spin: t.busy })
             }, null, 8, ["icon", "class"]),
-            I(_(t.busy ? "Saving…" : "Save"), 1)
-          ], 8, ko)
+            B(j(t.busy ? "Saving…" : "Save"), 1)
+          ], 8, So)
         ])
       ]),
       _: 1
     }));
   }
-}), wo = { class: "crm-dialog-head" }, xo = { class: "crm-dialog-body" }, $o = { class: "crm-field" }, So = { class: "crm-stage-editor" }, jo = ["onUpdate:modelValue"], Lo = ["disabled", "onClick"], _o = ["disabled", "onClick"], zo = ["onClick"], Po = { class: "crm-dialog-foot" }, Do = ["disabled"], Eo = /* @__PURE__ */ pt({
+}), _o = { class: "crm-dialog-head" }, Lo = { class: "crm-dialog-body" }, Po = { class: "crm-field" }, zo = { class: "crm-stage-editor" }, Do = ["onUpdate:modelValue"], Eo = ["disabled", "onClick"], Io = ["disabled", "onClick"], Bo = ["onClick"], Ao = { class: "crm-dialog-foot" }, Oo = ["disabled"], Mo = /* @__PURE__ */ ht({
   __name: "SettingsPipelineDialog",
   props: {
     pipeline: {},
@@ -2609,38 +2649,38 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
   },
   emits: ["close", "save"],
   setup(t, { emit: e }) {
-    const n = t, i = e, s = Ot(n.pipeline || void 0), l = xt({
+    const n = t, i = e, s = Ht(n.pipeline || void 0), a = Dt({
       label: n.pipeline?.label || `${n.objectLabel} Pipeline`,
       collection_id: n.pipeline?.collection_id || `${n.selected}_pipeline`,
-      stages: s.length ? s.map((g) => ({ ...g })) : [{ stage_id: "new", label: "New", order: 10 }, { stage_id: "won", label: "Won", order: 20 }, { stage_id: "lost", label: "Lost", order: 30 }]
-    }), x = () => i("close"), v = { content: { class: "crm-dialog-content" } };
-    function r(g, k) {
-      const L = g + k;
-      if (L < 0 || L >= l.stages.length) return;
-      const [D] = l.stages.splice(g, 1);
-      l.stages.splice(L, 0, D);
+      stages: s.length ? s.map((y) => ({ ...y })) : [{ stage_id: "new", label: "New", order: 10 }, { stage_id: "won", label: "Won", order: 20 }, { stage_id: "lost", label: "Lost", order: 30 }]
+    }), x = () => i("close"), k = { content: { class: "crm-dialog-content" } };
+    function g(y, C) {
+      const L = y + C;
+      if (L < 0 || L >= a.stages.length) return;
+      const [O] = a.stages.splice(y, 1);
+      a.stages.splice(L, 0, O);
     }
-    function h() {
-      l.stages.push({ stage_id: "", label: "", order: (l.stages.length + 1) * 10 });
+    function l() {
+      a.stages.push({ stage_id: "", label: "", order: (a.stages.length + 1) * 10 });
     }
     function f() {
-      l.stages.some((g) => g.label.trim()) && i("save", { label: l.label.trim(), collection_id: l.collection_id, stages: l.stages });
+      a.stages.some((y) => y.label.trim()) && i("save", { label: a.label.trim(), collection_id: a.collection_id, stages: a.stages });
     }
-    return (g, k) => (u(), T(y(gt), {
+    return (y, C) => (c(), U(v(wt), {
       visible: !0,
       modal: "",
       "dismissable-mask": !0,
       "show-header": !1,
       class: "crm-dialog",
-      pt: v,
+      pt: k,
       "aria-label": "Pipeline stages",
-      "onUpdate:visible": k[1] || (k[1] = (L) => {
+      "onUpdate:visible": C[1] || (C[1] = (L) => {
         L || x();
       })
     }, {
-      default: Z(() => [
-        o("header", wo, [
-          k[2] || (k[2] = o("div", null, [
+      default: G(() => [
+        o("header", _o, [
+          C[2] || (C[2] = o("div", null, [
             o("h2", null, "Pipeline stages"),
             o("p", null, "The stages shown in board view.")
           ], -1)),
@@ -2650,67 +2690,67 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
             "aria-label": "Close",
             onClick: x
           }, [
-            w(y(S), { icon: "tabler:x" })
+            w(v(S), { icon: "tabler:x" })
           ])
         ]),
-        o("div", xo, [
-          o("label", $o, [
-            k[3] || (k[3] = o("span", { class: "crm-field-label" }, "Pipeline name", -1)),
+        o("div", Lo, [
+          o("label", Po, [
+            C[3] || (C[3] = o("span", { class: "crm-field-label" }, "Pipeline name", -1)),
             $(o("input", {
-              "onUpdate:modelValue": k[0] || (k[0] = (L) => l.label = L),
+              "onUpdate:modelValue": C[0] || (C[0] = (L) => a.label = L),
               class: "crm-input"
             }, null, 512), [
-              [B, l.label]
+              [A, a.label]
             ])
           ]),
-          o("div", So, [
-            (u(!0), m(K, null, Q(l.stages, (L, D) => (u(), m("div", { key: D }, [
-              w(y(S), { icon: "tabler:grip-vertical" }),
+          o("div", zo, [
+            (c(!0), m(q, null, Q(a.stages, (L, O) => (c(), m("div", { key: O }, [
+              w(v(S), { icon: "tabler:grip-vertical" }),
               $(o("input", {
-                "onUpdate:modelValue": (A) => L.label = A,
+                "onUpdate:modelValue": (D) => L.label = D,
                 class: "crm-input",
                 placeholder: "Stage name"
-              }, null, 8, jo), [
-                [B, L.label]
+              }, null, 8, Do), [
+                [A, L.label]
               ]),
               o("button", {
                 type: "button",
                 class: "crm-icon-button",
-                disabled: D === 0,
+                disabled: O === 0,
                 "aria-label": "Move up",
-                onClick: (A) => r(D, -1)
+                onClick: (D) => g(O, -1)
               }, [
-                w(y(S), { icon: "tabler:arrow-up" })
-              ], 8, Lo),
+                w(v(S), { icon: "tabler:arrow-up" })
+              ], 8, Eo),
               o("button", {
                 type: "button",
                 class: "crm-icon-button",
-                disabled: D === l.stages.length - 1,
+                disabled: O === a.stages.length - 1,
                 "aria-label": "Move down",
-                onClick: (A) => r(D, 1)
+                onClick: (D) => g(O, 1)
               }, [
-                w(y(S), { icon: "tabler:arrow-down" })
-              ], 8, _o),
+                w(v(S), { icon: "tabler:arrow-down" })
+              ], 8, Io),
               o("button", {
                 type: "button",
                 class: "crm-icon-button danger",
                 "aria-label": "Remove stage",
-                onClick: (A) => l.stages.splice(D, 1)
+                onClick: (D) => a.stages.splice(O, 1)
               }, [
-                w(y(S), { icon: "tabler:x" })
-              ], 8, zo)
+                w(v(S), { icon: "tabler:x" })
+              ], 8, Bo)
             ]))), 128)),
             o("button", {
               type: "button",
               class: "crm-button",
-              onClick: h
+              onClick: l
             }, [
-              w(y(S), { icon: "tabler:plus" }),
-              k[4] || (k[4] = I("Add stage", -1))
+              w(v(S), { icon: "tabler:plus" }),
+              C[4] || (C[4] = B("Add stage", -1))
             ])
           ])
         ]),
-        o("footer", Po, [
+        o("footer", Ao, [
           o("button", {
             type: "button",
             class: "crm-button",
@@ -2722,46 +2762,46 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
             disabled: t.busy,
             onClick: f
           }, [
-            w(y(S), {
+            w(v(S), {
               icon: t.busy ? "tabler:loader-2" : "tabler:check",
-              class: G({ spin: t.busy })
+              class: tt({ spin: t.busy })
             }, null, 8, ["icon", "class"]),
-            I(_(t.busy ? "Saving…" : "Save"), 1)
-          ], 8, Do)
+            B(j(t.busy ? "Saving…" : "Save"), 1)
+          ], 8, Oo)
         ])
       ]),
       _: 1
     }));
   }
-}), Io = {
+}), Fo = {
   key: 0,
   class: "crm-state"
-}, Bo = {
+}, To = {
   key: 1,
   class: "crm-state error",
   role: "alert"
-}, Ao = {
+}, Ro = {
   key: 2,
   class: "crm-settings"
-}, Oo = { class: "crm-page-head" }, Mo = { class: "crm-page-actions" }, Fo = {
+}, Vo = { class: "crm-page-head" }, Uo = { class: "crm-page-actions" }, No = {
   key: 0,
   class: "crm-pill"
-}, To = ["disabled"], Ro = {
+}, Ho = ["disabled"], Wo = {
   key: 1,
   class: "crm-button"
-}, Vo = { class: "crm-settings-layout" }, Uo = { class: "crm-settings-objects" }, No = ["onClick"], Ho = { class: "crm-object-icon" }, Wo = {
+}, Ko = { class: "crm-settings-layout" }, qo = { class: "crm-settings-objects" }, Zo = ["onClick"], Yo = { class: "crm-object-icon" }, Xo = {
   key: 0,
   class: "crm-settings-main"
-}, Ko = { class: "crm-settings-title" }, qo = { class: "crm-object-icon large" }, Zo = { class: "crm-card" }, Yo = { class: "crm-card-head" }, Xo = { class: "crm-field-list" }, Go = { key: 0 }, Jo = { key: 1 }, Qo = { class: "crm-type-badge" }, tr = { key: 0 }, er = { key: 1 }, nr = { key: 2 }, or = { class: "crm-type-badge" }, rr = { class: "crm-row-actions" }, ar = ["onClick"], ir = ["onClick"], lr = { class: "crm-card" }, sr = { class: "crm-card-head" }, dr = {
+}, Go = { class: "crm-settings-title" }, Jo = { class: "crm-object-icon large" }, Qo = { class: "crm-card" }, tr = { class: "crm-card-head" }, er = { class: "crm-field-list" }, nr = { key: 0 }, or = { key: 1 }, rr = { class: "crm-type-badge" }, ir = { key: 0 }, ar = { key: 1 }, lr = { key: 2 }, sr = { class: "crm-type-badge" }, dr = { class: "crm-row-actions" }, ur = ["onClick"], cr = ["onClick"], br = { class: "crm-card" }, pr = { class: "crm-card-head" }, mr = {
   key: 0,
   class: "crm-pipeline-preview"
-}, ur = {
+}, fr = {
   key: 1,
   class: "crm-card-empty"
-}, cr = { class: "crm-card" }, br = { class: "crm-setting-line" }, pr = ["disabled"], mr = {
+}, gr = { class: "crm-card" }, yr = { class: "crm-setting-line" }, vr = ["disabled"], hr = {
   key: 1,
   class: "crm-settings-main crm-settings-empty"
-}, fr = { class: "crm-empty-icon" }, Cr = /* @__PURE__ */ pt({
+}, kr = { class: "crm-empty-icon" }, jr = /* @__PURE__ */ ht({
   __name: "CrmSettings",
   props: {
     crmId: {},
@@ -2770,270 +2810,270 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
   },
   emits: ["changed"],
   setup(t, { emit: e }) {
-    const n = t, i = e, s = V(n.initial || null), l = V(""), x = V(!0), v = V(""), r = V(!1), h = V(""), f = V(null), g = V(null), k = V(365), L = V(""), D = W(() => s.value?.objects.find((b) => b.type === l.value)), A = W(() => St(s.value?.attributes || [], l.value)), N = W(() => D.value ? re(s.value?.pipelines || [], D.value) : void 0);
-    async function et(b = l.value) {
-      x.value = !0, v.value = "";
+    const n = t, i = e, s = H(n.initial || null), a = H(""), x = H(!0), k = H(""), g = H(!1), l = H(""), f = H(null), y = H(null), C = H(365), L = H(""), O = H([]), D = K(() => s.value?.objects.find((p) => p.type === a.value)), et = K(() => It(s.value?.attributes || [], a.value)), N = K(() => D.value ? ie(s.value?.pipelines || [], D.value) : void 0);
+    async function it(p = a.value) {
+      x.value = !0, k.value = "";
       try {
-        const d = n.crmId || s.value?.crm_id || "", [c, j, z] = await Promise.all([ae(d), ie(), le(d)]);
-        if ("provisioned" in z) throw new Error("No CRM workspace has been created yet.");
-        L.value = c.revision;
-        const F = { success: !0, crm_id: d, workspace_label: z.workspace_label, can_write: n.canWrite, ...c.declaration };
-        s.value = F, k.value = Number(j.thread_event_retention_days || 365), l.value = F.objects.some((ot) => ot.type === b) ? b : F.objects[0]?.type || "", i("changed", F);
+        const d = n.crmId || s.value?.crm_id || "", [b, _, P] = await Promise.all([ae(d), le(), se(d)]);
+        if ("provisioned" in P) throw new Error("No CRM workspace has been created yet.");
+        L.value = b.revision, O.value = b.attachmentProviders;
+        const V = { success: !0, crm_id: d, workspace_label: P.workspace_label, can_write: n.canWrite, ...b.declaration };
+        s.value = V, C.value = Number(_.thread_event_retention_days || 365), a.value = V.objects.some((lt) => lt.type === p) ? p : V.objects[0]?.type || "", i("changed", V);
       } catch (d) {
-        v.value = H(d, "CRM settings could not load.");
+        k.value = Z(d, "CRM settings could not load.");
       } finally {
         x.value = !1;
       }
     }
-    function q() {
-      h.value = "", f.value = null, g.value = null;
-    }
-    function R(b) {
-      f.value = b || null, h.value = "object";
-    }
-    function a(b) {
-      g.value = b || null, h.value = "field";
-    }
-    function p() {
-      h.value = "pipeline";
-    }
     function Y() {
+      l.value = "", f.value = null, y.value = null;
+    }
+    function nt(p) {
+      f.value = p || null, l.value = "object";
+    }
+    function at(p) {
+      y.value = p || null, l.value = "field";
+    }
+    function xt() {
+      l.value = "pipeline";
+    }
+    function J() {
       if (!s.value) return { objects: [], attributes: [], pipelines: [], views: [] };
-      const b = s.value;
+      const p = s.value;
       return {
-        version: b.version,
-        objects: b.objects,
-        attributes: b.attributes,
-        pipelines: b.pipelines,
-        views: b.views,
-        policies: b.policies,
-        merge_config: b.merge_config
+        version: p.version,
+        objects: p.objects,
+        attributes: p.attributes,
+        pipelines: p.pipelines,
+        views: p.views,
+        policies: p.policies,
+        merge_config: p.merge_config
       };
     }
-    async function nt(b) {
+    async function E(p) {
       const d = s.value;
       if (!d) throw new Error("CRM settings are not loaded.");
-      const c = d.crm_id, j = await ce(c, L.value, b);
-      L.value = j.revision;
-      const z = { success: !0, crm_id: c, workspace_label: d.workspace_label, can_write: n.canWrite, ...j.declaration };
-      return s.value = z, l.value = z.objects.some((F) => F.type === l.value) ? l.value : z.objects[0]?.type || "", i("changed", z), j;
+      const b = d.crm_id, _ = await be(b, L.value, p);
+      L.value = _.revision;
+      const P = { success: !0, crm_id: b, workspace_label: d.workspace_label, can_write: n.canWrite, ..._.declaration };
+      return s.value = P, a.value = P.objects.some((V) => V.type === a.value) ? a.value : P.objects[0]?.type || "", i("changed", P), _;
     }
-    async function qt(b) {
-      const d = f.value?.type || tt(b.type || b.label);
+    async function r(p) {
+      const d = f.value?.type || rt(p.type || p.label);
       if (d) {
-        r.value = !0;
+        g.value = !0;
         try {
-          const c = Y(), j = { ...f.value || {}, type: d, label: b.label, icon: b.icon || void 0 }, z = [...c.objects.filter((ot) => ot.type !== d), j];
-          let F = c.attributes;
+          const b = J(), _ = { ...f.value || {}, type: d, label: p.label, icon: p.icon || void 0 }, P = [...b.objects.filter((lt) => lt.type !== d), _];
+          let V = b.attributes;
           if (!f.value) {
-            const ot = tt(b.titleLabel);
-            F = [...F, { object_type: d, attr: ot, data_type: "text", label: b.titleLabel, sort_order: 10, system: !0, config: { ui: { role: "title", section: "main", span: 4, list: !0, form: !0 } } }];
+            const lt = rt(p.titleLabel);
+            V = [...V, { object_type: d, attr: lt, data_type: "text", label: p.titleLabel, sort_order: 10, system: !0, config: { ui: { role: "title", section: "main", span: 4, list: !0, form: !0 } } }];
           }
-          await nt({ ...c, objects: z, attributes: F }), E.toast({ severity: "success", summary: f.value ? "Object updated" : "Object created", detail: b.label }), q(), l.value = d;
-        } catch (c) {
-          E.toast({ severity: "error", summary: "Could not save object", detail: H(c, "CRM write failed.") });
+          await E({ ...b, objects: P, attributes: V }), I.toast({ severity: "success", summary: f.value ? "Object updated" : "Object created", detail: p.label }), Y(), a.value = d;
+        } catch (b) {
+          I.toast({ severity: "error", summary: "Could not save object", detail: Z(b, "CRM write failed.") });
         } finally {
-          r.value = !1;
+          g.value = !1;
         }
       }
     }
-    async function Zt() {
-      const b = D.value;
-      if (!(!b || !await E.confirm({ header: `Delete ${b.label}`, message: "Delete this object, all of its fields, pipeline, views, and records? This cannot be undone.", icon: "tabler:trash", acceptLabel: "Delete object", rejectLabel: "Cancel", acceptClass: "p-button-danger" })))
+    async function u() {
+      const p = D.value;
+      if (!(!p || !await I.confirm({ header: `Delete ${p.label}`, message: "Delete this object, all of its fields, pipeline, views, and records? This cannot be undone.", icon: "tabler:trash", acceptLabel: "Delete object", rejectLabel: "Cancel", acceptClass: "p-button-danger" })))
         try {
-          const c = Y(), j = [
-            ...c.pipelines.filter((z) => z.object_type === b.type).map((z) => ({ kind: "pipeline", id: z.collection_id })),
-            ...c.views.filter((z) => z.object_type === b.type).map((z) => ({ kind: "view", id: z.view_id }))
+          const b = J(), _ = [
+            ...b.pipelines.filter((P) => P.object_type === p.type).map((P) => ({ kind: "pipeline", id: P.collection_id })),
+            ...b.views.filter((P) => P.object_type === p.type).map((P) => ({ kind: "view", id: P.view_id }))
           ];
-          await nt({ ...c, remove: { objects: [{ object_id: b.id || b.type }], ...j.length ? { declarations: j } : {} } }), E.toast({ severity: "success", summary: "Object deleted", detail: b.label });
-        } catch (c) {
-          E.toast({ severity: "error", summary: "Could not delete object", detail: H(c, "CRM write failed.") });
+          await E({ ...b, remove: { objects: [{ object_id: p.id || p.type }], ..._.length ? { declarations: _ } : {} } }), I.toast({ severity: "success", summary: "Object deleted", detail: p.label });
+        } catch (b) {
+          I.toast({ severity: "error", summary: "Could not delete object", detail: Z(b, "CRM write failed.") });
         }
     }
-    async function Yt(b) {
-      if (b.attr) {
-        r.value = !0;
+    async function M(p) {
+      if (p.attr) {
+        g.value = !0;
         try {
-          const d = Y(), c = { object_type: l.value, attr: b.attr, data_type: b.data_type, label: b.label, config: b.config, sort_order: b.sort_order || (A.value.length + 1) * 10, system: g.value?.system === !0 };
-          await nt({ ...d, attributes: [...d.attributes.filter((j) => !(j.object_type === l.value && j.attr === b.attr)), c] }), E.toast({ severity: "success", summary: g.value ? "Field updated" : "Field created", detail: b.label }), q();
+          const d = J(), b = { object_type: a.value, attr: p.attr, data_type: p.data_type, label: p.label, config: p.config, sort_order: p.sort_order || (et.value.length + 1) * 10, system: y.value?.system === !0 };
+          await E({ ...d, attributes: [...d.attributes.filter((_) => !(_.object_type === a.value && _.attr === p.attr)), b] }), I.toast({ severity: "success", summary: y.value ? "Field updated" : "Field created", detail: p.label }), Y();
         } catch (d) {
-          E.toast({ severity: "error", summary: "Could not save field", detail: H(d, "CRM write failed.") });
+          I.toast({ severity: "error", summary: "Could not save field", detail: Z(d, "CRM write failed.") });
         } finally {
-          r.value = !1;
+          g.value = !1;
         }
       }
     }
-    async function Xt(b) {
-      if (!(b.system || !await E.confirm({ header: `Delete ${b.label}`, message: "Delete this field and its stored values? This cannot be undone.", icon: "tabler:trash", acceptLabel: "Delete field", rejectLabel: "Cancel", acceptClass: "p-button-danger" })))
+    async function R(p) {
+      if (!(p.system || !await I.confirm({ header: `Delete ${p.label}`, message: "Delete this field and its stored values? This cannot be undone.", icon: "tabler:trash", acceptLabel: "Delete field", rejectLabel: "Cancel", acceptClass: "p-button-danger" })))
         try {
-          const c = Y();
-          await nt({ ...c, remove: { attributes: [{ object_id: D.value?.id || l.value, field_id: b.id || b.attr }] } }), E.toast({ severity: "success", summary: "Field deleted", detail: b.label });
-        } catch (c) {
-          E.toast({ severity: "error", summary: "Could not delete field", detail: H(c, "CRM write failed.") });
+          const b = J();
+          await E({ ...b, remove: { attributes: [{ object_id: D.value?.id || a.value, field_id: p.id || p.attr }] } }), I.toast({ severity: "success", summary: "Field deleted", detail: p.label });
+        } catch (b) {
+          I.toast({ severity: "error", summary: "Could not delete field", detail: Z(b, "CRM write failed.") });
         }
     }
-    async function Gt(b) {
-      r.value = !0;
+    async function $t(p) {
+      g.value = !0;
       try {
-        const d = b.stages.filter((z) => z.label.trim()).map((z, F) => ({ ...z, stage_id: tt(z.stage_id || z.label), label: z.label.trim(), order: (F + 1) * 10 })), c = Y(), j = { collection_id: b.collection_id, object_type: l.value, label: b.label, stages: d };
-        await nt({ ...c, pipelines: [...c.pipelines.filter((z) => z.collection_id !== b.collection_id), j] }), E.toast({ severity: "success", summary: "Pipeline saved", detail: b.label }), q();
+        const d = p.stages.filter((P) => P.label.trim()).map((P, V) => ({ ...P, stage_id: rt(P.stage_id || P.label), label: P.label.trim(), order: (V + 1) * 10 })), b = J(), _ = { collection_id: p.collection_id, object_type: a.value, label: p.label, stages: d };
+        await E({ ...b, pipelines: [...b.pipelines.filter((P) => P.collection_id !== p.collection_id), _] }), I.toast({ severity: "success", summary: "Pipeline saved", detail: p.label }), Y();
       } catch (d) {
-        E.toast({ severity: "error", summary: "Could not save pipeline", detail: H(d, "CRM write failed.") });
+        I.toast({ severity: "error", summary: "Could not save pipeline", detail: Z(d, "CRM write failed.") });
       } finally {
-        r.value = !1;
+        g.value = !1;
       }
     }
-    async function Jt() {
+    async function ft() {
       try {
-        await se("thread_event_retention_days", k.value), E.toast({ severity: "success", summary: "Retention saved", detail: `${k.value} days` });
-      } catch (b) {
-        E.toast({ severity: "error", summary: "Could not save retention", detail: H(b, "Setting write failed.") });
+        await de("thread_event_retention_days", C.value), I.toast({ severity: "success", summary: "Retention saved", detail: `${C.value} days` });
+      } catch (p) {
+        I.toast({ severity: "error", summary: "Could not save retention", detail: Z(p, "Setting write failed.") });
       }
     }
-    async function Qt(b) {
-      const d = b.target, c = d.files?.[0];
-      if (c && s.value)
+    async function gt(p) {
+      const d = p.target, b = d.files?.[0];
+      if (b && s.value)
         try {
-          const j = await de(s.value.crm_id, L.value, JSON.parse(await c.text()));
-          E.toast({ severity: "success", summary: "Configuration imported", detail: j.changed ? "The CRM schema was updated." : "The CRM schema was already current." }), await et(l.value);
-        } catch (j) {
-          E.toast({ severity: "error", summary: "Import failed", detail: H(j, "Configuration import failed.") });
+          const _ = await ue(s.value.crm_id, L.value, JSON.parse(await b.text()));
+          I.toast({ severity: "success", summary: "Configuration imported", detail: _.changed ? "The CRM schema was updated." : "The CRM schema was already current." }), await it(a.value);
+        } catch (_) {
+          I.toast({ severity: "error", summary: "Import failed", detail: Z(_, "Configuration import failed.") });
         }
       d.value = "";
     }
-    async function te() {
+    async function ee() {
       if (s.value) {
-        r.value = !0;
+        g.value = !0;
         try {
-          const b = await ue(s.value.crm_id), d = new Blob([JSON.stringify(b, null, 2)], { type: "application/json" }), c = URL.createObjectURL(d), j = document.createElement("a");
-          j.href = c, j.download = `crm-config-${s.value.crm_id}.json`, document.body.appendChild(j), j.click(), j.remove(), URL.revokeObjectURL(c), E.toast({ severity: "success", summary: "Configuration exported", detail: "Downloaded schema JSON" });
-        } catch (b) {
-          E.toast({ severity: "error", summary: "Export failed", detail: H(b, "Configuration export failed.") });
+          const p = await ce(s.value.crm_id), d = new Blob([JSON.stringify(p, null, 2)], { type: "application/json" }), b = URL.createObjectURL(d), _ = document.createElement("a");
+          _.href = b, _.download = `crm-config-${s.value.crm_id}.json`, document.body.appendChild(_), _.click(), _.remove(), URL.revokeObjectURL(b), I.toast({ severity: "success", summary: "Configuration exported", detail: "Downloaded schema JSON" });
+        } catch (p) {
+          I.toast({ severity: "error", summary: "Export failed", detail: Z(p, "Configuration export failed.") });
         } finally {
-          r.value = !1;
+          g.value = !1;
         }
       }
     }
-    return At(() => et()), (b, d) => x.value ? (u(), m("div", Io, [
-      w(y(S), {
+    return Nt(() => it()), (p, d) => x.value ? (c(), m("div", Fo, [
+      w(v(S), {
         icon: "tabler:loader-2",
         class: "spin"
       }),
-      d[6] || (d[6] = I(" Loading CRM settings…", -1))
-    ])) : v.value ? (u(), m("div", Bo, [
-      w(y(S), { icon: "tabler:alert-circle" }),
+      d[6] || (d[6] = B(" Loading CRM settings…", -1))
+    ])) : k.value ? (c(), m("div", To, [
+      w(v(S), { icon: "tabler:alert-circle" }),
       o("div", null, [
         d[7] || (d[7] = o("strong", null, "Settings could not load", -1)),
-        o("span", null, _(v.value), 1)
+        o("span", null, j(k.value), 1)
       ]),
       o("button", {
         class: "crm-button",
-        onClick: d[0] || (d[0] = (c) => et())
+        onClick: d[0] || (d[0] = (b) => it())
       }, "Try again")
-    ])) : s.value ? (u(), m("section", Ao, [
-      o("header", Oo, [
+    ])) : s.value ? (c(), m("section", Ro, [
+      o("header", Vo, [
         d[12] || (d[12] = o("div", null, [
           o("span", { class: "crm-eyebrow" }, "CRM control"),
           o("h1", null, "Data model"),
           o("p", null, "Objects, fields, relationships, and pipelines.")
         ], -1)),
-        o("div", Mo, [
-          t.canWrite ? C("", !0) : (u(), m("span", Fo, [
-            w(y(S), { icon: "tabler:eye" }),
-            d[8] || (d[8] = I("Read-only", -1))
+        o("div", Uo, [
+          t.canWrite ? h("", !0) : (c(), m("span", No, [
+            w(v(S), { icon: "tabler:eye" }),
+            d[8] || (d[8] = B("Read-only", -1))
           ])),
           o("button", {
             class: "crm-button",
-            disabled: r.value,
-            onClick: te
+            disabled: g.value,
+            onClick: ee
           }, [
-            w(y(S), { icon: "tabler:download" }),
-            d[9] || (d[9] = I("Export JSON", -1))
-          ], 8, To),
-          t.canWrite ? (u(), m("label", Ro, [
-            w(y(S), { icon: "tabler:upload" }),
-            d[10] || (d[10] = I("Import JSON", -1)),
+            w(v(S), { icon: "tabler:download" }),
+            d[9] || (d[9] = B("Export JSON", -1))
+          ], 8, Ho),
+          t.canWrite ? (c(), m("label", Wo, [
+            w(v(S), { icon: "tabler:upload" }),
+            d[10] || (d[10] = B("Import JSON", -1)),
             o("input", {
               class: "crm-file-input",
               type: "file",
               accept: "application/json,.json",
-              onChange: Qt
+              onChange: gt
             }, null, 32)
-          ])) : C("", !0),
-          t.canWrite ? (u(), m("button", {
+          ])) : h("", !0),
+          t.canWrite ? (c(), m("button", {
             key: 2,
             class: "crm-button primary",
-            onClick: d[1] || (d[1] = (c) => R())
+            onClick: d[1] || (d[1] = (b) => nt())
           }, [
-            w(y(S), { icon: "tabler:plus" }),
-            d[11] || (d[11] = I("New object", -1))
-          ])) : C("", !0)
+            w(v(S), { icon: "tabler:plus" }),
+            d[11] || (d[11] = B("New object", -1))
+          ])) : h("", !0)
         ])
       ]),
-      o("div", Vo, [
-        o("aside", Uo, [
-          (u(!0), m(K, null, Q(s.value.objects, (c) => (u(), m("button", {
-            key: c.type,
-            class: G({ active: l.value === c.type }),
-            onClick: (j) => l.value = c.type
+      o("div", Ko, [
+        o("aside", qo, [
+          (c(!0), m(q, null, Q(s.value.objects, (b) => (c(), m("button", {
+            key: b.type,
+            class: tt({ active: a.value === b.type }),
+            onClick: (_) => a.value = b.type
           }, [
-            o("span", Ho, [
-              w(y(S), {
-                icon: c.icon || "tabler:category"
+            o("span", Yo, [
+              w(v(S), {
+                icon: b.icon || "tabler:category"
               }, null, 8, ["icon"])
             ]),
             o("span", null, [
-              o("strong", null, _(c.label), 1),
-              o("small", null, _(y(St)(s.value.attributes, c.type).length) + " fields", 1)
+              o("strong", null, j(b.label), 1),
+              o("small", null, j(v(It)(s.value.attributes, b.type).length) + " fields", 1)
             ]),
-            w(y(S), { icon: "tabler:chevron-right" })
-          ], 10, No))), 128))
+            w(v(S), { icon: "tabler:chevron-right" })
+          ], 10, Zo))), 128))
         ]),
-        D.value ? (u(), m("main", Wo, [
-          o("section", Ko, [
-            o("span", qo, [
-              w(y(S), {
+        D.value ? (c(), m("main", Xo, [
+          o("section", Go, [
+            o("span", Jo, [
+              w(v(S), {
                 icon: D.value.icon || "tabler:category"
               }, null, 8, ["icon"])
             ]),
             o("div", null, [
               d[13] || (d[13] = o("span", null, "Object", -1)),
-              o("h2", null, _(D.value.label), 1),
-              o("code", null, _(D.value.type), 1)
+              o("h2", null, j(D.value.label), 1),
+              o("code", null, j(D.value.type), 1)
             ]),
-            t.canWrite ? (u(), m(K, { key: 0 }, [
+            t.canWrite ? (c(), m(q, { key: 0 }, [
               o("button", {
                 class: "crm-button",
-                onClick: d[2] || (d[2] = (c) => R(D.value))
+                onClick: d[2] || (d[2] = (b) => nt(D.value))
               }, [
-                w(y(S), { icon: "tabler:edit" }),
-                d[14] || (d[14] = I("Edit", -1))
+                w(v(S), { icon: "tabler:edit" }),
+                d[14] || (d[14] = B("Edit", -1))
               ]),
               o("button", {
                 class: "crm-button danger-text",
-                onClick: Zt
+                onClick: u
               }, [
-                w(y(S), { icon: "tabler:trash" }),
-                d[15] || (d[15] = I("Delete", -1))
+                w(v(S), { icon: "tabler:trash" }),
+                d[15] || (d[15] = B("Delete", -1))
               ])
-            ], 64)) : C("", !0)
+            ], 64)) : h("", !0)
           ]),
-          o("section", Zo, [
-            o("header", Yo, [
+          o("section", Qo, [
+            o("header", tr, [
               o("div", null, [
                 d[16] || (d[16] = o("h2", null, "Fields and relationships", -1)),
-                o("p", null, _(A.value.length) + " fields define records of this type.", 1)
+                o("p", null, j(et.value.length) + " fields define records of this type.", 1)
               ]),
-              t.canWrite ? (u(), m("button", {
+              t.canWrite ? (c(), m("button", {
                 key: 0,
                 class: "crm-button primary",
-                onClick: d[3] || (d[3] = (c) => a())
+                onClick: d[3] || (d[3] = (b) => at())
               }, [
-                w(y(S), { icon: "tabler:plus" }),
-                d[17] || (d[17] = I("New field", -1))
-              ])) : C("", !0)
+                w(v(S), { icon: "tabler:plus" }),
+                d[17] || (d[17] = B("New field", -1))
+              ])) : h("", !0)
             ]),
-            o("div", Xo, [
+            o("div", er, [
               d[18] || (d[18] = o("div", { class: "crm-field-row header" }, [
                 o("span", null, "Field"),
                 o("span", null, "API name"),
@@ -3041,146 +3081,147 @@ const In = { class: "crm-dialog-head" }, Bn = { class: "crm-dialog-body crm-form
                 o("span", null, "Placement"),
                 o("span")
               ], -1)),
-              (u(!0), m(K, null, Q(A.value, (c) => (u(), m("div", {
-                key: c.attr,
+              (c(!0), m(q, null, Q(et.value, (b) => (c(), m("div", {
+                key: b.attr,
                 class: "crm-field-row"
               }, [
                 o("span", null, [
-                  o("strong", null, _(c.label), 1),
-                  c.config?.required ? (u(), m("small", Go, "Required")) : C("", !0),
-                  c.system ? (u(), m("small", Jo, "System")) : C("", !0)
+                  o("strong", null, j(b.label), 1),
+                  b.config?.required ? (c(), m("small", nr, "Required")) : h("", !0),
+                  b.system ? (c(), m("small", or, "System")) : h("", !0)
                 ]),
-                o("code", null, _(c.attr), 1),
-                o("span", Qo, [
-                  I(_(c.data_type.replace("_", " ")), 1),
-                  c.config?.target?.kind === "record" ? (u(), m("small", tr, "→ " + _(c.config.target.object_type), 1)) : c.config?.target?.kind === "component" ? (u(), m("small", er, "→ " + _(c.config.target.class), 1)) : c.config?.target?.kind === "principal" ? (u(), m("small", nr, "→ directory")) : C("", !0)
-                ]),
-                o("span", or, [
-                  I(_(c.config?.ui?.section || "main"), 1),
-                  o("small", null, _(c.config?.ui?.span || 2) + "/4", 1)
-                ]),
+                o("code", null, j(b.attr), 1),
                 o("span", rr, [
-                  t.canWrite ? (u(), m("button", {
+                  B(j(b.data_type.replace("_", " ")), 1),
+                  b.config?.target?.kind === "record" ? (c(), m("small", ir, "→ " + j(b.config.target.object_type), 1)) : b.config?.target?.kind === "component" ? (c(), m("small", ar, "→ " + j(b.config.target.class), 1)) : b.config?.target?.kind === "principal" ? (c(), m("small", lr, "→ directory")) : h("", !0)
+                ]),
+                o("span", sr, [
+                  B(j(b.config?.ui?.section || "main"), 1),
+                  o("small", null, j(b.config?.ui?.span || 2) + "/4", 1)
+                ]),
+                o("span", dr, [
+                  t.canWrite ? (c(), m("button", {
                     key: 0,
                     class: "crm-icon-button",
                     "aria-label": "Edit field",
-                    onClick: (j) => a(c)
+                    onClick: (_) => at(b)
                   }, [
-                    w(y(S), { icon: "tabler:edit" })
-                  ], 8, ar)) : C("", !0),
-                  t.canWrite && !c.system ? (u(), m("button", {
+                    w(v(S), { icon: "tabler:edit" })
+                  ], 8, ur)) : h("", !0),
+                  t.canWrite && !b.system ? (c(), m("button", {
                     key: 1,
                     class: "crm-icon-button danger",
                     "aria-label": "Delete field",
-                    onClick: (j) => Xt(c)
+                    onClick: (_) => R(b)
                   }, [
-                    w(y(S), { icon: "tabler:trash" })
-                  ], 8, ir)) : C("", !0)
+                    w(v(S), { icon: "tabler:trash" })
+                  ], 8, cr)) : h("", !0)
                 ])
               ]))), 128))
             ])
           ]),
-          o("section", lr, [
-            o("header", sr, [
+          o("section", br, [
+            o("header", pr, [
               o("div", null, [
                 d[19] || (d[19] = o("h2", null, "Pipeline", -1)),
-                o("p", null, _(N.value ? N.value.label : "Optional stages for a board view."), 1)
+                o("p", null, j(N.value ? N.value.label : "Optional stages for a board view."), 1)
               ]),
-              t.canWrite ? (u(), m("button", {
+              t.canWrite ? (c(), m("button", {
                 key: 0,
                 class: "crm-button",
-                onClick: p
+                onClick: xt
               }, [
-                w(y(S), {
+                w(v(S), {
                   icon: N.value ? "tabler:edit" : "tabler:plus"
                 }, null, 8, ["icon"]),
-                I(_(N.value ? "Edit stages" : "Add pipeline"), 1)
-              ])) : C("", !0)
+                B(j(N.value ? "Edit stages" : "Add pipeline"), 1)
+              ])) : h("", !0)
             ]),
-            N.value ? (u(), m("div", dr, [
-              (u(!0), m(K, null, Q(y(Ot)(N.value), (c) => (u(), m("span", {
-                key: c.stage_id
-              }, _(c.label), 1))), 128))
-            ])) : (u(), m("div", ur, [
-              w(y(S), { icon: "tabler:layout-kanban" }),
+            N.value ? (c(), m("div", mr, [
+              (c(!0), m(q, null, Q(v(Ht)(N.value), (b) => (c(), m("span", {
+                key: b.stage_id
+              }, j(b.label), 1))), 128))
+            ])) : (c(), m("div", fr, [
+              w(v(S), { icon: "tabler:layout-kanban" }),
               d[20] || (d[20] = o("span", null, "No pipeline is configured for this object.", -1))
             ]))
           ]),
-          o("section", cr, [
+          o("section", gr, [
             d[23] || (d[23] = o("header", { class: "crm-card-head" }, [
               o("div", null, [
                 o("h2", null, "Retention"),
                 o("p", null, "How long CRM thread events remain available.")
               ])
             ], -1)),
-            o("div", br, [
+            o("div", yr, [
               d[21] || (d[21] = o("label", null, "Event retention", -1)),
               $(o("input", {
-                "onUpdate:modelValue": d[4] || (d[4] = (c) => k.value = c),
+                "onUpdate:modelValue": d[4] || (d[4] = (b) => C.value = b),
                 class: "crm-input short",
                 type: "number",
                 min: "1",
                 disabled: !t.canWrite
-              }, null, 8, pr), [
+              }, null, 8, vr), [
                 [
-                  B,
-                  k.value,
+                  A,
+                  C.value,
                   void 0,
                   { number: !0 }
                 ]
               ]),
               d[22] || (d[22] = o("span", null, "days", -1)),
-              t.canWrite ? (u(), m("button", {
+              t.canWrite ? (c(), m("button", {
                 key: 0,
                 class: "crm-button",
-                onClick: Jt
-              }, "Save")) : C("", !0)
+                onClick: ft
+              }, "Save")) : h("", !0)
             ])
           ])
-        ])) : (u(), m("main", mr, [
-          o("span", fr, [
-            w(y(S), { icon: "tabler:database-plus" })
+        ])) : (c(), m("main", hr, [
+          o("span", kr, [
+            w(v(S), { icon: "tabler:database-plus" })
           ]),
           d[25] || (d[25] = o("h2", null, "No objects yet", -1)),
           d[26] || (d[26] = o("p", null, "Define a record type and its title field to begin building this CRM.", -1)),
-          t.canWrite ? (u(), m("button", {
+          t.canWrite ? (c(), m("button", {
             key: 0,
             class: "crm-button primary",
-            onClick: d[5] || (d[5] = (c) => R())
+            onClick: d[5] || (d[5] = (b) => nt())
           }, [
-            w(y(S), { icon: "tabler:plus" }),
-            d[24] || (d[24] = I("New object", -1))
-          ])) : C("", !0)
+            w(v(S), { icon: "tabler:plus" }),
+            d[24] || (d[24] = B("New object", -1))
+          ])) : h("", !0)
         ]))
       ]),
-      h.value === "object" ? (u(), T(Nn, {
+      l.value === "object" ? (c(), U(Hn, {
         key: 0,
         object: f.value,
-        busy: r.value,
-        onClose: q,
-        onSave: qt
-      }, null, 8, ["object", "busy"])) : h.value === "field" ? (u(), T(Co, {
+        busy: g.value,
+        onClose: Y,
+        onSave: r
+      }, null, 8, ["object", "busy"])) : l.value === "field" ? (c(), U(jo, {
         key: 1,
-        field: g.value,
+        field: y.value,
         objects: s.value.objects,
-        selected: l.value,
-        busy: r.value,
-        onClose: q,
-        onSave: Yt
-      }, null, 8, ["field", "objects", "selected", "busy"])) : h.value === "pipeline" ? (u(), T(Eo, {
+        selected: a.value,
+        "attachment-providers": O.value,
+        busy: g.value,
+        onClose: Y,
+        onSave: M
+      }, null, 8, ["field", "objects", "selected", "attachment-providers", "busy"])) : l.value === "pipeline" ? (c(), U(Mo, {
         key: 2,
         pipeline: N.value,
         "object-label": D.value?.label || "CRM",
-        selected: l.value,
-        busy: r.value,
-        onClose: q,
-        onSave: Gt
-      }, null, 8, ["pipeline", "object-label", "selected", "busy"])) : C("", !0)
-    ])) : C("", !0);
+        selected: a.value,
+        busy: g.value,
+        onClose: Y,
+        onSave: $t
+      }, null, 8, ["pipeline", "object-label", "selected", "busy"])) : h("", !0)
+    ])) : h("", !0);
   }
 });
 export {
-  Cr as _,
-  gt as s
+  jr as _,
+  wt as s
 };
-//# sourceMappingURL=CrmSettings.vue_vue_type_script_setup_true_lang-ic3g-Rsf.js.map
+//# sourceMappingURL=CrmSettings.vue_vue_type_script_setup_true_lang-DhsIsoO6.js.map

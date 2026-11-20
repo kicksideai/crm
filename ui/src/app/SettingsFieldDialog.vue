@@ -9,14 +9,14 @@ import Dialog from 'primevue/dialog'
 import { apiName } from '../crm-model'
 import type { AttributeConfig, CrmAttribute, CrmObject, CrmReferenceTarget } from '../crm-types'
 
-const props = defineProps<{ field?: CrmAttribute | null; objects: CrmObject[]; selected: string; busy?: boolean }>()
+const props = defineProps<{ field?: CrmAttribute | null; objects: CrmObject[]; selected: string; attachmentProviders: string[]; busy?: boolean }>()
 const emit = defineEmits<{ close: []; save: [value: { label: string; attr: string; data_type: string; config: AttributeConfig; sort_order: number }] }>()
 
 const TYPES = ['text', 'email', 'phone', 'url', 'number', 'currency', 'boolean', 'date', 'time', 'datetime', 'select', 'multi_select', 'relation', 'ai']
 const config = props.field?.config || {}
 const ui = config.ui || {}
 const target: Partial<CrmReferenceTarget> = config.target || {}
-const form = reactive({
+const initial = {
   label: props.field?.label || '',
   attr: props.field?.attr || '',
   data_type: props.field?.data_type || 'text',
@@ -33,13 +33,17 @@ const form = reactive({
   cardinality: config.cardinality === 'many' ? 'many' : 'one' as 'one' | 'many',
   min: config.min == null ? '' : String(config.min),
   max: config.max == null ? '' : String(config.max),
+  attachment_provider: config.attachment?.provider || '',
   sort_order: Number(props.field?.sort_order || 10),
   ui_section: String(ui.section || 'main') as 'main' | 'collapsed' | 'hidden',
   ui_form: ui.form !== false,
   ui_list: ui.list !== false,
   ui_role: String(ui.role || '') as '' | 'title' | 'subtitle',
   ui_span: Number(ui.span || 2) as 1 | 2 | 3 | 4,
-})
+}
+const form = reactive({ ...initial })
+const canHoldFiles = (dataType: string) => dataType === 'text' || dataType === 'url'
+const unavailableProvider = computed(() => initial.attachment_provider && !props.attachmentProviders.includes(initial.attachment_provider) ? initial.attachment_provider : '')
 const relationTargets = computed(() => props.objects)
 const hasChoices = computed(() => ['select', 'multi_select'].includes(form.data_type))
 const hasRange = computed(() => ['number', 'currency'].includes(form.data_type))
@@ -58,30 +62,54 @@ function fieldAttr(): string {
   return props.field?.attr || apiName(form.attr || form.label)
 }
 
-function buildConfig(attr: string): AttributeConfig {
+function editableConfig(attr: string, values: typeof initial): AttributeConfig {
   const out: AttributeConfig = {}
-  if (form.help.trim()) out.help = form.help.trim()
-  if (form.required) out.required = true
-  if (supportsUnique.value && form.unique) out.unique = true
-  if (hasChoices.value) out.choices = form.choices.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-  if (form.data_type === 'relation') {
+  if (values.help.trim()) out.help = values.help.trim()
+  if (values.required) out.required = true
+  if (values.data_type !== 'relation' && values.unique) out.unique = true
+  if (['select', 'multi_select'].includes(values.data_type)) out.choices = values.choices.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+  if (values.data_type === 'relation') {
     let ref: CrmReferenceTarget
-    if (form.target_kind === 'record') ref = { kind: 'record', object_type: form.record_type }
-    else if (form.target_kind === 'component') ref = { kind: 'component', class: form.target_class.trim(), contract: form.target_contract.trim() || undefined, route: form.target_route.trim() || undefined }
-    else ref = { kind: 'principal', kinds: form.target_types.split(',').map((value) => value.trim()).filter(Boolean) }
+    if (values.target_kind === 'record') ref = { kind: 'record', object_type: values.record_type }
+    else if (values.target_kind === 'component') ref = { kind: 'component', class: values.target_class.trim(), contract: values.target_contract.trim() || undefined, route: values.target_route.trim() || undefined }
+    else ref = { kind: 'principal', kinds: values.target_types.split(',').map((value) => value.trim()).filter(Boolean) }
     out.target = ref
     out.relation = `${props.selected}_${attr}`
-    out.cardinality = form.cardinality
+    out.cardinality = values.cardinality
   }
-  if (form.min !== '') out.min = Number(form.min)
-  if (form.max !== '') out.max = Number(form.max)
+  if (values.min !== '') out.min = Number(values.min)
+  if (values.max !== '') out.max = Number(values.max)
+  if (canHoldFiles(values.data_type) && values.attachment_provider) out.attachment = { provider: values.attachment_provider }
   out.ui = {
-    section: form.ui_section,
-    form: form.ui_form,
-    list: form.ui_list,
-    span: form.ui_span,
-    ...(form.ui_role ? { role: form.ui_role } : {}),
+    section: values.ui_section,
+    form: values.ui_form,
+    list: values.ui_list,
+    span: values.ui_span,
+    ...(values.ui_role ? { role: values.ui_role } : {}),
   }
+  return out
+}
+
+function applyEdits<T extends object>(stored: T, before: T, after: T): T {
+  const next = { ...stored }
+  // The form projects JSON only for its own controls. Check that projection
+  // for changes so an untouched control retains the original stored value.
+  for (const key of Object.keys({ ...before, ...after }) as (keyof T)[]) {
+    if (JSON.stringify(before[key]) === JSON.stringify(after[key])) continue
+    if (after[key] === undefined) delete next[key]
+    else next[key] = after[key]
+  }
+  return next
+}
+
+function buildConfig(attr: string): AttributeConfig {
+  const edited = editableConfig(attr, form)
+  if (!props.field) return edited
+  const { ui: beforeUi, ...before } = editableConfig(attr, initial)
+  const { ui: afterUi, ...after } = edited
+  const out = applyEdits<AttributeConfig>(config, before, after)
+  const nextUi = applyEdits(ui, beforeUi || {}, afterUi || {})
+  if (config.ui || Object.keys(nextUi).length) out.ui = nextUi
   return out
 }
 function submit() {
@@ -99,6 +127,11 @@ function submit() {
         <label class="crm-field"><span class="crm-field-label">API name</span><input v-model="form.attr" class="crm-input" :disabled="!!field" :placeholder="apiName(form.label)" /></label>
         <label class="crm-field"><span class="crm-field-label">Type</span><select v-model="form.data_type" class="crm-input" :disabled="!!field"><option v-for="type in TYPES" :key="type" :value="type">{{ type.replace('_', ' ') }}</option></select></label>
         <label class="crm-field"><span class="crm-field-label">Help text</span><input v-model="form.help" class="crm-input" /></label>
+        <label v-if="canHoldFiles(form.data_type)" class="crm-field"><span class="crm-field-label">Holds files from</span><select v-model="form.attachment_provider" class="crm-input">
+          <option value="">None</option>
+          <option v-if="unavailableProvider" :value="unavailableProvider">{{ unavailableProvider }} (unavailable)</option>
+          <option v-for="provider in attachmentProviders" :key="provider" :value="provider">{{ provider }}</option>
+        </select><small v-if="!attachmentProviders.length" class="crm-field-help">No attachment providers are available.</small></label>
         <label v-if="hasChoices" class="crm-field full"><span class="crm-field-label">Choices</span><span class="crm-field-help">One per line.</span><textarea v-model="form.choices" class="crm-input crm-textarea" /></label>
         <template v-if="form.data_type === 'relation'">
           <label class="crm-field"><span class="crm-field-label">Target kind</span><select v-model="form.target_kind" class="crm-input"><option value="record">CRM record</option><option value="component">Application component</option><option value="principal">Person or group directory</option></select></label>

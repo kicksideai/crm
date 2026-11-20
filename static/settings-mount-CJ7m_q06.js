@@ -1,8 +1,8 @@
 import { u as g, P as y } from "./wc-runtime-Be-ICKk2.js";
 import { defineComponent as C, ref as r, computed as k, onMounted as b, openBlock as n, createElementBlock as l, createVNode as m, unref as d, createTextVNode as w, createElementVNode as i, toDisplayString as M, createBlock as R } from "vue";
 import { Icon as p } from "@iconify/vue";
-import { b as N, m as P } from "./crm-model-BaRhr3mT.js";
-import { _ as V } from "./CrmSettings.vue_vue_type_script_setup_true_lang-ic3g-Rsf.js";
+import { b as N, m as P } from "./crm-model-BAtPi1Pd.js";
+import { _ as V } from "./CrmSettings.vue_vue_type_script_setup_true_lang-DhsIsoO6.js";
 const x = { class: "crm-admin-root" }, B = {
   key: 0,
   class: "crm-state full"
@@ -65,4 +65,4 @@ const x = { class: "crm-admin-root" }, B = {
 export {
   j as mountConfig
 };
-//# sourceMappingURL=settings-mount-CEN73qYZ.js.map
+//# sourceMappingURL=settings-mount-CJ7m_q06.js.map

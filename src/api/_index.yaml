@@ -119,8 +119,9 @@ entries:
     meta: { comment: Shared implementation behind individually owned function entries. }
     source: file://schema.lua
     modules: [http, json]
-    imports:
+    imports: &schema_imports
       api_access: kickside.crm.api:access
+      files: kickside.crm.files:files
       schema: kickside.crm.schema:schema
       mutation: kickside.crm.schema:mutation
       writer: kickside.crm.command:writer
@@ -132,11 +133,7 @@ entries:
     source: file://schema.lua
     method: get
     modules: [http, json]
-    imports:
-      api_access: kickside.crm.api:access
-      schema: kickside.crm.schema:schema
-      mutation: kickside.crm.schema:mutation
-      writer: kickside.crm.command:writer
+    imports: *schema_imports
 
   - name: schema.get.endpoint
     kind: http.endpoint
@@ -152,11 +149,7 @@ entries:
     source: file://schema.lua
     method: apply
     modules: [http, json]
-    imports:
-      api_access: kickside.crm.api:access
-      schema: kickside.crm.schema:schema
-      mutation: kickside.crm.schema:mutation
-      writer: kickside.crm.command:writer
+    imports: *schema_imports
 
   - name: schema.apply.endpoint
     kind: http.endpoint

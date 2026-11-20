@@ -201,13 +201,16 @@ export async function applyCommands(crmId: string, commands: CrmCommand[]): Prom
 }
 
 function schemaState(payload: unknown): CrmSchemaState {
-  const body = payload as { success?: boolean; revision?: unknown; declaration?: Partial<CrmSchemaDeclaration>; error?: string } | null
+  const body = payload as { success?: boolean; revision?: unknown; declaration?: Partial<CrmSchemaDeclaration>; attachment_providers?: unknown; error?: string } | null
   const declaration = body?.declaration
   if (body?.success !== true) throw new Error(body?.error || 'CRM schema request failed.')
   if ((typeof body.revision !== 'string' && typeof body.revision !== 'number') || !declaration || !Array.isArray(declaration.objects) || !Array.isArray(declaration.attributes) || !Array.isArray(declaration.pipelines) || !Array.isArray(declaration.views)) {
     throw new Error('CRM returned an invalid schema response.')
   }
-  return { revision: String(body.revision), declaration: declaration as CrmSchemaDeclaration }
+  const attachmentProviders = Array.isArray(body.attachment_providers)
+    ? body.attachment_providers.filter((provider): provider is string => typeof provider === 'string')
+    : []
+  return { revision: String(body.revision), declaration: declaration as CrmSchemaDeclaration, attachmentProviders }
 }
 
 export async function getSchema(crmId: string): Promise<CrmSchemaState> {

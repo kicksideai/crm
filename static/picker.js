@@ -7,7 +7,7 @@ class e extends o {
     return { propsSchema: p, hostCssKeys: ["themeConfigUrl"], inlineCss: i };
   }
   static get vueConfig() {
-    return r(() => import("./CrmRecordPicker-D8LqacFP.js").then((t) => ({ rootComponent: t.default })), { surface: "compact", loading: "Loading the record picker…", failed: "Could not load the record picker. Reload the page to try again.", delay: 200, timeout: 3e4 });
+    return r(() => import("./CrmRecordPicker-ZjDl-BaC.js").then((t) => ({ rootComponent: t.default })), { surface: "compact", loading: "Loading the record picker…", failed: "Could not load the record picker. Reload the page to try again.", delay: 200, timeout: 3e4 });
   }
 }
 async function l() {

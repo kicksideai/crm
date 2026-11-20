@@ -74,6 +74,7 @@ export interface AttributeConfig {
   max_length?: number
   pattern?: string
   currency_code?: string
+  attachment?: { provider: string; [key: string]: unknown }
   ui?: CrmFieldUi
   [key: string]: unknown
 }
@@ -181,6 +182,7 @@ export interface CrmSchemaDeclaration {
 export interface CrmSchemaState {
   revision: string
   declaration: CrmSchemaDeclaration
+  attachmentProviders: string[]
 }
 
 export interface CrmCommand { type: string; body: Record<string, unknown> }
