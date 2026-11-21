@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.16](https://github.com/kicksideai/crm/compare/crm-v0.6.15...crm-v0.6.16) (2026-11-21)
+
+
+### Bug Fixes
+
+* **crm:** skip unusable duplicate evidence ([#57](https://github.com/kicksideai/crm/issues/57)) ([b7fd0e5](https://github.com/kicksideai/crm/commit/b7fd0e526bf59c00e683ec46aa6654878ad26a39))
+
 ## [0.6.15](https://github.com/kicksideai/crm/compare/crm-v0.6.14...crm-v0.6.15) (2026-11-21)
 
 
