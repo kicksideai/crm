@@ -102,16 +102,13 @@ local function define_tests()
             test.not_nil(err)
         end)
 
-        test.it("leaves zero evidence out of review even with zero thresholds", function()
+        test.it("applies zero thresholds without filtering the supplied score", function()
             local config = { objects = { contact = {
                 thresholds = { review_at = 0, ignore_below = 0 },
             } } }
             local empty, empty_err = suggest.route("contact", 0, config)
             test.is_nil(empty_err)
-            test.eq((empty :: Route).action, "ignore")
-            local match, match_err = suggest.route("contact", 0.1, config)
-            test.is_nil(match_err)
-            test.eq((match :: Route).action, "review")
+            test.eq((empty :: Route).action, "review")
         end)
 
         test.it("hashes evidence canonically", function()

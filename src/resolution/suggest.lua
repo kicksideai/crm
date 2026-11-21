@@ -239,7 +239,7 @@ function M.route(object_type: string, confidence: number,
     end
     if review_at < ignore_below then return nil, errors.new({ kind = errors.INVALID, message = "review_at must be greater than or equal to ignore_below" }) end
     local value = tonumber(confidence) or 0
-    if value > 0 and value >= review_at and value >= ignore_below then return { action = "review" }, nil end
+    if value >= review_at and value >= ignore_below then return { action = "review" }, nil end
     return { action = "ignore" }, nil
 end
 
@@ -335,7 +335,7 @@ function M.suggest_for_record(crm_id: string, object_type: string,
         local route
         route, err = M.route(object_type, score.confidence, merge_config)
         if not route then db:release(); return nil, err end
-        if route.action == "review" then
+        if score.confidence > 0 and route.action == "review" then
             local candidate_id = tostring(candidate.record_id or "")
             local emit
             emit, err = should_emit(db, crm_id, record_id, candidate_id, score.evidence_hash)

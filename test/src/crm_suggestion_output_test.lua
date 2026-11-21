@@ -48,7 +48,7 @@ local function define()
                         data_type = "phone", config = {} },
                 },
                 merge_config = { objects = { person = {
-                    thresholds = { ignore_below = 0.5, review_at = 0.9 },
+                    thresholds = { ignore_below = 0, review_at = 0 },
                     patterns = { { kind = "value_exact", attr = "phone", normalizer = "phone",
                         weight = 1, reason = "same_phone" } },
                 } } },
