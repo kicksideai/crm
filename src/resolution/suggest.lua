@@ -101,16 +101,17 @@ local function rules_for(object_type: string, merge_config: unknown): UnknownMap
     return type(rules) == "table" and (rules :: UnknownMap) or nil
 end
 
-local function normalized(pattern: UnknownMap, value: unknown): (string?, error?)
+local function normalized_value(normalizer: string, value: unknown): (string?, error?)
+    if normalizer ~= "" and not types.is_alias_type(normalizer) then
+        return nil, errors.new({ kind = errors.INVALID, message = "unsupported alias_type: " .. normalizer })
+    end
     if value == nil then return nil, nil end
-    local normalizer = trim(pattern.normalizer)
     if normalizer == "" then return trim(tostring(value)), nil end
-    return normalize.normalize(normalizer, value)
-end
-
-local function domain(value: unknown): (string?, error?)
-    if value == nil then return nil, nil end
-    return normalize.normalize("domain", value)
+    local normalized, err = normalize.normalize(normalizer, value)
+    -- A record may hold an accepted field value that supplies no usable match
+    -- evidence. An invalid rule still fails before any record data is examined.
+    if err and errors.is(err, errors.INVALID) then return nil, nil end
+    return normalized, err
 end
 
 local function tokens(value: unknown): StringSet
@@ -139,10 +140,11 @@ local function match(pattern: UnknownMap, left: UnknownMap,
     if kind == "value_exact" then
         local attr = trim(pattern.attr)
         if attr == "" then return false, nil, errors.new({ kind = errors.INVALID, message = "value_exact.attr is required" }) end
-        local left_value, err = normalized(pattern, left[attr])
+        local normalizer = trim(pattern.normalizer)
+        local left_value, err = normalized_value(normalizer, left[attr])
         if err then return false, nil, err end
         local right_value
-        right_value, err = normalized(pattern, right[attr])
+        right_value, err = normalized_value(normalizer, right[attr])
         if err then return false, nil, err end
         if left_value and left_value ~= "" and left_value == right_value then
             return true, { attr = attr, value = left_value }, nil
@@ -152,10 +154,10 @@ local function match(pattern: UnknownMap, left: UnknownMap,
     if kind == "domain" then
         local attr = trim(pattern.attr)
         if attr == "" then return false, nil, errors.new({ kind = errors.INVALID, message = "domain.attr is required" }) end
-        local left_domain, err = domain(left[attr])
+        local left_domain, err = normalized_value("domain", left[attr])
         if err then return false, nil, err end
         local right_domain
-        right_domain, err = domain(right[attr])
+        right_domain, err = normalized_value("domain", right[attr])
         if err then return false, nil, err end
         if left_domain and left_domain == right_domain then return true, { attr = attr, domain = left_domain }, nil end
         return false, nil, nil
@@ -164,10 +166,10 @@ local function match(pattern: UnknownMap, left: UnknownMap,
         local domain_attr = trim(pattern.domain_attr)
         local name_attr = trim(pattern.name_attr)
         if domain_attr == "" or name_attr == "" then return false, nil, errors.new({ kind = errors.INVALID, message = "domain_name attrs are required" }) end
-        local left_domain, err = domain(left[domain_attr])
+        local left_domain, err = normalized_value("domain", left[domain_attr])
         if err then return false, nil, err end
         local right_domain
-        right_domain, err = domain(right[domain_attr])
+        right_domain, err = normalized_value("domain", right[domain_attr])
         if err then return false, nil, err end
         if not left_domain or left_domain ~= right_domain then return false, nil, nil end
         local similarity = name_similarity(left[name_attr], right[name_attr])
@@ -333,7 +335,7 @@ function M.suggest_for_record(crm_id: string, object_type: string,
         local route
         route, err = M.route(object_type, score.confidence, merge_config)
         if not route then db:release(); return nil, err end
-        if route.action == "review" then
+        if score.confidence > 0 and route.action == "review" then
             local candidate_id = tostring(candidate.record_id or "")
             local emit
             emit, err = should_emit(db, crm_id, record_id, candidate_id, score.evidence_hash)
