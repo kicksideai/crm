@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.15](https://github.com/kicksideai/crm/compare/crm-v0.6.14...crm-v0.6.15) (2026-11-21)
+
+
+### Features
+
+* **crm:** expose record-scoped merge suggestions ([#55](https://github.com/kicksideai/crm/issues/55)) ([1e00657](https://github.com/kicksideai/crm/commit/1e00657b7da77ee686ebe3ec2c35bd7f5705082c))
+
 ## [0.6.14](https://github.com/kicksideai/crm/compare/crm-v0.6.13...crm-v0.6.14) (2026-11-20)
 
 
