@@ -46,3 +46,17 @@ entries:
     imports:
       aliases: kickside.crm.resolution:aliases
       reader: kickside.crm:crm
+
+  - name: merge_suggestions
+    kind: function.lua
+    meta:
+      comment: >-
+        Read one record's duplicate pairs and current review decisions under the caller's CRM read access.
+        Accepts { crm_id, record_id, limit?, cursor? } and returns { pairs, next_cursor? }.
+        Each pair includes status, counterpart id, reason and the recorded evidence hash.
+        Pages default to 50 rows with a maximum of 200; pass next_cursor to continue.
+    source: file://read_faces.lua
+    method: merge_suggestions
+    imports:
+      aliases: kickside.crm.resolution:aliases
+      reader: kickside.crm:crm

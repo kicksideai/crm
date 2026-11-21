@@ -474,6 +474,43 @@ function M.internal_merge_reviews(crm_id: string, opts: unknown): (unknown?, err
     return page, nil
 end
 
+function M.internal_merge_suggestions(crm_id: string, record_id: string, limit: number?, cursor: string?): (UnknownMap?, error?)
+    local db, err = open_db()
+    if not db then return nil, err end
+    local page_size = math.max(1, math.min(math.floor(limit or 50), 200))
+    local rows, query_err = db:query([[
+        SELECT * FROM (
+            SELECT * FROM (
+                SELECT right_id AS other_id, left_id, right_id, object_type, decision AS status,
+                    confidence, reason, evidence_hash, resolution_id, winner_id, loser_id
+                FROM kickside_crm_merge_decision
+                WHERE crm_id = $1 AND left_id = $2 AND right_id > $3
+                ORDER BY right_id LIMIT $4
+            ) AS right_pairs
+            UNION ALL
+            SELECT * FROM (
+                SELECT left_id AS other_id, left_id, right_id, object_type, decision AS status,
+                    confidence, reason, evidence_hash, resolution_id, winner_id, loser_id
+                FROM kickside_crm_merge_decision
+                WHERE crm_id = $1 AND right_id = $2 AND left_id > $3
+                ORDER BY left_id LIMIT $4
+            ) AS left_pairs
+        ) AS pairs ORDER BY other_id LIMIT $4
+    ]], { crm_id, record_id, cursor or "", page_size + 1 })
+    db:release()
+    if query_err then return nil, query_err end
+    if type(rows) ~= "table" then
+        return nil, errors.new({ kind = errors.INTERNAL, message = "CRM SQL query returned a non-array merge suggestion page" })
+    end
+    local pairs = rows :: { UnknownMap }
+    local next_cursor
+    if #pairs > page_size then
+        table.remove(pairs)
+        next_cursor = pairs[page_size].other_id
+    end
+    return { pairs = pairs, next_cursor = next_cursor }, nil
+end
+
 function M.internal_merge_resolution(crm_id: string, resolution_id: string): (unknown?, error?)
     local db, err = open_db()
     if not db then return nil, err end

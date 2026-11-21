@@ -47,28 +47,29 @@ entries:
       actions: registry.get
       effect: allow
 
-  # The two read-only faces another module reaches this CRM by, and the grant
+  # The read-only faces another module reaches this CRM by, and the grant
   # that lets an ordinary person's work reach them. A host grants an
   # authenticated user calls over the engine's namespaces and nothing under a
   # product one, so without this a deferred run carrying a plain owner's frozen
   # identity is refused at the alias lookup -- and refused at the PROBE before
   # that, which is worse: a consumer must tell "this CRM is not installed" from
   # "you may not look", and only the first is absence. So the read and the call
-  # are granted together, over exactly these two entries.
+  # are granted together over these entries.
   #
-  # Nothing else in the namespace opens. Both faces are read-only and both decide
+  # Nothing else in the namespace opens. These faces are read-only and decide
   # under the caller's own component access, so what this grant permits is asking
   # -- never seeing anything the asker could not already see.
   - name: crm_read_face_access
     kind: security.policy
     meta:
       private: true
-      comment: Authenticated users may probe and call the CRM's read-only alias and reference faces.
+      comment: Authenticated users may probe and call CRM alias, reference, and merge suggestion reads.
     groups: []
     policy:
       resources:
         - kickside.crm.read:alias_lookup
         - kickside.crm.read:references
+        - kickside.crm.read:merge_suggestions
       actions: [registry.get, funcs.call]
       effect: allow
 

@@ -1,7 +1,5 @@
--- The two read-only operations this CRM publishes as callable entries.
---
--- Everything else it publishes is an agent tool or a write. That left two reads
--- with no face at all, and both are needed by a module that must be able to
+-- CRM read-only operations published as callable entries.
+-- These entries are needed by a module that must be able to
 -- install without this one -- so they cannot be reached by importing a library,
 -- which is resolved when the entry is created and refuses the whole install
 -- where the CRM is absent. They are reached by id and answered when called.
@@ -19,7 +17,10 @@
 --   returned because the sink receipts an idempotency key once -- re-linking a
 --   restored edge under the key that created it would replay the unlink.
 --
--- Both delegate to the access-checked public surfaces, so the answer is decided
+--   one record's duplicate suggestions and review decisions, including pairs
+--   where the named record appears on either side.
+--
+-- Reads delegate to the access-checked public surfaces, so the answer is decided
 -- under the CALLER's own scope and this file adds no authority of its own.
 local aliases = require("aliases")
 local reader = require("reader")
@@ -76,6 +77,22 @@ function M.references(value: unknown): (References?, error?)
         return nil, errors.new({ kind = errors.INTERNAL, message = "CRM references returned a non-array" })
     end
     return { rows = rows :: { unknown } }, nil
+end
+
+function M.merge_suggestions(value: unknown): (unknown?, error?)
+    if type(value) ~= "table" then
+        return nil, errors.new({ kind = errors.INVALID, message = "merge suggestions input must be an object" })
+    end
+    local args = value :: UnknownMap
+    local crm_id = trim(args.crm_id)
+    local record_id = trim(args.record_id)
+    if crm_id == "" then return nil, errors.new({ kind = errors.INVALID, message = "crm_id is required" }) end
+    if record_id == "" then return nil, errors.new({ kind = errors.INVALID, message = "record_id is required" }) end
+    local cursor = args.cursor
+    if cursor ~= nil and type(cursor) ~= "string" then
+        return nil, errors.new({ kind = errors.INVALID, message = "cursor must be a string" })
+    end
+    return reader.merge_suggestions(crm_id, record_id, tonumber(args.limit), cursor)
 end
 
 return M
