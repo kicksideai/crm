@@ -1,5 +1,5 @@
 local actors = require("actors")
--- The two read-only faces another module reaches this CRM through.
+-- Read-only faces another module reaches this CRM through.
 --
 -- Everything the CRM publishes as a callable entry is either an agent tool or a
 -- write. That left two reads with no face at all: which record already carries an
@@ -32,6 +32,7 @@ local SCHEMA_PROBE = "app:schema_probe"
 local WRITE_PROBE = "app:writer_probe"
 local ALIAS_FACE = "kickside.crm.read:alias_lookup"
 local REFERENCES_FACE = "kickside.crm.read:references"
+local MERGE_SUGGESTIONS_FACE = "kickside.crm.read:merge_suggestions"
 
 local function map(value: unknown): Map
     return type(value) == "table" and (value :: Map) or {}
@@ -251,8 +252,88 @@ local function define_tests()
         end)
     end)
 
+    test.describe("CRM merge suggestions read face", function()
+        test.it("pages both orientations of a pair and preserves the current human decision", function()
+            local owner_exec = funcs.new():with_actor(actor(uuid.v4())):with_scope(scope()) :: Executor
+            local crm_id = create(owner_exec)
+            declare_contact(owner_exec, crm_id)
+            local record_id = "contact:center"
+            local commands = {}
+            for _, id in ipairs({ "alpha", "beta", "center", "gamma", "zeta" }) do
+                commands[#commands + 1] = { type = types.EVENTS.RECORD_CREATED, body = {
+                    record_id = "contact:" .. id, object_type = "contact", values = { name = id },
+                } }
+            end
+            write(owner_exec, crm_id, commands)
+            commands = {}
+            for _, id in ipairs({ "alpha", "beta", "gamma", "zeta" }) do
+                commands[#commands + 1] = { type = types.EVENTS.MERGE_SUGGESTED, body = {
+                    left_id = record_id, right_id = "contact:" .. id, object_type = "contact",
+                    confidence = 0.9, reason = "matched", evidence_hash = "v1:" .. id,
+                } }
+            end
+            write(owner_exec, crm_id, commands)
+            write(owner_exec, crm_id, {
+                { type = types.EVENTS.MERGE_DECIDED, body = {
+                    left_id = record_id, right_id = "contact:alpha", object_type = "contact",
+                    decision = "do_not_merge", resolution_id = "review:alpha",
+                    reason = "different contacts", evidence_hash = "v1:alpha",
+                } },
+                { type = types.EVENTS.MERGE_DECIDED, body = {
+                    left_id = record_id, right_id = "contact:beta", object_type = "contact",
+                    decision = "skipped", resolution_id = "review:beta",
+                } },
+                { type = types.EVENTS.MERGE_DECIDED, body = {
+                    left_id = record_id, right_id = "contact:zeta", object_type = "contact",
+                    decision = "merged", resolution_id = "review:zeta", evidence_hash = "v1:zeta",
+                    winner_id = record_id, loser_id = "contact:zeta",
+                } },
+            })
+
+            local query = { crm_id = crm_id, record_id = record_id, limit = 2 }
+            local first, err = call(owner_exec, MERGE_SUGGESTIONS_FACE, query)
+            test.is_nil(err)
+            local first_pairs = list(map(first).pairs)
+            test.eq(#first_pairs, 2)
+            test.eq(map(first_pairs[1]).other_id, "contact:alpha")
+            test.eq(map(first_pairs[1]).right_id, record_id)
+            test.eq(map(first_pairs[1]).status, "do_not_merge")
+            test.eq(map(first_pairs[1]).reason, "different contacts")
+            test.eq(map(first_pairs[1]).evidence_hash, "v1:alpha")
+            test.eq(map(first_pairs[2]).status, "skipped")
+            test.eq(map(first_pairs[2]).evidence_hash, "v1:beta")
+            test.eq(map(first).next_cursor, "contact:beta")
+            query.cursor = map(first).next_cursor
+
+            local second, second_err = call(owner_exec, MERGE_SUGGESTIONS_FACE, query)
+            test.is_nil(second_err)
+            local second_pairs = list(map(second).pairs)
+            test.eq(#second_pairs, 2)
+            test.eq(map(second_pairs[1]).other_id, "contact:gamma")
+            test.eq(map(second_pairs[1]).left_id, record_id)
+            test.eq(map(second_pairs[1]).status, "pending")
+            test.eq(map(second_pairs[2]).status, "merged")
+            test.eq(map(second_pairs[2]).winner_id, record_id)
+            test.is_nil(map(second).next_cursor)
+
+            local other_crm = create(owner_exec)
+            local absent, absent_err = call(owner_exec, MERGE_SUGGESTIONS_FACE, {
+                crm_id = other_crm, record_id = record_id,
+            })
+            test.is_nil(absent_err)
+            test.eq(#list(map(absent).pairs), 0)
+
+            local stranger_exec = funcs.new():with_actor(actor(uuid.v4())):with_scope(scope()) :: Executor
+            local refused, refused_err = call(stranger_exec, MERGE_SUGGESTIONS_FACE, {
+                crm_id = crm_id, record_id = record_id,
+            })
+            test.is_nil(refused)
+            test.not_nil(refused_err)
+        end)
+    end)
+
     -- A face nobody is allowed to call is a face that does not exist, and the
-    -- consumer of these two runs as an ordinary person: deferred work carries
+    -- consumer runs as an ordinary person: deferred work carries
     -- the frozen identity of whoever authorized it. A host grants a user calls
     -- over the engine's namespaces and nothing under a product one, so the grant
     -- has to travel with the module that publishes the face.
@@ -266,11 +347,12 @@ local function define_tests()
             for _, raw in ipairs(list(map(rule.policy).resources)) do resources[tostring(raw)] = true end
             test.eq(resources[ALIAS_FACE], true)
             test.eq(resources[REFERENCES_FACE], true)
-            -- Exactly the two faces. A wildcard here would hand a plain caller
+            test.eq(resources[MERGE_SUGGESTIONS_FACE], true)
+            -- A wildcard here would hand a plain caller
             -- the write entries in the same namespace.
             local count = 0
             for _ in pairs(resources) do count = count + 1 end
-            test.eq(count, 2)
+            test.eq(count, 3)
 
             local actions: { [string]: boolean } = {}
             for _, raw in ipairs(list(map(rule.policy).actions)) do actions[tostring(raw)] = true end

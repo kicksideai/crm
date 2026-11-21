@@ -72,6 +72,12 @@ function M.merge_reviews(crm_id: string, opts: unknown): (unknown?, error?)
     return internal.internal_merge_reviews(crm_id, opts)
 end
 
+function M.merge_suggestions(crm_id: string, record_id: string, limit: number?, cursor: string?): (unknown?, error?)
+    local err = read_access_error(crm_id)
+    if err then return nil, err end
+    return internal.internal_merge_suggestions(crm_id, record_id, limit, cursor)
+end
+
 function M.merge_resolution(crm_id: string, resolution_id: string): (unknown?, error?)
     local err = read_access_error(crm_id)
     if err then return nil, err end

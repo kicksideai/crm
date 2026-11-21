@@ -424,7 +424,7 @@ local function project_merge_decision(db: Executor, crm_id: string, schema: stor
             decision = excluded.decision,
             confidence = excluded.confidence,
             reason = excluded.reason,
-            evidence_hash = excluded.evidence_hash,
+            evidence_hash = COALESCE(NULLIF(excluded.evidence_hash, ''), kickside_crm_merge_decision.evidence_hash),
             resolution_id = excluded.resolution_id,
             winner_id = excluded.winner_id,
             loser_id = excluded.loser_id,
