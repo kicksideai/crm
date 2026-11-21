@@ -1138,6 +1138,7 @@ entries:
     imports:
       test: wippy.test:test
       actors: app:actors
+      fixture: app:crm_sink_fixture
 
   - name: crm_suggestion_probe
     kind: function.lua

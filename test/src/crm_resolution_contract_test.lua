@@ -70,6 +70,38 @@ local function define_tests()
             test.not_nil(err)
         end)
 
+        test.it("uses other matching evidence when a website is unusable", function()
+            local merge_config = { objects = { contact = {
+                patterns = {
+                    { kind = "domain_name", domain_attr = "website", name_attr = "name",
+                        min_name_similarity = 0.75, weight = 1, reason = "same_company_and_name" },
+                    { kind = "domain", attr = "website", weight = 1, reason = "same_company" },
+                    { kind = "value_exact", attr = "linkedin_url", normalizer = "linkedin",
+                        weight = 0.9, reason = "same_linkedin" },
+                },
+            } } }
+            local record = { website = "unknown", name = "Ada Lovelace",
+                linkedin_url = "https://linkedin.com/in/ada" }
+            local counterpart = { website = "https://example.test", name = "Ada Lovelace",
+                linkedin_url = "https://linkedin.com/in/ada/" }
+            local score, err = suggest.score_values("contact", record, counterpart, merge_config)
+            test.is_nil(err)
+            test.eq((score :: Score).reason, "same_linkedin")
+            score, err = suggest.score_values("contact", counterpart, record, merge_config)
+            test.is_nil(err)
+            test.eq((score :: Score).reason, "same_linkedin")
+        end)
+
+        test.it("rejects an unsupported normalizer in a declared merge rule", function()
+            local score, err = suggest.score_values("contact", { phone = "123" }, { phone = "123" }, {
+                objects = { contact = { patterns = {
+                    { kind = "value_exact", attr = "phone", normalizer = "missing", weight = 1, reason = "same_phone" },
+                } } },
+            })
+            test.is_nil(score)
+            test.not_nil(err)
+        end)
+
         test.it("hashes evidence canonically", function()
             local first = suggest.evidence_hash({ b = { 2, 3 }, a = "one" })
             local second = suggest.evidence_hash({ a = "one", b = { 2, 3 } })
