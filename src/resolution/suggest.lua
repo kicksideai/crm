@@ -239,7 +239,7 @@ function M.route(object_type: string, confidence: number,
     end
     if review_at < ignore_below then return nil, errors.new({ kind = errors.INVALID, message = "review_at must be greater than or equal to ignore_below" }) end
     local value = tonumber(confidence) or 0
-    if value >= review_at and value >= ignore_below then return { action = "review" }, nil end
+    if value > 0 and value >= review_at and value >= ignore_below then return { action = "review" }, nil end
     return { action = "ignore" }, nil
 end
 
